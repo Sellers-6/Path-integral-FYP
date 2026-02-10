@@ -1,0 +1,9 @@
+Every time to pull, in the git directory write "git pull"
+
+To push, write:
+
+1. "git add ."
+2. "git commit -m "Describe any changes here" "
+3. "git push"
+
+if git push doesn't immediately work, try git push origin master
