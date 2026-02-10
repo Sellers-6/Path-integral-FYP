@@ -1,0 +1,6 @@
+﻿  main.cpp
+C:\Users\gs010\Desktop\Bath\Year 4\PH40065 Final Year Project\Code\Path Integral\main.cpp(99,17): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+C:\Users\gs010\Desktop\Bath\Year 4\PH40065 Final Year Project\Code\Path Integral\main.cpp(112,17): warning C4244: 'initializing': conversion from 'double' to 'float', possible loss of data
+  Path Integral.vcxproj -> C:\Users\gs010\Desktop\Bath\Year 4\PH40065 Final Year Project\Code\Path Integral\x64\Debug\Path Integral.exe
+  'pwsh.exe' is not recognized as an internal or external command,
+  operable program or batch file.
