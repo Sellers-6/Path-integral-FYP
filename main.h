@@ -31,12 +31,12 @@ const int decorrelation = 250;			        // Number of sweeps between taking meas
 
 const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
 
-const double thermalisationConstant = 0.0002;   // Constant for checking thermalisation, decreasing the constant makes the check more strict, increasing it makes it less strict
+const double thermalisationConstant = 0.0004;   // Constant for checking thermalisation, decreasing the constant makes the check more strict, increasing it makes it less strict
 const int thermalisationCheckLimit = 10;        // How many consecutive times the thermalisation check must be passed before we consider the system thermalised
 const int thermalisationMaximum = 100000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
 const int thermalisationMinimum = 1000;         // Minimum number of iterations for thermalisation
 
-const int measures = 1000;                       // Number of measures taken after thermalisation, adjust to influence accuracy of results 
+const int measures = 10000;                       // Number of measures taken after thermalisation, adjust to influence accuracy of results 
 
 
 //// File naming and creation ////
