@@ -27,3 +27,17 @@ Desktop.ini
 *.log
 *.ipch
 *.pdb
+# Build directories
+
+x64/
+bin/
+obj/
+*.tlog
+*.log
+*.iobj
+*.ipdb
+*.idb
+*.lastbuildstate
+*.recipe
+*.FileListAbsolute.txt
+*.applocal.log
