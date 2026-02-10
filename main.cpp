@@ -4,7 +4,6 @@
 #include "potentials.h"
 
 int main() {    // Main function to run the Metropolis algorithm with user choice of boundary conditions and visualisation
-    openAllFiles();
     std::cout << "Simulating quantum systems with different potentials using Feynman path integral and Metropolis algorithm" << std::endl;
     std::string choice;
 	while (true) {
@@ -60,14 +59,17 @@ void chooseSystem() {  // Function to display user choices
 }
 
 void metropolis(bool winOn, int BCs, int sys) { // Metropolis function which gets called initially, then calls other functions to perform the algorithm
-
+    std::string boundary;
+    std::string system;
     if (BCs == 1) {         // Periodic boundary conditions
         start = 0;
         end = N;
+        boundary = "Periodic";
     }
     else if (BCs == 2) {    // Dirichlet boundary conditions
         start = 1;
 		end = N - 1;        // Effectively fixes the endpoints to 0, as they are never updated
+        boundary = "Dirichlet";
     }
     else {
         std::cout << "Invalid boundary condition choice." << std::endl;
@@ -81,15 +83,19 @@ void metropolis(bool winOn, int BCs, int sys) { // Metropolis function which get
     else if (sys == 1) { // Quantum harmonic oscillator
         potential = QHO::potential;
         potentialDifferential = QHO::potentialDifferential;
+        system = "QHO";
     }
     else if (sys == 2) { // Double-well potential
         potential = DWP::potential;
         potentialDifferential = DWP::potentialDifferential;
+        system = "DWP";
     }
     else {
         std::cout << "Invalid system choice." << std::endl;
         return;
     }
+
+    openFiles(boundary, system);
 
 	std::thread windowThread(window, std::ref(positions), std::ref(winRunning)); // Instantiates the window thread, passing the path and winRunning flag by reference
 	winRunning = winOn; // Sets winRunning flag to true if user wanted visualisation
@@ -185,6 +191,13 @@ void initialise(int sys) {   // Initialises variables and path
     thermalised = false;
 	oldE0 = 0;
     thermalisationCheck = 0;
+    E0Thermalising.clear();
+    E0Evolution.clear();
+    acceptanceRate.clear();
+	G.clear();
+	G.resize(N, 0.0);
+    psi.clear();
+    psi.resize(measures, std::vector<double>(N, 0.0));
     //if (sys == 2) // DWP requires a different initial (cold) path since the potential wells are not centered around 0
     //{
     //    positions = std::vector<double>(N, wellCentres);
@@ -240,10 +253,7 @@ void takeMeasures(std::vector<double> positions, double (*potentialDifferential)
     for (int j = 0; j < N; j++) {
         G[j] += corr[j];
     }
-    std::cout << "psi size: " << psi.size() << " x " << (psi.empty() ? 0 : psi[0].size()) << "\n";
-    std::cout << "G size: " << G.size() << "\n";
-    std::cout << "corr size: " << corr.size() << "\n";
-
+    
     measureCount++;
     return;
 }

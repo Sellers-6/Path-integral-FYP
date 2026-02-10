@@ -1,46 +1,108 @@
+# nolint start
+
 library(ggplot2)
 library(dplyr)
 
-### Periodic boundary conditions ###
+### Reading files ###
 
-## Quantum harmonic oscillator ##
+# Define boundary conditions and system types
+BCs <- c("Periodic", "Dirichlet") 
+systems <- c("QHO", "DWP") 
 
-thermPQHO <- read.csv("csv/E0ThermalisationPeriodicQHO.csv") #nolint
+# Create empty lists to store data
+therm <- list() 
+E0evolution <- list()
+waveFunction <- list()
+correlation <- list()
 
-ggplot(thermPQHO, aes(x = as.numeric(row.names(thermPQHO)), y = E0)) +
-  geom_point()
+# Helper function to read a CSV safely
+readCsvSafe <- function(fileName, header = TRUE) {
+  if (file.exists(fileName)) {
+    read.csv(fileName, header = header)
+  } else {
+    warning(paste("File not found:", fileName))
+    return(NULL)
+  }
+}
 
+# Loop over all combinations
+for (bc in BCs) {
+  for (sys in systems) {
+    name <- paste0(bc, sys)
+    
+    thermFile <- paste0("csv/E0Thermalisation", bc, sys, ".csv")
+    E0evolFile <- paste0("csv/E0Evolution", bc, sys, ".csv")
+    waveFile <- paste0("csv/waveFunction", bc, sys, ".csv")
+    corrFile <- paste0("csv/correlation", bc, sys, ".csv")
+    
+    # Read each CSV safely and store directly in the lists
+    therm[[name]] <- readCsvSafe(thermFile, header = TRUE)
+    E0evolution[[name]] <- readCsvSafe(E0evolFile, header = TRUE)
+    waveFunction[[name]] <- readCsvSafe(waveFile, header = FALSE)
+    correlation[[name]] <- readCsvSafe(corrFile, header = TRUE)
+  }
+}
 
-E0evolutionPQHO <- read.csv("csv/E0EvolutionPeriodicQHO.csv") #nolint
+bc <- "Periodic"    # or "Dirichlet"
+# bc <- "Dirichlet"   # or "Periodic"
+# sys <- "QHO"        # or "DWP"
+sys <- "DWP"        # or "QHO"
 
-ggplot(E0evolutionPQHO, aes(x = as.numeric(row.names(E0evolutionPQHO)), y = E0)) + #nolint
-  geom_point() + geom_line()
+a <- 2              # DWP variables
+lambda <- 1/12
 
-waveFunctionPQHO <- read.csv("csv/waveFunctionPeriodicQHO.csv", header = FALSE) #nolint
+name <- paste0(bc, sys)      # e.g., "PeriodicQHO"
 
-matrixOfPositions <- as.matrix(waveFunctionPQHO) #nolint
+# Thermalisation
 
-xVec <- as.vector(matrixOfPositions) #nolint
+ggplot(therm[[name]], aes(x = as.numeric(row.names(therm[[name]])), y = E0)) +
+    geom_point() +
+    labs(
+      x = "Measurement index",
+      y = "E0",
+      title = paste("Thermalisation of", bc, sys)
+    )
 
-bins <- 50
+# Decorrelation
+
+ggplot(E0evolution[[name]], aes(x = as.numeric(row.names(E0evolution[[name]])), y = E0)) +
+  geom_point() + 
+  geom_line() + 
+  labs(
+      x = "Measurement index",
+      y = "E0",
+      title = paste("Decorrelation of", bc, sys)
+    ) 
+
+# Wave function
+
+matrixOfPositions <- as.numeric(as.matrix(waveFunction[[name]])) 
+xVec <- as.vector(matrixOfPositions) 
+
+bins <- 100
 
 hist(xVec, breaks = bins, main = "Histogram of positions",
      xlab = "position", ylab = "count")
-h <- hist(xVec, breaks = 200, plot = FALSE)
+h <- hist(xVec, breaks = 100, plot = FALSE)
 
-measures <- sum(h$counts)  # total counts which equals measures * lattice size
-positionRange <- range(h$mids)[2] - range(h$mids)[1]  # range of positions # nolint
-binWidth <- positionRange / bins  # width of each bin # nolint
-normFactor <- measures * binWidth  # normalization factor # nolint
-psi <- sqrt(h$counts / normFactor)  # normalized wave function # nolint
 
-sum(psi ^ 2) * binWidth  # should be approximately 1 # nolint
+measures <- sum(h$counts)                             # Total counts which equals measures * lattice size
+positionRange <- range(h$mids)[2] - range(h$mids)[1]  # Range of positions 
+binWidth <- positionRange / bins                      # Width of each bin 
+normFactor <- measures * binWidth                     # Normalization factor 
+psi <- sqrt(h$counts / normFactor)                    # Normalized wave function 
 
-psiAnalytical <- exp(-(h$mids ^ 2) / 2) # Obtaining the analytical wavefunction #nolint
+if (sys == "QHO") {
+  psiAnalytical <- exp(-(h$mids ^ 2) / 2)               # The analytical wavefunction of the QHO
+} else if (sys == "DWP") {
+   x0 <- sqrt(1 / (2 * a * lambda))   # approximate minima positions
+ 
+  # Double Gaussian superposition
+  psiAnalytical <- exp(-((h$mids - x0)^2)/2) +
+                   exp(-((h$mids + x0)^2)/2)
+}
 
-psiAnalytical <- psiAnalytical / sqrt(sum(psiAnalytical ^ 2) * binWidth) # Normalising the analytical wavefunction #nolint
-
-sum(psiAnalytical ^ 2) * binWidth
+psiAnalytical <- psiAnalytical / sqrt(sum(psiAnalytical ^ 2) * binWidth) # Normalising the analytical wavefunction 
 
 ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
   geom_line() +
@@ -48,243 +110,29 @@ ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
   geom_line(aes(x = h$mids, y = psiAnalytical)) +
   labs(title = "Wave Function", x = "Position", y = "Psi")
 
-correlationPQHO <- read.csv("csv/correlationPeriodicQHO.csv") #nolint
+# Correlation function
 
-head(correlationPQHO)
-ggplot(correlationPQHO, aes(x = as.numeric(row.names(correlationPQHO)), y = Correlation)) + #nolint
-  geom_point()
+ggplot(correlation[[name]], aes(x = as.numeric(row.names(correlation[[name]])), y = Correlation)) + 
+  geom_point() +
+  labs(title = "Correlation Function", x = "Position", y = "Correlation")
 
-min(correlationPQHO$Correlation)
-which(correlationPQHO$Correlation == min(correlationPQHO$Correlation))
-L <- 5000 #nolint
-
+L <- 5000 
 t <- seq(0, L, length.out = L)
 
 correlator <- function(t) {
   0.5 * exp(-t) + 0.5 * exp(t - (L - 1))
 }
 
-gAnalytic <- data.frame( #nolint
+gAnalytic <- data.frame( 
   t = t,
   G = sapply(0:(L - 1), correlator)
 )
 
-ggplot(correlationPQHO, aes(x = as.numeric(row.names(correlationPQHO)), y = Correlation)) + #nolint
+ggplot(correlation[[name]], aes(x = as.numeric(row.names(correlation[[name]])), y = Correlation)) + 
   geom_point() +
   geom_line(data = gAnalytic, aes(x = t, y = G), color = "red") +
   labs(x = "Distance", y = "Correlation") +
   theme(axis.text = element_text(size = 16)) +
   theme(axis.title = element_text(size = 20))
 
-## Double Well Potential ##
-
-thermPDWP <- read.csv("csv/E0ThermalisationPeriodicDWP.csv") #nolint
-
-ggplot(thermPDWP, aes(x = as.numeric(row.names(thermPDWP)), y = E0)) +
-  geom_point()
-
-
-E0evolutionPDWP <- read.csv("csv/E0EvolutionPeriodicDWP.csv") #nolint
-ggplot(E0evolutionPDWP, aes(x = as.numeric(row.names(E0evolutionPDWP)), y = E0)) + #nolint
-  geom_point() + geom_line()
-
-waveFunctionPDWP <- read.csv("csv/waveFunctionPeriodicDWP.csv") #nolint
-x <- waveFunctionPDWP$Position # Temporary variable to store the positions #nolint
-
-bins <- 50
-
-hist(x, breaks = bins, main = "Histogram of positions",
-     xlab = "position", ylab = "count")
-h <- hist(x, breaks = 200, plot = FALSE)
-
-measures <- sum(h$counts)  # total counts which equals measures * lattice size
-positionRange <- range(h$mids)[2] - range(h$mids)[1]  # range of positions # nolint
-binWidth <- positionRange / bins  # width of each bin # nolint
-normFactor <- measures * binWidth  # normalization factor # nolint
-psi <- sqrt(h$counts / normFactor)  # normalized wave function # nolint
-
-sum(psi ^ 2) * binWidth  # should be approximately 1 # nolint
-
-psiAnalytical <- exp(-(h$mids ^ 2) / 2) # Obtaining the analytical wavefunction #nolint
-
-psiAnalytical <- psiAnalytical / sqrt(sum(psiAnalytical ^ 2) * binWidth) # Normalising the analytical wavefunction #nolint
-
-sum(psiAnalytical ^ 2) * binWidth
-
-ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
-  geom_line() +
-  geom_point() +
-  geom_line(aes(x = h$mids, y = psiAnalytical)) +
-  labs(title = "Wave Function", x = "Position", y = "Psi")
-
-correlationPDWP <- read.csv("csv/correlationPeriodicDWP.csv") #nolint
-
-head(correlationPDWP)
-ggplot(correlationPDWP, aes(x = as.numeric(row.names(correlationPDWP)), y = Correlation)) + #nolint
-  geom_point()
-
-min(correlationPDWP$Correlation)
-which(correlationPDWP$Correlation == min(correlationPDWP$Correlation))
-L <- 5000 #nolint
-
-t <- seq(0, L, length.out = L)
-
-correlator <- function(t) {
-  0.5 * exp(-t) + 0.5 * exp(t - (L - 1))
-}
-
-gAnalytic <- data.frame( #nolint
-  t = t,
-  G = sapply(0:(L - 1), correlator)
-)
-
-ggplot(correlationPDWP, aes(x = as.numeric(row.names(correlationPDWP)), y = Correlation)) + #nolint
-  geom_point() +
-  geom_line(data = gAnalytic, aes(x = t, y = G), color = "red") +
-  labs(x = "Distance", y = "Correlation") +
-  theme(axis.text = element_text(size = 16)) +
-  theme(axis.title = element_text(size = 20))
-
-
-
-### Dirichlet boundary conditions ###
-
-
-## Quantum harmonic oscillator ##
-
-thermDQHO <- read.csv("csv/E0ThermalisationDirichletQHO.csv") #nolint
-
-ggplot(thermDQHO, aes(x = as.numeric(row.names(thermDQHO)), y = E0)) +
-  geom_point()
-
-
-E0evolutionDQHO <- read.csv("csv/E0EvolutionDirichletQHO.csv") #nolint
-ggplot(E0evolutionDQHO, aes(x = as.numeric(row.names(E0evolutionDQHO)), y = E0)) + #nolint
-  geom_point() + geom_line()
-
-waveFunctionDQHO <- read.csv("csv/waveFunctionDirichletQHO.csv") #nolint
-
-x <- waveFunctionDQHO$Position
-
-bins <- 50
-
-hist(x, breaks = bins, main = "Histogram of positions",
-     xlab = "position", ylab = "count")
-h <- hist(x, breaks = 200, plot = FALSE)
-
-measures <- sum(h$counts)  # total counts which equals measures * lattice size
-positionRange <- range(h$mids)[2] - range(h$mids)[1]  # range of positions # nolint
-binWidth <- positionRange / bins  # width of each bin # nolint
-normFactor <- measures * binWidth  # normalization factor # nolint
-psi <- sqrt(h$counts / normFactor)  # normalized wave function # nolint
-
-sum(psi ^ 2) * binWidth  # should be approximately 1 # nolint
-
-psiAnalytical <- exp(-(h$mids ^ 2) / 2) # Obtaining the analytical wavefunction #nolint
-
-psiAnalytical <- psiAnalytical / sqrt(sum(psiAnalytical ^ 2) * binWidth) # Normalising the analytical wavefunction #nolint
-
-sum(psiAnalytical ^ 2) * binWidth
-
-ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
-  geom_point() +
-  geom_line(aes(x = h$mids, y = psiAnalytical, color = "blue")) +
-  labs(x = "Position", y = "Psi") +
-  theme(axis.text = element_text(size = 16)) +
-  theme(axis.title = element_text(size = 20))
-
-correlationDQHO <- read.csv("csv/correlationDirichletQHO.csv") #nolint
-
-head(correlationDQHO)
-
-L <- 5000 #nolint
-
-t <- seq(0, L, length.out = L)
-
-correlator <- function(t) {
-  0.5 * exp(-t) + 0.5 * exp(t - (L - 1))
-}
-
-gAnalytic <- data.frame( #nolint
-  t = t,
-  G = sapply(0:(L - 1), correlator)
-)
-
-ggplot(correlationDQHO, aes(x = as.numeric(row.names(correlationDQHO)), y = Correlation)) + #nolint
-  geom_point() +
-  geom_line(data = gAnalytic, aes(x = t, y = G), color = "red") +
-  labs(x = "Distance", y = "Correlation") +
-  theme(axis.text = element_text(size = 16)) +
-  theme(axis.title = element_text(size = 20))
-
-min(correlationDQHO$Correlation)
-which(correlationDQHO$Correlation == min(correlationDQHO$Correlation))
-
-## Double Well Potential ##
-
-thermDDWP <- read.csv("csv/E0ThermalisationDirichletDWP.csv") #nolint
-
-ggplot(thermDDWP, aes(x = as.numeric(row.names(thermDDWP)), y = E0)) +
-  geom_point()
-
-
-E0evolutionDDWP <- read.csv("csv/E0EvolutionDirichletDWP.csv") #nolint
-ggplot(E0evolutionDDWP, aes(x = as.numeric(row.names(E0evolutionDDWP)), y = E0)) + #nolint
-  geom_point() + geom_line()
-
-waveFunctionDDWP <- read.csv("csv/waveFunctionDirichletDWP.csv") #nolint
-x <- waveFunctionDDWP$Position
-
-bins <- 50
-
-hist(x, breaks = bins, main = "Histogram of positions",
-     xlab = "position", ylab = "count")
-h <- hist(x, breaks = 200, plot = FALSE)
-
-measures <- sum(h$counts)  # total counts which equals measures * lattice size
-positionRange <- range(h$mids)[2] - range(h$mids)[1]  # range of positions # nolint
-binWidth <- positionRange / bins  # width of each bin # nolint
-normFactor <- measures * binWidth  # normalization factor # nolint
-psi <- sqrt(h$counts / normFactor)  # normalized wave function # nolint
-
-sum(psi ^ 2) * binWidth  # should be approximately 1 # nolint
-
-psiAnalytical <- exp(-(h$mids ^ 2) / 2) # Obtaining the analytical wavefunction #nolint
-
-psiAnalytical <- psiAnalytical / sqrt(sum(psiAnalytical ^ 2) * binWidth) # Normalising the analytical wavefunction #nolint
-
-sum(psiAnalytical ^ 2) * binWidth
-
-ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
-  geom_point() +
-  geom_line(aes(x = h$mids, y = psiAnalytical, color = "blue")) +
-  labs(x = "Position", y = "Psi") +
-  theme(axis.text = element_text(size = 16)) +
-  theme(axis.title = element_text(size = 20))
-
-correlationDDWP <- read.csv("csv/correlationDirichletDWP.csv") #nolint
-
-head(correlationDDWP)
-
-L <- 5000 #nolint
-
-t <- seq(0, L, length.out = L)
-
-correlator <- function(t) {
-  0.5 * exp(-t) + 0.5 * exp(t - (L - 1))
-}
-
-gAnalytic <- data.frame( #nolint
-  t = t,
-  G = sapply(0:(L - 1), correlator)
-)
-
-ggplot(correlationDDWP, aes(x = as.numeric(row.names(correlationDDWP)), y = Correlation)) + #nolint
-  geom_point() +
-  geom_line(data = gAnalytic, aes(x = t, y = G), color = "red") +
-  labs(x = "Distance", y = "Correlation") +
-  theme(axis.text = element_text(size = 16)) +
-  theme(axis.title = element_text(size = 20))
-
-min(correlationDDWP$Correlation)
-which(correlationDDWP$Correlation == min(correlationDDWP$Correlation))
+# nolint end

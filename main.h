@@ -27,16 +27,16 @@ const double lambda = 2.0, wellCentres = 2.0;   // Coupling constant and well ce
 
 const double epsilon = 0.2;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate
 
-const int decorrelation = 50;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
+const int decorrelation = 250;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
 
 const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
 
-const double thermalisationConstant = 0.0001;   // Constant for checking thermalisation, decreasing the constant makes the check more strict, increasing it makes it less strict
+const double thermalisationConstant = 0.0002;   // Constant for checking thermalisation, decreasing the constant makes the check more strict, increasing it makes it less strict
 const int thermalisationCheckLimit = 10;        // How many consecutive times the thermalisation check must be passed before we consider the system thermalised
 const int thermalisationMaximum = 100000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
 const int thermalisationMinimum = 1000;         // Minimum number of iterations for thermalisation
 
-const int measures = 500;                       // Number of measures taken after thermalisation, adjust to influence accuracy of results 
+const int measures = 1000;                       // Number of measures taken after thermalisation, adjust to influence accuracy of results 
 
 
 //// File naming and creation ////
@@ -60,23 +60,21 @@ const std::vector<std::string> quantities = {"E0Thermalisation", "E0Evolution", 
 using FileKey = std::tuple<std::string, Boundary, System>;
 std::map<FileKey, std::ofstream> files;
 
-void openAllFiles() {
-    for (Boundary b : {Boundary::Periodic, Boundary::Dirichlet}) {
-        for (System s : {System::QHO, System::DWP}) {
-            for (const auto& q : quantities) {
+void openFiles(std::string boundary, std::string system) {
+    for (const auto& q : quantities) {
 
-                std::string filename =
-                    baseDir + q +
-                    boundaryName(b) +
-                    systemName(s) +
-                    ".csv";
+        std::string filename =
+            baseDir + q +
+            boundary +
+            system +
+            ".csv";
 
-                files.emplace(
-                    std::make_tuple(q, b, s),
-                    std::ofstream(filename)
-                );
-            }
-        }
+        files.emplace(
+            std::make_tuple(q, Boundary(boundary == "Periodic" ? Boundary::Periodic : Boundary::Dirichlet),
+                System(system == "QHO" ? System::QHO : System::DWP)),
+            std::ofstream(filename)
+        );
+
     }
 }
 
@@ -92,9 +90,10 @@ const std::complex <double> i(0.0, 1.0);	    // Imaginary unit
 std::vector<double> E0Thermalising; // Vector to store the evolution of the ground state energy during thermalisation
 std::vector<double> E0Evolution;    // Vector displaying the evolution of the ground state energy estimates over iterations
 std::vector<double> acceptanceRate; // Vector to store information about the acceptance rate over measures
-std::vector<double> G(N, 0.0);	            // Vector to store the two-point correlation function 
-std::vector<std::vector<double>> psi(measures, std::vector<double>(N, 0.0));    
-//double psi[measures][N] = {};       
+std::vector<double> G(N, 0.0);	    // Vector to store the two-point correlation function 
+std::vector<std::vector<double>> psi(measures, std::vector<double>(N, 0.0));    // Array containing the all the positions per path, used to reproduce the wavefunction
+
+
 ///// Variable and counter declarations (should not need to be changed) /////
 
 // Boundary conditions // 
