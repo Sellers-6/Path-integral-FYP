@@ -227,16 +227,22 @@ void thermalise(bool winOn, double (*potentialDifferential)(double), double (*po
 }
 
 void takeMeasures(std::vector<double> positions, double (*potentialDifferential)(double), double (*potential)(double)) {    // Takes all measurements at current path state in one function
-	    
-    double E0temp = E0Calc(positions, potentialDifferential, potential);             // Ground state measurements
+
+    double E0temp = E0Calc(positions, potentialDifferential, potential);
     E0Avg += E0temp;
     E0Evolution.push_back((double)E0temp);
 
     for (int j = 0; j < N; j++) {
-        psi[measureCount][j] = positions[j];        // Wavefunction measure (Data processed in python)
+        psi[measureCount][j] = positions[j];
     }
 
-    twoPointCorrelator(positions);
+    std::vector<double> corr = twoPointCorrelator(positions);
+    for (int j = 0; j < N; j++) {
+        G[j] += corr[j];
+    }
+    std::cout << "psi size: " << psi.size() << " x " << (psi.empty() ? 0 : psi[0].size()) << "\n";
+    std::cout << "G size: " << G.size() << "\n";
+    std::cout << "corr size: " << corr.size() << "\n";
 
     measureCount++;
     return;
@@ -275,7 +281,7 @@ void createFiles(int BCs, int sys) {
     for (int i = 0; i < measures; i++) {
         for (int j = 0; j < N; j++) {
             bufferString << psi[i][j];
-            if (j != N - 1) bufferString << "\n";
+            if (j != N - 1) bufferString << ",";
         }
         bufferString << "\n";
     }

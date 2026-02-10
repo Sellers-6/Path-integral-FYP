@@ -16,7 +16,27 @@
 #include "random.h"     // Custom random number generator header file
 
 
-//// Header file with file names, measurement parameters, function declarations, and short function definitions ////
+///// Variables that can be adjusted to influence the accuracy of results and runtime of the program /////
+
+const int hbar = 1;		                        // Unit (reduced) planck's constant
+
+const int m = 1, omega = 1;                     // Unit mass and frequency (harmonic oscillator); 
+
+const double lambda = 2.0, wellCentres = 2.0;   // Coupling constant and well centre positions (double well potential), adjust to influence the shape of the potential 
+                                                // Increasing lambda deepens the wells, increasing wellCentres moves the wells further apart
+
+const double epsilon = 0.2;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate
+
+const int decorrelation = 50;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
+
+const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
+
+const double thermalisationConstant = 0.0001;   // Constant for checking thermalisation, decreasing the constant makes the check more strict, increasing it makes it less strict
+const int thermalisationCheckLimit = 10;        // How many consecutive times the thermalisation check must be passed before we consider the system thermalised
+const int thermalisationMaximum = 100000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
+const int thermalisationMinimum = 1000;         // Minimum number of iterations for thermalisation
+
+const int measures = 500;                       // Number of measures taken after thermalisation, adjust to influence accuracy of results 
 
 
 //// File naming and creation ////
@@ -61,34 +81,10 @@ void openAllFiles() {
 }
 
 
-
 ///// Mathematical constants /////
 
 const double pif = 3.14159265358979323846;      // Pi as a double 
 const std::complex <double> i(0.0, 1.0);	    // Imaginary unit
-
-
-///// Variables that can be adjusted to influence the accuracy of results and runtime of the program /////
-
-const int hbar = 1;		                        // Unit (reduced) planck's constant
-
-const int m = 1, omega = 1;                     // Unit mass and frequency (harmonic oscillator); 
-
-const double lambda = 2.0, wellCentres = 2.0;   // Coupling constant and well centre positions (double well potential), adjust to influence the shape of the potential 
-                                                // Increasing lambda deepens the wells, increasing wellCentres moves the wells further apart
-
-const double epsilon = 0.2;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate
-
-const int decorrelation = 50;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
-
-const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
-
-const double thermalisationConstant = 0.0001;   // Constant for checking thermalisation, decreasing the constant makes the check more strict, increasing it makes it less strict
-const int thermalisationCheckLimit = 10;        // How many consecutive times the thermalisation check must be passed before we consider the system thermalised
-const int thermalisationMaximum = 100000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
-const int thermalisationMinimum = 1000;         // Minimum number of iterations for thermalisation
-
-const int measures = 500;                       // Number of measures taken after thermalisation, adjust to influence accuracy of results 
 
 
 ///// Vectors and arrays containing file input /////
@@ -96,10 +92,9 @@ const int measures = 500;                       // Number of measures taken afte
 std::vector<double> E0Thermalising; // Vector to store the evolution of the ground state energy during thermalisation
 std::vector<double> E0Evolution;    // Vector displaying the evolution of the ground state energy estimates over iterations
 std::vector<double> acceptanceRate; // Vector to store information about the acceptance rate over measures
-std::vector<double> G;	            // Vector to store the two-point correlation function 
-double psi[measures][N] = {};       // Array containing the all the positions per path, used to reproduce the wavefunction
-
-
+std::vector<double> G(N, 0.0);	            // Vector to store the two-point correlation function 
+std::vector<std::vector<double>> psi(measures, std::vector<double>(N, 0.0));    
+//double psi[measures][N] = {};       
 ///// Variable and counter declarations (should not need to be changed) /////
 
 // Boundary conditions // 
@@ -162,7 +157,7 @@ void window(const std::vector<double>& path, bool& runningFlag); // Function for
 
 static double euclideanActionElement(double xin, double xfin, double (*potential)(double));  // Calculates the Euclidean action for two points on a path
 static double E0Calc(const std::vector<double>& path, double (*potentialDifferential)(double), double (*potential)(double)); // Calculates the ground state energy estimate for a given path using the virial theorem
-void twoPointCorrelator(const std::vector<double>& path); // Calculates the two point correlator 
+static std::vector<double> twoPointCorrelator(const std::vector<double>& path); // Calculates the two point correlator 
 
 static double euclideanActionElement(double xin, double xfin, double (*potential)(double)) {
     return ((m / (2 * a)) * pow((xfin - xin), 2)) + (a * potential(xin));
@@ -176,7 +171,7 @@ static double E0Calc(const std::vector<double>& path, double (*potentialDifferen
 	return E0Count / N;
 }
 
-void twoPointCorrelator(const std::vector<double>& path) {
+static std::vector<double> twoPointCorrelator(const std::vector<double>& path) {
     std::vector<double> correlationTemp(N, 0.0);
 
     for (int t = 0; t < N; t++) {
@@ -186,9 +181,8 @@ void twoPointCorrelator(const std::vector<double>& path) {
     }
 
     for (int i = 0; i < N; i++) {
-        correlationTemp[i] /= (measures * N);
+        correlationTemp[i] /= (N * measures);
     }
 
-    G.clear();
-    G.insert(G.end(), correlationTemp.begin(), correlationTemp.end());
+    return correlationTemp;
 }

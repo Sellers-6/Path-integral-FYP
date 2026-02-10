@@ -5,26 +5,28 @@ library(dplyr)
 
 ## Quantum harmonic oscillator ##
 
-thermPQHO <- read.csv("E0ThermalisationPeriodicQHO.csv") #nolint
+thermPQHO <- read.csv("csv/E0ThermalisationPeriodicQHO.csv") #nolint
 
 ggplot(thermPQHO, aes(x = as.numeric(row.names(thermPQHO)), y = E0)) +
   geom_point()
 
 
-E0evolutionPQHO <- read.csv("E0EvolutionPeriodicQHO.csv") #nolint
+E0evolutionPQHO <- read.csv("csv/E0EvolutionPeriodicQHO.csv") #nolint
 
 ggplot(E0evolutionPQHO, aes(x = as.numeric(row.names(E0evolutionPQHO)), y = E0)) + #nolint
   geom_point() + geom_line()
 
-waveFunctionPQHO <- read.csv("waveFunctionPeriodicQHO.csv") #nolint
+waveFunctionPQHO <- read.csv("csv/waveFunctionPeriodicQHO.csv", header = FALSE) #nolint
 
-x <- waveFunctionPQHO$Position # Temporary variable to store the positions #nolint
+matrixOfPositions <- as.matrix(waveFunctionPQHO) #nolint
+
+xVec <- as.vector(matrixOfPositions) #nolint
 
 bins <- 50
 
-hist(x, breaks = bins, main = "Histogram of positions",
+hist(xVec, breaks = bins, main = "Histogram of positions",
      xlab = "position", ylab = "count")
-h <- hist(x, breaks = 200, plot = FALSE)
+h <- hist(xVec, breaks = 200, plot = FALSE)
 
 measures <- sum(h$counts)  # total counts which equals measures * lattice size
 positionRange <- range(h$mids)[2] - range(h$mids)[1]  # range of positions # nolint
@@ -46,7 +48,7 @@ ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
   geom_line(aes(x = h$mids, y = psiAnalytical)) +
   labs(title = "Wave Function", x = "Position", y = "Psi")
 
-correlationPQHO <- read.csv("correlationPeriodic.csv") #nolint
+correlationPQHO <- read.csv("csv/correlationPeriodicQHO.csv") #nolint
 
 head(correlationPQHO)
 ggplot(correlationPQHO, aes(x = as.numeric(row.names(correlationPQHO)), y = Correlation)) + #nolint
@@ -76,17 +78,17 @@ ggplot(correlationPQHO, aes(x = as.numeric(row.names(correlationPQHO)), y = Corr
 
 ## Double Well Potential ##
 
-thermPDWP <- read.csv("E0ThermalisationPeriodicDWP.csv") #nolint
+thermPDWP <- read.csv("csv/E0ThermalisationPeriodicDWP.csv") #nolint
 
 ggplot(thermPDWP, aes(x = as.numeric(row.names(thermPDWP)), y = E0)) +
   geom_point()
 
 
-E0evolutionPDWP <- read.csv("E0EvolutionPeriodicDWP.csv") #nolint
+E0evolutionPDWP <- read.csv("csv/E0EvolutionPeriodicDWP.csv") #nolint
 ggplot(E0evolutionPDWP, aes(x = as.numeric(row.names(E0evolutionPDWP)), y = E0)) + #nolint
   geom_point() + geom_line()
 
-waveFunctionPDWP <- read.csv("waveFunctionPeriodicDWP.csv") #nolint
+waveFunctionPDWP <- read.csv("csv/waveFunctionPeriodicDWP.csv") #nolint
 x <- waveFunctionPDWP$Position # Temporary variable to store the positions #nolint
 
 bins <- 50
@@ -115,7 +117,7 @@ ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
   geom_line(aes(x = h$mids, y = psiAnalytical)) +
   labs(title = "Wave Function", x = "Position", y = "Psi")
 
-correlationPDWP <- read.csv("correlationPeriodicDWP.csv") #nolint
+correlationPDWP <- read.csv("csv/correlationPeriodicDWP.csv") #nolint
 
 head(correlationPDWP)
 ggplot(correlationPDWP, aes(x = as.numeric(row.names(correlationPDWP)), y = Correlation)) + #nolint
@@ -150,17 +152,17 @@ ggplot(correlationPDWP, aes(x = as.numeric(row.names(correlationPDWP)), y = Corr
 
 ## Quantum harmonic oscillator ##
 
-thermDQHO <- read.csv("E0ThermalisationDirichlet.csv") #nolint
+thermDQHO <- read.csv("csv/E0ThermalisationDirichletQHO.csv") #nolint
 
 ggplot(thermDQHO, aes(x = as.numeric(row.names(thermDQHO)), y = E0)) +
   geom_point()
 
 
-E0evolutionDQHO <- read.csv("E0EvolutionDirichlet.csv") #nolint
+E0evolutionDQHO <- read.csv("csv/E0EvolutionDirichletQHO.csv") #nolint
 ggplot(E0evolutionDQHO, aes(x = as.numeric(row.names(E0evolutionDQHO)), y = E0)) + #nolint
   geom_point() + geom_line()
 
-waveFunctionDQHO <- read.csv("waveFunctionDirichlet.csv") #nolint
+waveFunctionDQHO <- read.csv("csv/waveFunctionDirichletQHO.csv") #nolint
 
 x <- waveFunctionDQHO$Position
 
@@ -191,7 +193,7 @@ ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
   theme(axis.text = element_text(size = 16)) +
   theme(axis.title = element_text(size = 20))
 
-correlationDQHO <- read.csv("correlationDirichlet.csv") #nolint
+correlationDQHO <- read.csv("csv/correlationDirichletQHO.csv") #nolint
 
 head(correlationDQHO)
 
@@ -220,17 +222,17 @@ which(correlationDQHO$Correlation == min(correlationDQHO$Correlation))
 
 ## Double Well Potential ##
 
-thermDDWP <- read.csv("E0ThermalisationDirichletDWP.csv") #nolint
+thermDDWP <- read.csv("csv/E0ThermalisationDirichletDWP.csv") #nolint
 
 ggplot(thermDDWP, aes(x = as.numeric(row.names(thermDDWP)), y = E0)) +
   geom_point()
 
 
-E0evolutionDDWP <- read.csv("E0EvolutionDirichletDWP.csv") #nolint
+E0evolutionDDWP <- read.csv("csv/E0EvolutionDirichletDWP.csv") #nolint
 ggplot(E0evolutionDDWP, aes(x = as.numeric(row.names(E0evolutionDDWP)), y = E0)) + #nolint
   geom_point() + geom_line()
 
-waveFunctionDDWP <- read.csv("waveFunctionDirichletDWP.csv") #nolint
+waveFunctionDDWP <- read.csv("csv/waveFunctionDirichletDWP.csv") #nolint
 x <- waveFunctionDDWP$Position
 
 bins <- 50
@@ -260,7 +262,7 @@ ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
   theme(axis.text = element_text(size = 16)) +
   theme(axis.title = element_text(size = 20))
 
-correlationDDWP <- read.csv("correlationDirichletDWP.csv") #nolint
+correlationDDWP <- read.csv("csv/correlationDirichletDWP.csv") #nolint
 
 head(correlationDDWP)
 
