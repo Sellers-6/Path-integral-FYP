@@ -1,2 +1,0 @@
-C:\Users\gs010\Desktop\Bath\Year 4\PH40065 Final Year Project\Code\Path Integral\x64\Release\SDL2.dll
-C:\Users\gs010\Desktop\Bath\Year 4\PH40065 Final Year Project\Code\Path Integral\Path Integral\x64\Release\Path Int.C5F1DA0E.Up2Date
