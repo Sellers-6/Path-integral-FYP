@@ -7,3 +7,5 @@ To push, write:
 3. "git push"
 
 if git push doesn't immediately work, try git push origin master
+
+test addition
