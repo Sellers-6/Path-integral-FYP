@@ -11,28 +11,28 @@ int main() {    // Main function to run the Metropolis algorithm with user choic
 		std::cout << "Enter choice: ";
         std::cin >> choice;
         if (choice == "1") {
-            metropolis(false, 1, 1);
+            metropolisRepeat(false, 1, 1);
 		}
         else if (choice == "2") {
-            metropolis(true, 1, 1);
+            metropolisRepeat(true, 1, 1);
         }
         else if (choice == "3") {
-            metropolis(false, 2, 1);
+            metropolisRepeat(false, 2, 1);
         }
         else if (choice == "4") {
-            metropolis(true, 2, 1);
+            metropolisRepeat(true, 2, 1);
 		}
         else if (choice == "5") {
-            metropolis(false, 1, 2);
+            metropolisRepeat(false, 1, 2);
         }
         else if (choice == "6") {
-            metropolis(true, 1, 2);
+            metropolisRepeat(true, 1, 2);
         }
         else if (choice == "7") {
-            metropolis(false, 2, 2);
+            metropolisRepeat(false, 2, 2);
         }
         else if (choice == "8") {
-            metropolis(true, 2, 2);
+            metropolisRepeat(true, 2, 2);
         }
         else if (choice == "0") {
             std::cout << "Exiting." << std::endl;
@@ -40,7 +40,7 @@ int main() {    // Main function to run the Metropolis algorithm with user choic
         }
         else {
             std::cout << "Invalid choice." << std::endl;
-		}
+        }
     }
     return 0;
 }
@@ -58,7 +58,7 @@ void chooseSystem() {  // Function to display user choices
     return;
 }
 
-void metropolis(bool winOn, int BCs, int sys) { // Metropolis function which gets called initially, then calls other functions to perform the algorithm
+void metropolisRepeat(bool winOn, int BCs, int sys) {
     std::string boundary;
     std::string system;
     if (BCs == 1) {         // Periodic boundary conditions
@@ -68,7 +68,7 @@ void metropolis(bool winOn, int BCs, int sys) { // Metropolis function which get
     }
     else if (BCs == 2) {    // Dirichlet boundary conditions
         start = 1;
-		end = N - 1;        // Effectively fixes the endpoints to 0, as they are never updated
+        end = N - 1;        // Effectively fixes the endpoints to 0, as they are never updated
         boundary = "Dirichlet";
     }
     else {
@@ -97,28 +97,46 @@ void metropolis(bool winOn, int BCs, int sys) { // Metropolis function which get
 
     openFiles(boundary, system);
 
-	std::thread windowThread(window, std::ref(positions), std::ref(winRunning)); // Instantiates the window thread, passing the path and winRunning flag by reference
-	winRunning = winOn; // Sets winRunning flag to true if user wanted visualisation
+    std::thread windowThread(window, std::ref(positions), std::ref(winRunning)); // Instantiates the window thread, passing the path and winRunning flag by reference
+    winRunning = winOn; // Sets winRunning flag to true if user wanted visualisation
 
+    for (int test = 0; test < tests; test++) {
+        metropolis(winOn, BCs, sys, test);
+    }
+    winRunning = false; // Sets winRunning flag to false to close the window thread
+    windowThread.join();
+    createFiles(BCs, sys);
+    void closeAllFiles();
+    E0Thermalising.clear();
+    E0Evolution.clear();
+    acceptanceRate.clear();
+    G.clear();
+    G.resize(ntes, 0.0);
+    psi.clear();
+    psi.resize(mestes, std::vector<double>(N, 0.0));
+    return;
+}
+
+void metropolis(bool winOn, int BCs, int sys, int test) { // Metropolis function which gets called initially, then calls other functions to perform the algorithm
 	initialise(sys);   // Sets initial parameters and path
 
     thermalise(winOn, potentialDifferential, potential);
 
-    takeMeasures(positions, potentialDifferential, potential);
-    std::cout << "Thermalisation complete after " << thermalisationRepeats << " sweeps" << std::endl;
+    takeMeasures(positions, potentialDifferential, potential, test);
+    std::cout << "Thermalisation " << test << " complete after " << thermalisationRepeats << " sweeps" << std::endl;
 	double percentMeasured = 0;
     bool percentChanged = true;
     while (measureCount < measures) {
         metropolisUpdate(winOn, potential);
         repeat++;
         if (remainder(repeat, decorrelation) == 0) {
-            takeMeasures(positions, potentialDifferential, potential);
+            takeMeasures(positions, potentialDifferential, potential, test);
             while ((100 * measureCount) / measures > percentMeasured) {
                 percentMeasured++;
                 percentChanged = true;
             }
             if (percentChanged == true) {
-                std::cout << percentMeasured << "% done." << std::endl;
+                //std::cout << percentMeasured << "% done." << std::endl;
             }
             percentChanged = false;
         }
@@ -127,12 +145,10 @@ void metropolis(bool winOn, int BCs, int sys) { // Metropolis function which get
             acceptedMovesPrevious = acceptedMoves;
         }
     }
-    createFiles(BCs, sys);
-    //createFiles2();
-    std::cout << "Accepted moves: " << acceptedMoves << " out of " << repeat * N << ", giving a total acceptance rate of " << (double)acceptedMoves / ((double)repeat * N) << std::endl;
-    //std::cout << "Action of final path: " << action << std::endl;
+    double accRate = (double)acceptedMoves / ((double)repeat * N);
+    //std::cout << "Accepted moves: " << acceptedMoves << " out of " << repeat * N << ", giving a total acceptance rate of " << accRate << std::endl;
     double E0 = E0Avg / measures;
-    std::cout << "Average ground state energy: " << E0 << std::endl;
+    //std::cout << "Average ground state energy: " << E0 << std::endl;
     double E1 = 0;
     int d = 0;
     while (true) {
@@ -145,10 +161,10 @@ void metropolis(bool winOn, int BCs, int sys) { // Metropolis function which get
             d++;    // Arguement was negative, due to noise??
         }
     }
-    std::cout << "Energy of first exited state: " << E1 << std::endl;
-	winRunning = false; // Sets winRunning flag to false to close the window thread
-    windowThread.join();
-    void closeAllFiles();
+    E0Vec.push_back((double)E0);
+    E1Vec.push_back((double)E1);
+    accRateVec.push_back((double)accRate);
+    //std::cout << "Energy of first exited state: " << E1 << std::endl;
     return;
 }
 
@@ -191,13 +207,6 @@ void initialise(int sys) {   // Initialises variables and path
     thermalised = false;
 	oldE0 = 0;
     thermalisationCheck = 0;
-    E0Thermalising.clear();
-    E0Evolution.clear();
-    acceptanceRate.clear();
-	G.clear();
-	G.resize(N, 0.0);
-    psi.clear();
-    psi.resize(measures, std::vector<double>(N, 0.0));
     //if (sys == 2) // DWP requires a different initial (cold) path since the potential wells are not centered around 0
     //{
     //    positions = std::vector<double>(N, wellCentres);
@@ -239,19 +248,19 @@ void thermalise(bool winOn, double (*potentialDifferential)(double), double (*po
     return;
 }
 
-void takeMeasures(std::vector<double> positions, double (*potentialDifferential)(double), double (*potential)(double)) {    // Takes all measurements at current path state in one function
+void takeMeasures(std::vector<double> positions, double (*potentialDifferential)(double), double (*potential)(double), int test) {    // Takes all measurements at current path state in one function
 
     double E0temp = E0Calc(positions, potentialDifferential, potential);
     E0Avg += E0temp;
     E0Evolution.push_back((double)E0temp);
 
     for (int j = 0; j < N; j++) {
-        psi[measureCount][j] = positions[j];
+        psi[measureCount + (test * measures)][j] = positions[j];
     }
 
     std::vector<double> corr = twoPointCorrelator(positions);
     for (int j = 0; j < N; j++) {
-        G[j] += corr[j];
+        G[j + (test * N)] += corr[j];
     }
     
     measureCount++;
@@ -280,15 +289,22 @@ void createFiles(int BCs, int sys) {
     auto& accFile = files[{ "acceptanceRate", b, s }];
     auto& corrFile = files[{ "correlation", b, s }];
     auto& waveFile = files[{ "waveFunction", b, s }];
+    auto& E0File = files[{ "E0", b, s }];
+    auto& E1File = files[{ "E1", b, s }];
+    auto& accRateFile = files[{ "accRate", b, s }];
 
 	writeVector(thermFile, bufferString, E0Thermalising, "E0"); // Write all the vectors to their respective files using the writeVector function
     writeVector(evoFile, bufferString, E0Evolution, "E0");
     writeVector(accFile, bufferString, acceptanceRate, "AcceptanceRate");
     writeVector(corrFile, bufferString, G, "Correlation");
-    
+    writeVector(E0File, bufferString, E0Vec, "E0");
+    writeVector(E1File, bufferString, E1Vec, "E1");
+    writeVector(accRateFile, bufferString, accRateVec, "accRate");
+
+
 	bufferString.str("");       // Seperate file writing for the wavefunction, as it is a 2D array rather than a vector
     bufferString.clear();
-    for (int i = 0; i < measures; i++) {
+    for (int i = 0; i < measures * tests; i++) {
         for (int j = 0; j < N; j++) {
             bufferString << psi[i][j];
             if (j != N - 1) bufferString << ",";

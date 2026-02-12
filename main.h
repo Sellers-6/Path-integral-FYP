@@ -31,13 +31,14 @@ const int decorrelation = 250;			        // Number of sweeps between taking meas
 
 const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
 
-const double thermalisationConstant = 0.0004;   // Constant for checking thermalisation, decreasing the constant makes the check more strict, increasing it makes it less strict
+const double thermalisationConstant = 0.0001;   // Constant for checking thermalisation, decreasing the constant makes the check more strict, increasing it makes it less strict
 const int thermalisationCheckLimit = 10;        // How many consecutive times the thermalisation check must be passed before we consider the system thermalised
 const int thermalisationMaximum = 100000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
 const int thermalisationMinimum = 1000;         // Minimum number of iterations for thermalisation
 
-const int measures = 10000;                       // Number of measures taken after thermalisation, adjust to influence accuracy of results 
+const int measures = 10;                       // Number of measures taken after thermalisation, adjust to influence accuracy of results 
 
+const int tests = 1000;                            // Number of repeats for finding standard error
 
 //// File naming and creation ////
 std::ofstream logfile;
@@ -55,7 +56,7 @@ std::string systemName(System s) {
     return (s == System::QHO) ? "QHO" : "DWP";
 }
 
-const std::vector<std::string> quantities = {"E0Thermalisation", "E0Evolution", "acceptanceRate", "correlation", "waveFunction"};
+const std::vector<std::string> quantities = {"E0Thermalisation", "E0Evolution", "acceptanceRate", "correlation", "waveFunction", "E0", "E1", "accRate"};
 
 using FileKey = std::tuple<std::string, Boundary, System>;
 std::map<FileKey, std::ofstream> files;
@@ -87,11 +88,20 @@ const std::complex <double> i(0.0, 1.0);	    // Imaginary unit
 
 ///// Vectors and arrays containing file input /////
 
+// temp stuff for debugging //
+int mestes = measures * tests;
+int ntes = N * tests;
+
+///
+
 std::vector<double> E0Thermalising; // Vector to store the evolution of the ground state energy during thermalisation
 std::vector<double> E0Evolution;    // Vector displaying the evolution of the ground state energy estimates over iterations
 std::vector<double> acceptanceRate; // Vector to store information about the acceptance rate over measures
-std::vector<double> G(N, 0.0);	    // Vector to store the two-point correlation function 
-std::vector<std::vector<double>> psi(measures, std::vector<double>(N, 0.0));    // Array containing the all the positions per path, used to reproduce the wavefunction
+std::vector<double> G(ntes, 0.0);	    // Vector to store the two-point correlation function 
+std::vector<std::vector<double>> psi(mestes, std::vector<double>(N, 0.0));    // Array containing the all the positions per path, used to reproduce the wavefunction
+std::vector<double> E0Vec;          // Vector to store ground state energies
+std::vector<double> E1Vec;          // Vector to store first excited energies
+std::vector<double> accRateVec;     // Vector to store acceptance rates
 
 
 ///// Variable and counter declarations (should not need to be changed) /////
@@ -133,7 +143,9 @@ const int delay = 0;                // Delay after updating window (milliseconds
 
 void chooseSystem();                                      // Allows user to choose which system to perform metropolis algorithm on
 
-void metropolis(bool winOn, int BCs, int sys);            // Parent function for metropolisUpdate, runs loops to execute sufficient updates to the path
+void metropolisRepeat(bool winOn, int BCs, int sys);      // Repeats the metropolis function "repeats" times for histogram production
+
+void metropolis(bool winOn, int BCs, int sys, int test);            // Parent function for metropolisUpdate, runs loops to execute sufficient updates to the path
 
 void metropolisUpdate(bool winOn, double (*potential)(double));  // Mechanics of the Metropolis algorithm such as checking whether a proposed update is accepted
 
@@ -141,7 +153,7 @@ void initialise(int sys);
 
 void thermalise(bool winOn, double (*potentialDifferential)(double), double (*potential)(double));
 
-void takeMeasures(std::vector<double> positions, double (*potentialDifferential)(double), double (*potential)(double));
+void takeMeasures(std::vector<double> positions, double (*potentialDifferential)(double), double (*potential)(double), int test);
 
 void createFiles(int BCs, int sys);
 
