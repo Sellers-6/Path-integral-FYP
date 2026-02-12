@@ -36,9 +36,9 @@ const int thermalisationCheckLimit = 10;        // How many consecutive times th
 const int thermalisationMaximum = 100000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
 const int thermalisationMinimum = 1000;         // Minimum number of iterations for thermalisation
 
-const int measures = 10;                       // Number of measures taken after thermalisation, adjust to influence accuracy of results 
+const int measures = 10;                        // Number of measures taken after thermalisation, adjust to influence accuracy of results 
 
-const int tests = 1000;                            // Number of repeats for finding standard error
+const int tests = 1000;                         // Number of repeats for finding standard error
 
 //// File naming and creation ////
 std::ofstream logfile;
