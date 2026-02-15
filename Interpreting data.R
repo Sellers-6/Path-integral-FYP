@@ -1,6 +1,7 @@
 # nolint start
 
 library(ggplot2)
+library(gridExtra)  # side by side plots
 library(dplyr)
 
 ### Reading files ###
@@ -48,7 +49,7 @@ for (bc in BCs) {
     # Read each CSV safely and store directly in the lists
     therm[[name]] <- readCsvSafe(thermFile, header = TRUE)
     E0evolution[[name]] <- readCsvSafe(E0evolFile, header = TRUE)
-    #waveFunction[[name]] <- readCsvSafe(waveFile, header = FALSE)
+    waveFunction[[name]] <- readCsvSafe(waveFile, header = FALSE)
     correlation[[name]] <- readCsvSafe(corrFile, header = TRUE)
     E0[[name]] <- readCsvSafe(E0File, header = TRUE)
     E1[[name]] <- readCsvSafe(E1File, header = TRUE)
@@ -153,10 +154,41 @@ ggplot(correlation[[name]], aes(x = as.numeric(row.names(correlation[[name]])), 
 
 e0Vec <- as.numeric(E0[[name]]$E0)
 
-bins <- 5
+bins <- 10 
 
-hist(e0Vec, breaks = bins, main = "Histogram of ground state energies",
-     xlab = "Energy", ylab = "count")
+hE0 <- hist(e0Vec, breaks = bins, plot = FALSE) # Compute histogram breaks and bin width
+binWidth <- diff(hE0$breaks)[1]
+
+E0Norm <- hE0$counts / (sum(hE0$counts) * binWidth) # Normalised histogram counts (probability density)
+
+continuousE0 <- seq(min(e0Vec), max(e0Vec), length.out = 200) # Continuous x values for normal curve
+normDist <- dnorm(continuousE0, mean = mean(e0Vec), sd = sd(e0Vec))
+dx <- diff(continuousE0)[1]
+normDist <- normDist / sum(normDist * dx)  # Normalisation
+
+# Histogram and normal curve
+histPlot <- ggplot() +
+  geom_histogram(aes(x = e0Vec, y = after_stat(density)),
+                 bins = bins, fill = "skyblue", color = "black") +
+  geom_line(aes(x = continuousE0, y = normDist),
+            color = "red", linewidth = 1) +
+  labs(title = "Ground State Energy Histogram",
+       x = "Energy", y = "Probability Density") +
+  theme_minimal()
+
+# QQ plot
+shapiroTest <- shapiro.test(e0Vec)
+qqPlot <- ggplot(data.frame(e0Vec), aes(sample = e0Vec)) +
+  stat_qq() +
+  stat_qq_line(color = "red") +
+  labs(title = paste0("QQ Plot (Shapiro-Wilk p = ", round(shapiroTest$p.value, 4), ")"),
+       x = "Theoretical Quantiles", y = "Sample Quantiles") +
+  theme_minimal()
+
+# Combined plots side by side
+# grid.arrange(histPlot, qqPlot, ncol = 2)
+histPlot
+
 
 # First excited energy state histogram
 

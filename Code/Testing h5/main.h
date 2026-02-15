@@ -10,13 +10,20 @@
 #include <math.h>       // Used for mathematical functions such as pow()
 #include <string>       // Used for file name strings
 #include <complex>      // Used for complex numbers in path integral calculations
+#include <SDL2/SDL.h>   // Used for creating a window to visualise the path updates
 #include <thread>       // Used to run the window in a separate thread
+#include <hdf5.h>	    // Used for outputting data in HDF5 format  
+#include "lattice.h"    // Custom lattice header file
+#include "random.h"     // Custom random number generator header file
 
-///// Lattice parameters /////
+// H5 file naming and creation //
 
-const int N = 5000;												// Number of lattice points
-std::vector<double> positions = std::vector<double>(N, 0.0);	// Lattice points
-const double a = 0.1;											// Lattice spacing (I don't understand why this must be set to ~ 0.01 - 0.1)
+//hid_t h5Data = H5Fcreate("test.h5", H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+
+// The first parameter is what the h5 file is called
+// The second parameter, H5F_ACC_TRUNC, is the file access flag, it tells us what to do if the file exists already. In this case we overwrite it
+// The third parameter, H5P_DEFAULT, is the file creation property list. We can use it to customize chunking, compression, etc.
+// The fourth parameter, H5P_DEFAULT, is the file access propert list, which we can alter to change who can read/write to the file
 
 ///// Variables that can be adjusted to influence the accuracy of results and runtime of the program /////
 
@@ -25,7 +32,7 @@ const int hbar = 1;		                        // Unit (reduced) planck's constant
 const int m = 1, omega = 1;                     // Unit mass and frequency (harmonic oscillator); 
 
 const double lambda = 2.0, wellCentres = 2.0;   // Coupling constant and well centre positions (double well potential), adjust to influence the shape of the potential 
-                                                // Increasing lambda deepens the wells, increasing wellCentres moves the wells further apart
+// Increasing lambda deepens the wells, increasing wellCentres moves the wells further apart
 
 const double epsilon = 0.2;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate
 
@@ -33,8 +40,8 @@ const int decorrelation = 250;			        // Number of sweeps between taking meas
 
 const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
 
-const double thermalisationConstant = 0.0004;   // Constant for checking thermalisation, decreasing the constant makes the check more strict, increasing it makes it less strict
-const int thermalisationCheckLimit = 15;       // How many consecutive times the thermalisation check must be passed before we consider the system thermalised
+const double thermalisationConstant = 0.0001;   // Constant for checking thermalisation, decreasing the constant makes the check more strict, increasing it makes it less strict
+const int thermalisationCheckLimit = 10;       // How many consecutive times the thermalisation check must be passed before we consider the system thermalised
 const int thermalisationDecrement = 5;          // How much the thermalisation check counter is decremented by if the check fails
 const int thermalisationMaximum = 1000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
 const int thermalisationMinimum = 1000;         // Minimum number of iterations for thermalisation
@@ -43,7 +50,13 @@ const int measures = 10;                        // Number of measures taken afte
 
 const int repeats = 10;                         // Number of repeats for finding standard error
 
+/// old stuff still needed
 
+enum class Boundary { Periodic, Dirichlet };
+enum class System { QHO, DWP };
+//std::vector<std::string> observables = { "E0", "E1", "WaveFunction" };
+
+const std::vector<std::string> observables = { "E0Thermalisation", "E0Evolution", "acceptanceRate", "correlation", "waveFunction", "E0", "E1", "accRate" };
 
 
 ///// Mathematical constants /////
@@ -67,7 +80,6 @@ std::vector<double> E0Vec;          // Vector to store ground state energies
 std::vector<double> E1Vec;          // Vector to store first excited energies
 std::vector<double> accRateVec;     // Vector to store acceptance rates
 
-
 ///// Variable and counter declarations (should not need to be changed) /////
 
 // Boundary conditions // 
@@ -81,7 +93,7 @@ bool thermalised;                   // Bool value to check if system is thermali
 int thermalisationCheck;      // Counter for how many consecutive times the thermalisation check has been passed, this is used to ensure the system is properly thermalised and not just fluctuating around a value for a few iterations
 int thermalisationSweeps;      // Counter for how many sweeps have been performed during thermalisation
 int thermalisationCount = 0;    // Counter for how many times the system has been considered thermalised, must reach thermalisationCheckLimit to be considered fully thermalised
-const int thermalisationMeasures = 10000; // Number of measures to take during thermalisation to check the evolution of the ground state energy
+const int thermalisationMeasures = 100; // Number of measures to take during thermalisation to check the evolution of the ground state energy
 const int thermalisationMeasureInterval = thermalisationMaximum / thermalisationMeasures; // Number of iterations between recording the evolution of the ground state energy during thermalisation, adjust to influence the detail of the thermalisation evolution output (decreasing this increases detail but also runtime and file size)
 double currentE0, oldE0 = 0.0, E0Delta;   // Variables for tracking the evolution of the ground state energy estimate, useful for checking thermalisation 
 
@@ -98,23 +110,31 @@ int acceptedMovesPrevious;	        // Stores a previous value of acceptedMoves t
 
 // Window variables //
 
-
+bool winRunning = false;			// Default status of the window
+bool pathUpdated = false;			// Bool value to indicate an update for the window
+const int delay = 0;                // Delay after updating window (milliseconds)
+// Do not change from zero unless creating screenshots or analysing some specific path
 
 ///// Function declarations /////
 
 void chooseSystem();                                      // Allows user to choose which system to perform metropolis algorithm on
 
-void metropolisRepeat(bool winOn, std::string boundary, std::string system);      // Repeats the metropolis function "repeats" times for histogram production
+void metropolisRepeat(bool winOn, int BCs, int sys);      // Repeats the metropolis function "repeats" times for histogram production
 
-void metropolis(bool winOn, std::string boundary, std::string system, int test);            // Parent function for metropolisUpdate, runs loops to execute sufficient updates to the path
+void metropolis(bool winOn, int BCs, int sys, int test);            // Parent function for metropolisUpdate, runs loops to execute sufficient updates to the path
 
 void metropolisUpdate(bool winOn, double (*potential)(double));  // Mechanics of the Metropolis algorithm such as checking whether a proposed update is accepted
 
-void initialise(std::string boundary, std::string  system);
+void initialise(int sys);
 
 void thermalise(bool winOn, double (*potentialDifferential)(double), double (*potential)(double));
 
 void takeMeasures(std::vector<double> positions, double (*potentialDifferential)(double), double (*potential)(double), int test);
+
+//void writeFiles(std::string boundary, std::string system);
+
+void window(const std::vector<double>& path, bool& runningFlag); // Function for the visualisation of the path in time space
+
 
 ///// Short functions /////
 
@@ -124,14 +144,14 @@ static std::vector<double> twoPointCorrelator(const std::vector<double>& path); 
 
 static double euclideanActionElement(double xin, double xfin, double (*potential)(double)) {
     return ((m / (2 * a)) * pow((xfin - xin), 2)) + (a * potential(xin));
-}	    				
+}
 
 static double E0Calc(const std::vector<double>& path, double (*potentialDifferential)(double), double (*potential)(double)) {
     double E0Count = 0;
     for (int i = 0; i < path.size(); i++) {
         E0Count += (0.5 * path[i] * potentialDifferential(path[i]) + potential(path[i]));
-	}
-	return E0Count / N;
+    }
+    return E0Count / N;
 }
 
 static std::vector<double> twoPointCorrelator(const std::vector<double>& path) {
