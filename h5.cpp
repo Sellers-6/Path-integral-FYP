@@ -11,6 +11,7 @@ extern std::vector<double> accRateVec;
 
 static hid_t openOrCreateFile()
 {
+    H5Eset_auto2(H5E_DEFAULT, nullptr, nullptr);
     hid_t file = H5Fopen("data.h5", H5F_ACC_RDWR, H5P_DEFAULT);
 
     if (file < 0)

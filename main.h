@@ -1,6 +1,5 @@
 #pragma once
 
-#define SDL_MAIN_HANDLED 
 
 #include <iostream>     // Used for standard input and output streams
 #include <vector>       // Used for dynamic arrays such as paths

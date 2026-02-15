@@ -1,4 +1,7 @@
 #pragma once
+
+#define SDL_MAIN_HANDLED 
+
 #include <vector>
 #include <SDL2/SDL.h>
 #include <algorithm>
