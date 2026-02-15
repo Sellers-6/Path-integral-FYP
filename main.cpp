@@ -8,7 +8,6 @@
 #include "csv.h" // Legacy csv writing functions, replaced by h5 files
 
 int main() {    // Main function to run the Metropolis algorithm with user choice of boundary conditions and visualisation
-    int __forceCRTManifestCUR = 0;
     std::cout << "Simulating quantum systems with different potentials using Feynman path integral and Metropolis algorithm" << std::endl;
     std::string choice;
 	while (true) {
