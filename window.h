@@ -11,4 +11,5 @@ void window(const std::vector<double>& path, bool& runningFlag);
 
 // Shared settings
 extern int delay;       // Declared here, defined in window.cpp
-extern bool winRunning; // Declared here, defined in window.cpp
+extern bool winRunning;
+extern double winSizeIncrement;

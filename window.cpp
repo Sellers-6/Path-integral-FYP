@@ -3,6 +3,7 @@
 // Define the globals here — only once
 int delay = 0;
 bool winRunning = false;
+double winSizeIncrement = 0.01;
 
 void window(const std::vector<double>& positions, bool& runningFlag) {
     SDL_Init(SDL_INIT_VIDEO);
@@ -20,17 +21,22 @@ void window(const std::vector<double>& positions, bool& runningFlag) {
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
     SDL_Event evt;
-
+    double yMax = 0.0;
     while (runningFlag) {
         while (SDL_PollEvent(&evt)) {
             if (evt.type == SDL_QUIT)
                 runningFlag = false;
         }
 
-        auto minmax = std::minmax_element(positions.begin(), positions.end());
-        double minVal = *minmax.first;
-        double maxVal = *minmax.second;
-        if (maxVal - minVal < 1e-6) maxVal = minVal + 1e-6;
+		//auto minmax = std::minmax_element(positions.begin(), positions.end());    // Dynamically adjust the y-axis scaling based on the current path values, to keep the plot visible as it evolves
+        //double minVal = *minmax.first;
+        //double maxVal = *minmax.second;
+        //if (maxVal - minVal < 1e-6) maxVal = minVal + 1e-6;
+
+		// For simplicity, we can just use a fixed y-axis range based on the expected values of the path, which should be sufficient for visualisation purposes
+		double minVal = -4.0;
+		double maxVal = 4.0;
+
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);
@@ -48,7 +54,8 @@ void window(const std::vector<double>& positions, bool& runningFlag) {
 
             SDL_RenderDrawLine(renderer, x1, y1, x2, y2);
         }
-
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        SDL_RenderDrawLine(renderer, 0, windowHeight / 2, windowWidth, windowHeight / 2);
         SDL_RenderPresent(renderer);
         SDL_Delay(delay);
     }

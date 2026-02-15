@@ -16,7 +16,6 @@ static hid_t openOrCreateFile()
 
     if (file < 0)
     {
-		std::cout << "IDK SOME B" << std::endl;
         file = H5Fcreate(
             "dat3.h5",
             H5F_ACC_TRUNC,
@@ -135,7 +134,7 @@ static std::vector<Observable> getObservables()
         {"E0Decorr", &E0Evolution},
         {"AcceptanceRate", &acceptanceRate},
         {"Correlation", &G},
-        //{"Psi", &psi},
+        {"Psi", &psi},
         {"E0", &E0Vec},
         {"E1", &E1Vec},
         {"AccRate", &accRateVec}

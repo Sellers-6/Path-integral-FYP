@@ -116,7 +116,7 @@ void metropolis(bool winOn, std::string boundary, std::string system, int repeat
     thermalise(winOn, potentialDifferential, potential);
 
     takeMeasures(positions, potentialDifferential, potential, repeat);
-    std::cout << "Thermalisation " << repeat << " complete after " << thermalisationSweeps << " sweeps" << std::endl;
+    std::cout << "Iteration " << repeat + 1 << " thermalised after " << thermalisationSweeps << " sweeps" << std::endl;
 	double percentMeasured = 0;
     bool percentChanged = true;
     while (measureCount < measures) {

@@ -33,12 +33,12 @@ const int accRateInterval = 1000;               // Number of sweeps between reco
 const double thermalisationConstant = 0.0004;   // Constant for checking thermalisation, decreasing the constant makes the check more strict, increasing it makes it less strict
 const int thermalisationCheckLimit = 15;       // How many consecutive times the thermalisation check must be passed before we consider the system thermalised
 const int thermalisationDecrement = 5;          // How much the thermalisation check counter is decremented by if the check fails
-const int thermalisationMaximum = 1000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
+const int thermalisationMaximum = 100000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
 const int thermalisationMinimum = 1000;         // Minimum number of iterations for thermalisation
 
-const int measures = 1;                        // Number of measures taken after thermalisation
+const int measures = 100;                        // Number of measures taken after thermalisation
 
-const int repeats = 1;                         // Number of repeats for finding standard error
+const int repeats = 5;                         // Number of repeats for finding standard error
 
 
 
