@@ -4,7 +4,7 @@ extern std::vector<double> E0Thermalising;
 extern std::vector<double> E0Evolution;
 extern std::vector<double> acceptanceRate;
 extern std::vector<double> G;
-extern std::vector<std::vector<double>> psi;
+extern std::vector<double> psi;
 extern std::vector<double> E0Vec;
 extern std::vector<double> E1Vec;
 extern std::vector<double> accRateVec;
@@ -12,12 +12,13 @@ extern std::vector<double> accRateVec;
 static hid_t openOrCreateFile()
 {
     H5Eset_auto2(H5E_DEFAULT, nullptr, nullptr);
-    hid_t file = H5Fopen("data.h5", H5F_ACC_RDWR, H5P_DEFAULT);
+    hid_t file = H5Fopen("dat3.h5", H5F_ACC_RDWR, H5P_DEFAULT);
 
     if (file < 0)
     {
+		std::cout << "IDK SOME B" << std::endl;
         file = H5Fcreate(
-            "data.h5",
+            "dat3.h5",
             H5F_ACC_TRUNC,
             H5P_DEFAULT,
             H5P_DEFAULT
