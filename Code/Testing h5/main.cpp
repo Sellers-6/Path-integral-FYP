@@ -117,7 +117,7 @@ void metropolisRepeat(bool winOn, int BCs, int sys) {
     winRunning = false; // Sets winRunning flag to false to close the window thread
     windowThread.join();
 
-    writeSimulationRun(boundary, system);
+    writeData(boundary, system);
 
 
     

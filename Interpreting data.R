@@ -4,6 +4,15 @@ library(ggplot2)
 library(gridExtra)  # side by side plots
 library(dplyr)
 
+
+library(rhdf5)
+
+h5ls("simulations.h5")
+
+vec <- h5read("simulations.h5", "/E0Therm/Periodic/QHO")
+head(vec)
+
+
 ### Reading files ###
 
 # Define boundary conditions and system types
