@@ -5,7 +5,7 @@
 #include "h5.h"
 #include "random.h"
 #include "window.h"
-#include "csv.h"
+#include "csv.h" // Legacy csv writing functions, replaced by h5 files
 
 int main() {    // Main function to run the Metropolis algorithm with user choice of boundary conditions and visualisation
     std::cout << "Simulating quantum systems with different potentials using Feynman path integral and Metropolis algorithm" << std::endl;
@@ -93,8 +93,6 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) {
         return;
     }
 
-
-
     winRunning = winOn; // Sets winRunning flag to true if user wanted visualisation
     std::thread windowThread(window, std::ref(positions), std::ref(winRunning)); // Instantiates the window thread, passing the path and winRunning flag by reference
 
@@ -105,10 +103,10 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) {
     windowThread.join();
     
     openFiles(boundary, system);
-    writeFiles(boundary, system);
+	writeFiles(boundary, system);         // Legacy csv writing functions, replaced by h5 files
     closeAllFiles();
 
-    writeData(boundary, system);
+    writeData(boundary, system);            // Writes all data to a single h5 file, separated into groups
     return;
 }
 
@@ -252,7 +250,7 @@ void takeMeasures(std::vector<double> positions, double (*potentialDifferential)
     E0Evolution.push_back((double)E0temp);
 
     for (int j = 0; j < N; j++) {
-        psi[measureCount + (repeat * measures)][j] = positions[j];
+        psi[j + N * (measureCount + (repeat * measures))] = positions[j];
     }
 
     std::vector<double> corr = twoPointCorrelator(positions);

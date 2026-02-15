@@ -1,6 +1,11 @@
 #pragma once
 
-#include "main.h"
+//#include "main.h"
+#include <fstream>      // Used for file input and output
+#include <map>          // Used for mapping file keys to file streams for output
+#include <sstream>      // Used for string stream to efficiently write data to files in one go
+#include <vector>
+//#include "global.h"
 
 
 void writeFiles(std::string boundary, std::string system);
@@ -29,7 +34,14 @@ std::string systemName(System s) {
     }
 }
 
-const std::vector<std::string> quantities = { "E0Thermalisation", "E0Evolution", "acceptanceRate", "correlation", "waveFunction", "E0", "E1", "accRate" };
+const std::vector<std::string> quantities = {   "E0Thermalisation", 
+                                                "E0Evolution", 
+                                                "acceptanceRate", 
+                                                "correlation", 
+                                                "waveFunction", 
+                                                "E0", 
+                                                "E1",   
+                                                "accRate" };
 
 using FileKey = std::tuple<std::string, Boundary, System>;
 std::map<FileKey, std::ofstream> files;
@@ -92,6 +104,7 @@ void writeFiles(std::string boundary, std::string system) {
     writeVector(evoFile, bufferString, E0Evolution, "E0");
     writeVector(accFile, bufferString, acceptanceRate, "AcceptanceRate");
     writeVector(corrFile, bufferString, G, "Correlation");
+    writeVector(waveFile, bufferString, psi, "Position");
     writeVector(E0File, bufferString, E0Vec, "E0");
     writeVector(E1File, bufferString, E1Vec, "E1");
     writeVector(accRateFile, bufferString, accRateVec, "accRate");
@@ -99,14 +112,6 @@ void writeFiles(std::string boundary, std::string system) {
 
     bufferString.str("");       // Seperate file writing for the wavefunction, as it is a 2D array rather than a vector
     bufferString.clear();
-    for (int i = 0; i < measures * repeats; i++) {
-        for (int j = 0; j < N; j++) {
-            bufferString << psi[i][j];
-            if (j != N - 1) bufferString << ",";
-        }
-        bufferString << "\n";
-    }
-    waveFile << bufferString.str();
 
     return;
 }

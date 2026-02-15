@@ -133,6 +133,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="csv.h" />
+    <ClInclude Include="global.h" />
     <ClInclude Include="h5.h" />
     <ClInclude Include="potentials.h" />
     <ClInclude Include="main.h" />

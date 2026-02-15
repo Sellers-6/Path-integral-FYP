@@ -3,14 +3,12 @@
 #define SDL_MAIN_HANDLED 
 
 #include <iostream>     // Used for standard input and output streams
-#include <fstream>      // Used for file input and output
-#include <map>          // Used for mapping file keys to file streams for output
-#include <stdio.h>      // Used for standard input and output
 #include <vector>       // Used for dynamic arrays such as paths
 #include <math.h>       // Used for mathematical functions such as pow()
-#include <string>       // Used for file name strings
+#include <string>       // Generally useful for dealing with strings
 #include <complex>      // Used for complex numbers in path integral calculations
 #include <thread>       // Used to run the window in a separate thread
+#include "global.h"
 
 ///// Lattice parameters /////
 
@@ -41,7 +39,7 @@ const int thermalisationMinimum = 1000;         // Minimum number of iterations 
 
 const int measures = 10;                        // Number of measures taken after thermalisation
 
-const int repeats = 10;                         // Number of repeats for finding standard error
+const int repeats = 1;                         // Number of repeats for finding standard error
 
 
 
@@ -55,14 +53,14 @@ const std::complex <double> i(0.0, 1.0);	    // Imaginary unit
 ///// Vectors and arrays containing file input /////
 
 // Abbreviations for vector sizes //
-int mesTes = measures * repeats;
+int nMesTes = N * measures * repeats;
 int nTes = N * repeats;
 
 std::vector<double> E0Thermalising; // Vector to store the evolution of the ground state energy during thermalisation
 std::vector<double> E0Evolution;    // Vector displaying the evolution of the ground state energy estimates over iterations
 std::vector<double> acceptanceRate; // Vector to store information about the acceptance rate over measures
 std::vector<double> G(nTes, 0.0);	    // Vector to store the two-point correlation function 
-std::vector<std::vector<double>> psi(mesTes, std::vector<double>(N, 0.0));    // Array containing the all the positions per path, used to reproduce the wavefunction
+std::vector<double> psi(nMesTes, 0.0);    // Array containing the all the positions per path, used to reproduce the wavefunction
 std::vector<double> E0Vec;          // Vector to store ground state energies
 std::vector<double> E1Vec;          // Vector to store first excited energies
 std::vector<double> accRateVec;     // Vector to store acceptance rates
