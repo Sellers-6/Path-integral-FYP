@@ -2,7 +2,7 @@
 
 #define SDL_MAIN_HANDLED 
 
-#include <vector>
+#include "global.h"     // Used for global variables which other headers need to access
 #include <SDL2/SDL.h>
 #include <algorithm>
 

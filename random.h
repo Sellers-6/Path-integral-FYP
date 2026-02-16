@@ -1,6 +1,7 @@
 #pragma once
-#include <random>
 
+#include <random>
+#include "global.h"     // Used for global variables which other headers need to access
 
 //// Header file for random number generation functions ////
 

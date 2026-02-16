@@ -1,50 +1,25 @@
 ///// Simulating quantum systems with different potentials using Feynman path integral and Metropolis algorithm /////
+// Throughout the program, hbar is assumed to be 1 (reduced planck's constant) //
 
 #include "main.h"
-#include "potentials.h"
-#include "h5.h"
-#include "random.h"
-#include "window.h"
-#include "csv.h" // Legacy csv writing functions, replaced by h5 files
 
-int main() {    // Main function to run the Metropolis algorithm with user choice of boundary conditions and visualisation
+int main() {    // Accepts user choice of boundary conditions, system type, and window visualisation
     std::cout << "Simulating quantum systems with different potentials using Feynman path integral and Metropolis algorithm" << std::endl;
     std::string choice;
+	chooseSystem(); // Print the options to the user
 	while (true) {
-        chooseSystem();
 		std::cout << "Enter choice: ";
         std::cin >> choice;
-        if (choice == "1") {
-            metropolisRepeat(false, "Periodic", "QHO");
-		}
-        else if (choice == "2") {
-            metropolisRepeat(true, "Periodic", "QHO");
-        }
-        else if (choice == "3") {
-            metropolisRepeat(false, "Dirichlet", "QHO");
-        }
-        else if (choice == "4") {
-            metropolisRepeat(true, "Dirichlet", "QHO");
-		}
-        else if (choice == "5") {
-            metropolisRepeat(false, "Periodic", "DWP");
-        }
-        else if (choice == "6") {
-            metropolisRepeat(true, "Periodic", "DWP");
-        }
-        else if (choice == "7") {
-            metropolisRepeat(false, "Dirichlet", "DWP");
-        }
-        else if (choice == "8") {
-            metropolisRepeat(true, "Dirichlet", "DWP");
-        }
-        else if (choice == "0") {
-            std::cout << "Exiting." << std::endl;
-            break;
-        }
-        else {
-            std::cout << "Invalid choice." << std::endl;
-        }
+        if (choice == "1") { metropolisRepeat(false, "Periodic", "QHO"); }
+        else if (choice == "2") { metropolisRepeat(true, "Periodic", "QHO"); }
+        else if (choice == "3") { metropolisRepeat(false, "Dirichlet", "QHO"); }
+        else if (choice == "4") { metropolisRepeat(true, "Dirichlet", "QHO"); }
+        else if (choice == "5") { metropolisRepeat(false, "Periodic", "DWP"); }
+        else if (choice == "6") { metropolisRepeat(true, "Periodic", "DWP"); }
+        else if (choice == "7") { metropolisRepeat(false, "Dirichlet", "DWP"); }
+        else if (choice == "8") { metropolisRepeat(true, "Dirichlet", "DWP"); }
+        else if (choice == "0") { std::cout << "Exiting..." << std::endl; break; }
+        else { std::cerr << "Invalid choice." << std::endl; }
     }
     return 0;
 }
@@ -59,109 +34,77 @@ void chooseSystem() {  // Function to display user choices
     std::cout << "7: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (without path visualisation)" << std::endl;
     std::cout << "8: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with path visualisation)" << std::endl;
     std::cout << "0: Exit" << std::endl;
-    return;
+    std::cout << "Warning: Running the algorithm with path visualisation will increase the runtime of the program" << std::endl;
+    std::cout << "Program has a tendancy to crash when ran for long times with visualisation" << std::endl;
 }
 
-void metropolisRepeat(bool winOn, std::string boundary, std::string system) {
-    if (boundary == "Periodic") {         // Periodic boundary conditions
-        start = 0;
-        end = N;
-    }
-    else if (boundary == "Dirichlet") {    // Dirichlet boundary conditions
-        start = 1;
-        end = N - 1;        // Effectively fixes the endpoints to 0, as they are never updated
-    }
-    else {
-        std::cerr << "Invalid boundary condition choice." << std::endl;
-        return;
-    }
+void metropolisRepeat(bool winOn, std::string boundary, std::string system) { // Loop over repeats
+	// Set up the potentials and boundary conditions for the simulation based on user choice
+    setBoundary(boundary);
+	potential = findPotential(system);
+	potentialDifferential = findPotentialDifferential(system);
+    
+	// Window thread setup
+    winRunning = winOn; 
+    std::thread windowThread(window, std::ref(positions), std::ref(winRunning)); 
 
-    if (system == "FP") {     // Free particle
-        potential = FP::potential;
-        potentialDifferential = FP::potentialDifferential;
-    }
-    else if (system == "QHO") { // Quantum harmonic oscillator
-        potential = QHO::potential;
-        potentialDifferential = QHO::potentialDifferential;
-    }
-    else if (system == "DWP") { // Double-well potential
-        potential = DWP::potential;
-        potentialDifferential = DWP::potentialDifferential;
-    }
-    else {
-        std::cerr << "Invalid system choice." << std::endl;
-        return;
-    }
-
-    winRunning = winOn; // Sets winRunning flag to true if user wanted visualisation
-    std::thread windowThread(window, std::ref(positions), std::ref(winRunning)); // Instantiates the window thread, passing the path and winRunning flag by reference
-
+	// Loop the metropolis function "repeats" times 
     for (int repeat = 0; repeat < repeats; repeat++) {
         metropolis(winOn, boundary, system, repeat);
     }
-    winRunning = false; // Sets winRunning flag to false to close the window thread
+
+    // Kill the window thread
+    winRunning = false;
     windowThread.join();
     
-    openFiles(boundary, system);
-	writeFiles(boundary, system);         // Legacy csv writing functions, replaced by h5 files
-    closeAllFiles();
-
+	// Write data to files
+    //csvWriteData(boundary, system);       // Legacy csv writing functions, replaced by h5 files
     writeData(boundary, system);            // Writes all data to a single h5 file, separated into groups
-    return;
+
+    // Reprint the options to the user, wait for further input
+    chooseSystem();
 }
 
 void metropolis(bool winOn, std::string boundary, std::string system, int repeat) { // Metropolis function which gets called initially, then calls other functions to perform the algorithm
-	initialise(boundary, system);   // Sets initial parameters and path
+    // Set initial path and counters to 0
+    initialise(boundary, system);
 
-    thermalise(winOn, potentialDifferential, potential);
+    // Thermalise the system
+    int thermalisationSweeps = thermalise(winOn, potentialDifferential, potential);
+    takeMeasures(positions, potentialDifferential, potential); // First measurement after thermalisation
+    std::cout << "Iteration " << repeat + 1 << " thermalised after " << thermalisationSweeps << " sweeps.";
+    thermSweeps.push_back(thermalisationSweeps);
 
-    takeMeasures(positions, potentialDifferential, potential, repeat);
-    std::cout << "Iteration " << repeat + 1 << " thermalised after " << thermalisationSweeps << " sweeps" << std::endl;
-	double percentMeasured = 0;
-    bool percentChanged = true;
-    while (measureCount < measures) {
-        metropolisUpdate(winOn, potential);
-        sweep++;
-        if (remainder(sweep, decorrelation) == 0) {
-            takeMeasures(positions, potentialDifferential, potential, repeat);
-            while ((100 * measureCount) / measures > percentMeasured) {
-                percentMeasured++;
-                percentChanged = true;
+	// Take measures of the path every "decorrelation" sweeps
+    if (takeMeasuresFlag == true) {
+        while (measureCount < measures) {
+            metropolisUpdate(winOn, potential);
+            sweep++;
+            if (remainder(sweep, decorrelation) == 0) {
+                takeMeasures(positions, potentialDifferential, potential);
             }
-            if (percentChanged == true) {
-                //std::cout << percentMeasured << "% done." << std::endl;
-            }
-            percentChanged = false;
         }
-        if (sweep % accRateInterval == 0) {
-            acceptanceRate.push_back((double)(acceptedMoves - acceptedMovesPrevious) / (N * (double)accRateInterval));
-            acceptedMovesPrevious = acceptedMoves;
-        }
+        std::cout << " Completed measurements for iteration " << repeat + 1 << "." << std::endl;
     }
-    double accRate = (double)acceptedMoves / ((double)sweep * N);
-    double E0 = E0Avg / measures;
-    double E1 = 0;
-    int d = 0;
-    while (true) {
-        double arg = G[(int)floor(6) + d] / G[(int)floor(6) + 1 + d];
-        if (arg > 1.0) {
-            E1 = E0 + (log(arg) / a);
-            break;
-        }
-        else {
-            d++;    // Arguement was negative, due to noise??
-        }
-    }
-    E0Vec.push_back((double)E0);
-    E1Vec.push_back((double)E1);
-    accRateVec.push_back((double)accRate);
-    return;
+    // Move all this into R
+ //   int d = 0;
+	//for (int i = 1; i < 31; i++) { // Important to only ever iterate over the first few points of G, as the later points will be very noisy and can cause issues with the logarithm in the E1 calculation. Noise here can be attributed to the periodic boundary condition (Dirichlet is also periodic in a sense)
+ //       double arg = G[i] / G[i + 1];
+ //       if (arg <= 0) {
+	//		std::cerr << "Warning: Non-positive argument for logarithm in E1 calculation!" << std::endl;
+ //       }
+ //       else {
+ //           E1 += E0 + (log(arg) / a);
+ //           d++;
+ //       }
+ //   }
+	//E1 /= d;
 }
 
-void metropolisUpdate(bool winOn, double (*potential)(double)) {
+void metropolisUpdate(bool winOn, double (*potential)(double)) {    // The heart of the simulation, the metropolis algorithm function
     double newPosition;
     for (int i = start; i < end; i++) {
-        double y = rfRange(-1, 1);
+        double y = rfRange(-1, 1);  // See random.h, sets a random number between -1 and 1
         newPosition = positions[i] + epsilon * y; // Incrementing one position by float between -epsilon and +epsilon
         double actionDelta = euclideanActionElement(newPosition, positions[(i + 1) % N], potential) -
             euclideanActionElement(positions[i], positions[(i + 1) % N], potential) +
@@ -175,49 +118,45 @@ void metropolisUpdate(bool winOn, double (*potential)(double)) {
         else {  // Unfavorable move
             auto& rng = globalRng();
             float r = static_cast<float>(rfRange(0, 1));
-            if (r < exp(-actionDelta)) { // Accept with probability exp(-deltaS)
+            if (r < exp(-actionDelta)) { // Accept move with probability exp(-deltaS)
                 positions[i] = newPosition; // Updates position stored (no need to store rejected position)
                 acceptedMoves++;
             }
         }
     }
+    // Update the window if user wanted visualisation
     if (winOn == true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(delay));
     }
-    return;
 }
 
 void initialise(std::string boundary, std::string system) {   // Initialises variables and path
-    positions = std::vector<double>(N, 0.0);
-    sweep = 0;
-    acceptedMoves = 0;
-    measureCount = 0;
-    E0Avg = 0;
-    thermalised = false;
-	oldE0 = 0;
-    thermalisationCheck = 0;
+    // Reset the path
+    positions = std::vector<double>(N, 0.0); // Reset the path
     //if (system == "DWP") // DWP requires a different initial (cold) path since the potential wells are not centered around 0
     //{
     //    positions = std::vector<double>(N, wellCentres);
     //}
-    return;
+
+    // Reset the counters for sweeps and measures
+    sweep = 0;
+    measureCount = 0;
 }
 
-void thermalise(bool winOn, double (*potentialDifferential)(double), double (*potential)(double)) { // Thermalisation function to reach equilibrium before measurements
+const int thermalise(bool winOn, double (*potentialDifferential)(double), double (*potential)(double)) { // Thermalisation function to reach equilibrium before measurements
+	bool thermalised = false;
+	int thermalisationCheck = 0;
+	double finalVar = 0.0; // Placeholder variable for the mean time, eventually replace this with something that makes sense for checking thermalisation via all parameters, not just E0
+    double varDelta;
     while (thermalised == false) {
         metropolisUpdate(winOn, potential);
-        currentE0 = E0Calc(positions, potentialDifferential, potential); // Ground state energy measurement during thermalisation
-        E0Delta = currentE0 - oldE0;
+        double initialVar = E0Calc(positions, potentialDifferential, potential); // Ground state energy measurement during thermalisation
+        varDelta = initialVar - finalVar;
         if (sweep % thermalisationMeasureInterval == 0) { // Store E0 during thermalisation for plotting purposes (not necessary for the algorithm itself)
-            E0Thermalising.push_back((double)currentE0);
-            thermalisationCount++;
-        }
-        if (sweep % accRateInterval == 0) {
-            acceptanceRate.push_back((double)(acceptedMoves - acceptedMovesPrevious) / (double)accRateInterval);
-            acceptedMovesPrevious = acceptedMoves;  // For measuring acceptance rate over sweeps
+            takeThermMeasures(positions, potentialDifferential, potential);
         }
         sweep++;
-        if (E0Delta < thermalisationConstant) {
+        if (varDelta < thermalisationConstant) {
 			thermalisationCheck++;  // If E0 is not changing much, increment thermalisation check counter
             if (thermalisationCheck == thermalisationCheckLimit) { // If this is the first time E0 has not changed significantly, store the current sweep count as a potential thermalisation point (if E0 remains stable for long enough, we will assume thermalisation is complete from this point)
                 thermalisationCheck = thermalisationCheckLimit * thermalisationMinimum; // Prevents thermalisation from being marked as incomplete after it has completed once
@@ -230,34 +169,57 @@ void thermalise(bool winOn, double (*potentialDifferential)(double), double (*po
             }
         }
 		if (thermalisationCheck >= thermalisationCheckLimit && sweep > thermalisationMinimum) { // If E0 has not changed significantly for a certain number of checks, we can assume thermalisation is complete
-            thermalisationSweeps = sweep;
             thermalised = true;
         }
         if (sweep == thermalisationMaximum) {
-            std::cout << "Thermalisation failed to converge after " << thermalisationMaximum << " sweeps, proceeding with measurements anyway." << std::endl;
-            thermalisationSweeps  = thermalisationMaximum;
+            std::cout << "Failed to thermalise after " << thermalisationMaximum << " sweeps, proceeding with measurements anyway." << std::endl;
+            return thermalisationMaximum;
             thermalised = true;
         }
-		oldE0 = currentE0;
+		finalVar = initialVar;
     }
-    return;
+    return sweep;
 }
 
-void takeMeasures(std::vector<double> positions, double (*potentialDifferential)(double), double (*potential)(double), int repeat) {    // Takes all measurements at current path state in one function
+void takeThermMeasures(std::vector<double> positions, double (*potentialDifferential)(double), double (*potential)(double)) {
+    // Record acceptance rate between decorrelations
+    accRateTherm.push_back((double)(acceptedMoves) / (N * (double)thermalisationMeasureInterval));
+    acceptedMoves = 0;
 
-    double E0temp = E0Calc(positions, potentialDifferential, potential);
-    E0Avg += E0temp;
-    E0Evolution.push_back((double)E0temp);
+    // Record ground state energy
+    E0Therm.push_back(E0Calc(positions, potentialDifferential, potential));
 
+    // Record all the positions of the particle (technically all the information we need, other vectors are for convenience)
     for (int j = 0; j < N; j++) {
-        psi[j + N * (measureCount + (repeat * measures))] = positions[j];
+        psiTherm.push_back(positions[j]);
     }
 
-    std::vector<double> corr = twoPointCorrelator(positions);
+    // Record the two point correlator
+    std::vector<double> corrTemp = twoPointCorrelator(positions);
     for (int j = 0; j < N; j++) {
-        G[j + (repeat * N)] += corr[j];
+        GTherm.push_back(corrTemp[j]);
+    }
+}
+
+void takeMeasures(std::vector<double> positions, double (*potentialDifferential)(double), double (*potential)(double)) {    // Takes all measurements at current path state in one function
+    // Record acceptance rate between decorrelations
+    accRateDecorr.push_back((double)(acceptedMoves) / (N * (double)decorrelation));
+    acceptedMoves = 0;
+
+    // Record ground state energy
+    E0Decorr.push_back(E0Calc(positions, potentialDifferential, potential));
+
+    // Record all the positions of the particle (technically all the information we need, other vectors are for convenience)
+    for (int j = 0; j < N; j++) {
+        psiDecorr.push_back(positions[j]);
+    }
+
+    // Record the two point correlator
+    std::vector<double> corrTemp = twoPointCorrelator(positions);
+    for (int j = 0; j < N; j++) {
+        GDecorr.push_back(corrTemp[j]);
     }
     
+    // Increment measure count
     measureCount++;
-    return;
 }

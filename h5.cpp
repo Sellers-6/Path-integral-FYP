@@ -1,32 +1,40 @@
 #include "h5.h"
 
-extern std::vector<double> E0Thermalising;
-extern std::vector<double> E0Evolution;
-extern std::vector<double> acceptanceRate;
-extern std::vector<double> G;
-extern std::vector<double> psi;
-extern std::vector<double> E0Vec;
-extern std::vector<double> E1Vec;
-extern std::vector<double> accRateVec;
+struct Observable
+{
+    std::string name;
+    const std::vector<double>* vec;
+};
+
+static std::vector<Observable> getObservables()
+{
+    return {
+        {"E0Therm", &E0Therm},
+        {"E0Decorr", &E0Decorr},
+        {"accRateTherm", &accRateTherm},
+        {"accRateDecorr", &accRateDecorr},
+        {"GTherm", &GTherm},
+        {"GDecorr", &GDecorr},
+        {"psiTherm", &psiTherm},
+        {"psiDecorr", &psiDecorr},
+        {"thermSweeps", &thermSweeps}
+    };
+}
 
 static hid_t openOrCreateFile()
 {
     H5Eset_auto2(H5E_DEFAULT, nullptr, nullptr);
-    hid_t file = H5Fopen("dat3.h5", H5F_ACC_RDWR, H5P_DEFAULT);
+    hid_t file = H5Fopen("data.h5", H5F_ACC_RDWR, H5P_DEFAULT);
 
     if (file < 0)
     {
         file = H5Fcreate(
-            "dat3.h5",
+            "data.h5",
             H5F_ACC_TRUNC,
             H5P_DEFAULT,
             H5P_DEFAULT
         );
     }
-
-    // if (file >= 0) {
-    //     std::cout << "file successfully created or opened" << std::endl;
-    // }
 
     return file;
 }
@@ -119,26 +127,6 @@ static void writeVector(hid_t group, const std::vector<double>& data) {
 
     H5Dclose(dataset);
     H5Sclose(space);
-}
-
-struct Observable
-{
-    std::string name;
-    const std::vector<double>* vec;
-};
-
-static std::vector<Observable> getObservables()
-{
-    return {
-        {"E0Therm", &E0Thermalising},
-        {"E0Decorr", &E0Evolution},
-        {"AcceptanceRate", &acceptanceRate},
-        {"Correlation", &G},
-        {"Psi", &psi},
-        {"E0", &E0Vec},
-        {"E1", &E1Vec},
-        {"AccRate", &accRateVec}
-    };
 }
 
 void writeData(

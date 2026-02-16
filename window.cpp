@@ -1,5 +1,6 @@
 #include "window.h"
 
+
 // Define the globals here — only once
 int delay = 0;
 bool winRunning = false;

@@ -4,14 +4,6 @@ library(ggplot2)
 library(gridExtra)  # side by side plots
 library(dplyr)
 
-library(rhdf5)
-
-h5ls("dat3.h5")
-
-# vec <- h5read("dat3.h5", "/E0Therm/Periodic/QHO")
-# head(vec)
-
-
 ### Reading files ###
 
 # Define boundary conditions and system types
@@ -19,52 +11,50 @@ BCs <- c("Periodic", "Dirichlet")
 systems <- c("QHO", "DWP") 
 
 # # Create empty lists to store data
-# therm <- list() 
-# E0evolution <- list()
-# waveFunction <- list()
-# correlation <- list()
-# E0 <- list()
-# E1 <- list()
-# accRate <- list()
+therm <- list() 
+E0evolution <- list()
+waveFunction <- list()
+correlation <- list()
+E0 <- list()
+E1 <- list()
+accRate <- list()
 
+# Helper function to read a CSV safely
+readCsvSafe <- function(fileName, header = TRUE) {
+  if (file.exists(fileName)) {
+    read.csv(fileName, header = header)
+  } else {
+    warning(paste("File not found:", fileName))
+    return(NULL)
+  }
+}
 
-
-# # Helper function to read a CSV safely
-# readCsvSafe <- function(fileName, header = TRUE) {
-#   if (file.exists(fileName)) {
-#     read.csv(fileName, header = header)
-#   } else {
-#     warning(paste("File not found:", fileName))
-#     return(NULL)
-#   }
-# }
-
-# # Loop over all combinations
-# for (bc in BCs) {
-#   for (sys in systems) {
-#     name <- paste0(bc, sys)
+# Loop over all combinations
+for (bc in BCs) {
+  for (sys in systems) {
+    name <- paste0(bc, sys)
     
-#     thermFile <- paste0("csv/E0Thermalisation", bc, sys, ".csv")
-#     E0evolFile <- paste0("csv/E0Evolution", bc, sys, ".csv")
-#     waveFile <- paste0("csv/waveFunction", bc, sys, ".csv")
-#     corrFile <- paste0("csv/correlation", bc, sys, ".csv")
-#     E0File <- paste0("csv/E0", bc, sys, ".csv")
-#     E1File <- paste0("csv/E1", bc, sys, ".csv")
-#     accRateFile <- paste0("csv/accRate", bc, sys, ".csv")
+    thermFile <- paste0("csv/E0Thermalisation", bc, sys, ".csv")
+    E0evolFile <- paste0("csv/E0Evolution", bc, sys, ".csv")
+    waveFile <- paste0("csv/waveFunction", bc, sys, ".csv")
+    corrFile <- paste0("csv/correlation", bc, sys, ".csv")
+    E0File <- paste0("csv/E0", bc, sys, ".csv")
+    E1File <- paste0("csv/E1", bc, sys, ".csv")
+    accRateFile <- paste0("csv/accRate", bc, sys, ".csv")
      
 
 
-#     # Read each CSV safely and store directly in the lists
-#     therm[[name]] <- readCsvSafe(thermFile, header = TRUE)
-#     E0evolution[[name]] <- readCsvSafe(E0evolFile, header = TRUE)
-#     waveFunction[[name]] <- readCsvSafe(waveFile, header = FALSE)
-#     correlation[[name]] <- readCsvSafe(corrFile, header = TRUE)
-#     E0[[name]] <- readCsvSafe(E0File, header = TRUE)
-#     E1[[name]] <- readCsvSafe(E1File, header = TRUE)
-#     accRate[[name]] <- readCsvSafe(accRateFile, header = TRUE)
+    # Read each CSV safely and store directly in the lists
+    therm[[name]] <- readCsvSafe(thermFile, header = TRUE)
+    E0evolution[[name]] <- readCsvSafe(E0evolFile, header = TRUE)
+    waveFunction[[name]] <- readCsvSafe(waveFile, header = FALSE)
+    correlation[[name]] <- readCsvSafe(corrFile, header = TRUE)
+    E0[[name]] <- readCsvSafe(E0File, header = TRUE)
+    E1[[name]] <- readCsvSafe(E1File, header = TRUE)
+    accRate[[name]] <- readCsvSafe(accRateFile, header = TRUE)
 
-#   }
-# }
+  }
+}
 
 # bc <- "Periodic"    # or "Dirichlet"
 bc <- "Dirichlet"   # or "Periodic"
@@ -101,10 +91,7 @@ ggplot(E0evolution[[name]], aes(x = as.numeric(row.names(E0evolution[[name]])), 
 
 # Wave function
 
-# matrixOfPositions <- as.numeric(as.matrix(waveFunction[[name]])) 
-# xVec <- as.vector(matrixOfPositions) 
-xVec <- as.numeric(unlist(h5read("dat3.h5", "/Psi/Dirichlet/QHO")))
-
+xVec <- as.numeric(as.vector(waveFunction[[name]])) 
 
 bins <- 100
 
@@ -164,10 +151,8 @@ ggplot(correlation[[name]], aes(x = as.numeric(row.names(correlation[[name]])), 
 
 # Ground state energy histogram
 
-# e0Vec <- as.numeric(E0[[name]]$E0)
+e0Vec <- as.numeric(E0[[name]]$E0)
 
-e0Vec <- as.numeric(unlist(h5read("dat3.h5", "/E0/Periodic/QHO")))
-length(e0Vec)
 bins <- 7
 
 hE0 <- hist(e0Vec, breaks = bins, plot = FALSE) # Compute histogram breaks and bin width
