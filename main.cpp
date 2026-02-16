@@ -34,8 +34,8 @@ void chooseSystem() {  // Function to display user choices
     std::cout << "7: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (without path visualisation)" << std::endl;
     std::cout << "8: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with path visualisation)" << std::endl;
     std::cout << "0: Exit" << std::endl;
-    std::cout << "Warning: Running the algorithm with path visualisation will increase the runtime of the program" << std::endl;
-    std::cout << "Program has a tendancy to crash when ran for long times with visualisation" << std::endl;
+    std::cout << "Warning: Program has a tendancy to crash when ran for long times with visualisation" << std::endl;
+    std::cout << "Running the algorithm with path visualisation will very slightly increase the runtime of the program" << std::endl;
 }
 
 void metropolisRepeat(bool winOn, std::string boundary, std::string system) { // Loop over repeats
@@ -44,11 +44,11 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
 	potential = findPotential(system);
 	potentialDifferential = findPotentialDifferential(system);
     
-	// Window thread setup
-    winRunning = winOn; 
-    std::thread windowThread(window, std::ref(positions), std::ref(winRunning)); 
+    // Window thread setup
+    winRunning = winOn;
+    std::thread windowThread(window, std::ref(positions), std::ref(winRunning));
 
-	// Loop the metropolis function "repeats" times 
+    // Loop the metropolis function "repeats" times 
     for (int repeat = 0; repeat < repeats; repeat++) {
         metropolis(winOn, boundary, system, repeat);
     }
@@ -56,6 +56,16 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
     // Kill the window thread
     winRunning = false;
     windowThread.join();
+
+    /*if (multThreads == true) {
+        omp_set_num_threads(threads);
+        #pragma omp parallel for
+        for (int thread = 0; thread < threads; thread++) {
+            for (int repeat = 0; repeat < repeats; repeat++) {
+                metropolis(winOn, boundary, system, thread + repeat * threads); // Not working yet
+            };
+        }
+    }*/
     
 	// Write data to files
     //csvWriteData(boundary, system);       // Legacy csv writing functions, replaced by h5 files
@@ -141,67 +151,67 @@ void initialise(std::string boundary, std::string system) {   // Initialises var
     // Reset the counters for sweeps and measures
     sweep = 0;
     measureCount = 0;
+
+    E0ThermTemp.clear();
 }
 
 const int thermalise(bool winOn, double (*potentialDifferential)(double), double (*potential)(double)) { // Thermalisation function to reach equilibrium before measurements
 	bool thermalised = false;
-	int thermalisationCheck = 0;
-	double finalVar = 0.0; // Placeholder variable for the mean time, eventually replace this with something that makes sense for checking thermalisation via all parameters, not just E0
-    double varDelta;
     while (thermalised == false) {
         metropolisUpdate(winOn, potential);
-        double initialVar = E0Calc(positions, potentialDifferential, potential); // Ground state energy measurement during thermalisation
-        varDelta = initialVar - finalVar;
-        if (sweep % thermalisationMeasureInterval == 0) { // Store E0 during thermalisation for plotting purposes (not necessary for the algorithm itself)
-            takeThermMeasures(positions, potentialDifferential, potential);
-        }
         sweep++;
-        if (varDelta < thermalisationConstant) {
-			thermalisationCheck++;  // If E0 is not changing much, increment thermalisation check counter
-            if (thermalisationCheck == thermalisationCheckLimit) { // If this is the first time E0 has not changed significantly, store the current sweep count as a potential thermalisation point (if E0 remains stable for long enough, we will assume thermalisation is complete from this point)
-                thermalisationCheck = thermalisationCheckLimit * thermalisationMinimum; // Prevents thermalisation from being marked as incomplete after it has completed once
+        if ((sweep - 1) % thermalisationInterval == 0) { // Store E0 during thermalisation for plotting purposes (not necessary for the algorithm itself)
+            takeThermMeasures(positions, potentialDifferential, potential);
+            thermalised = checkThermalised();
+            if (sweep >= thermalisationMaximum) {
+                std::cout << "Failed to thermalise after " << thermalisationMaximum << " sweeps, proceeding with measurements anyway." << std::endl;
+                return thermalisationMaximum;
+                thermalised = true;
             }
         }
-        else {
-			thermalisationCheck -= thermalisationDecrement; // If E0 is changing significantly, lower thermalisation check counter
-            if (thermalisationCheck < 0) {
-                thermalisationCheck = 0; // Prevents thermalisation check counter from going negative
-            }
-        }
-		if (thermalisationCheck >= thermalisationCheckLimit && sweep > thermalisationMinimum) { // If E0 has not changed significantly for a certain number of checks, we can assume thermalisation is complete
-            thermalised = true;
-        }
-        if (sweep == thermalisationMaximum) {
-            std::cout << "Failed to thermalise after " << thermalisationMaximum << " sweeps, proceeding with measurements anyway." << std::endl;
-            return thermalisationMaximum;
-            thermalised = true;
-        }
-		finalVar = initialVar;
     }
     return sweep;
 }
 
-void takeThermMeasures(std::vector<double> positions, double (*potentialDifferential)(double), double (*potential)(double)) {
+void takeThermMeasures(std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double)) {
     // Record acceptance rate between decorrelations
-    accRateTherm.push_back((double)(acceptedMoves) / (N * (double)thermalisationMeasureInterval));
+    accRateTherm.push_back((double)(acceptedMoves) / (N * (double)thermalisationInterval));
     acceptedMoves = 0;
 
     // Record ground state energy
     E0Therm.push_back(E0Calc(positions, potentialDifferential, potential));
+    E0ThermTemp.push_back(E0Calc(positions, potentialDifferential, potential));
 
     // Record all the positions of the particle (technically all the information we need, other vectors are for convenience)
-    for (int j = 0; j < N; j++) {
+    /*for (int j = 0; j < N; j++) {
         psiTherm.push_back(positions[j]);
-    }
+    }*/
 
-    // Record the two point correlator
-    std::vector<double> corrTemp = twoPointCorrelator(positions);
-    for (int j = 0; j < N; j++) {
-        GTherm.push_back(corrTemp[j]);
-    }
+    //// Record the two point correlator
+    //std::vector<double> corrTemp = twoPointCorrelator(positions);
+    //for (int j = 0; j < N; j++) {
+    //    GTherm.push_back(corrTemp[j]);                // Move into R
+    //}
 }
 
-void takeMeasures(std::vector<double> positions, double (*potentialDifferential)(double), double (*potential)(double)) {    // Takes all measurements at current path state in one function
+bool checkThermalised() {
+    std::vector<double> E0Samples = E0ThermTemp;
+
+    double E0Mean = vectorMean(E0Samples);
+    double E0MCSE = MCSE(E0Samples);
+
+    //std::cout << "E0 = " << E0Mean << " +- " << E0MCSE << " (MCSE)" << std::endl;
+    
+    if (E0MCSE / E0Mean < acceptableError) {
+        if (sweep > thermalisationMinimum) {
+            return true;
+        }
+    }
+        
+    return false;
+}
+
+void takeMeasures(std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double)) {    // Takes all measurements at current path state in one function
     // Record acceptance rate between decorrelations
     accRateDecorr.push_back((double)(acceptedMoves) / (N * (double)decorrelation));
     acceptedMoves = 0;
@@ -214,11 +224,11 @@ void takeMeasures(std::vector<double> positions, double (*potentialDifferential)
         psiDecorr.push_back(positions[j]);
     }
 
-    // Record the two point correlator
-    std::vector<double> corrTemp = twoPointCorrelator(positions);
-    for (int j = 0; j < N; j++) {
-        GDecorr.push_back(corrTemp[j]);
-    }
+    //// Record the two point correlator
+    //std::vector<double> corrTemp = twoPointCorrelator(positions); // Move into R
+    //for (int j = 0; j < N; j++) {
+    //    GDecorr.push_back(corrTemp[j]);
+    //}
     
     // Increment measure count
     measureCount++;

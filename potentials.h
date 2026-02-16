@@ -27,10 +27,10 @@ class QHO
 {
 public:
     static double potential(double x) {
-        return 0.5 * m * pow(omega, 2) * pow(x, 2);
+        return 0.5 * m * omega * omega * x * x;
     }
     static double potentialDifferential(double x) {
-        return m * pow(omega, 2) * x;
+        return m * omega * omega * x;
     }
 };
 
@@ -43,9 +43,9 @@ class DWP
 public:
     
     static double potential(double x) {
-        return (lambda / 24) * pow(pow(x, 2) - pow(wellCentres, 2), 2);
+        return (lambda / 24) * (x * x - wellCentres * wellCentres) * (x * x - wellCentres * wellCentres);
     }
     static double potentialDifferential(double x) {
-        return (lambda / 6) * ((pow(x, 3) - x * pow(wellCentres, 2)));
+        return (lambda / 6) * (((x * x * x) - x * (wellCentres * wellCentres)));
     }
 };

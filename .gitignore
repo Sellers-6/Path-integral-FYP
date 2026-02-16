@@ -41,3 +41,7 @@ obj/
 *.recipe
 *.FileListAbsolute.txt
 *.applocal.log
+
+# Ignore HDF5 and CSV data files - too large
+*.h5
+*.csv

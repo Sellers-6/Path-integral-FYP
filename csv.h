@@ -38,10 +38,7 @@ std::string systemName(System s) {
 const std::vector<std::string> quantities = {   "E0Therm", 
                                                 "E0Decorr", 
                                                 "accRateTherm", 
-                                                "accRateDecorr", 
-                                                "GTherm", 
-                                                "GDecorr", 
-                                                "psiTherm",   
+                                                "accRateDecorr",  
                                                 "psiDecorr",
                                                 "thermSweeps"};
 

@@ -1,13 +1,13 @@
-\- Finish commenting the C++ code
+\- Implement a multithreaded option to the C++ code, consider adding "#pragma omp simd" to forcibly vectorise certain loops
+
+
+\- Remove the correlation function vector from C++. This can be evaluated from the position data so can be done locally in R. It currently makes file size ~ 2x bigger
 
 
 \- WKB understanding - Shculmann and Sakurai, use this to evaluate accuracy of simulated values
 
 
-\- Use the Landau and Binder book page 96 to redefine conditions of thermalisation
-
-
-\- Rethink the Lattice size and spacing, also use these to find a seperate error (add this to the standard error from histogram of E0)
+\- Read about how the Lattice size and spacing effects error (it is very small)
 
 
 \- Write up sections of the report that have been understood

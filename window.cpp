@@ -34,7 +34,7 @@ void window(const std::vector<double>& positions, bool& runningFlag) {
         //double maxVal = *minmax.second;
         //if (maxVal - minVal < 1e-6) maxVal = minVal + 1e-6;
 
-		// For simplicity, we can just use a fixed y-axis range based on the expected values of the path, which should be sufficient for visualisation purposes
+		// For simplicity, we can use a fixed y-axis range based on the expected values of the path
 		double minVal = -4.0;
 		double maxVal = 4.0;
 

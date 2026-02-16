@@ -2,9 +2,10 @@
 
 #include <iostream>     // Used for standard input and output streams
 #include <vector>       // Used for dynamic arrays such as paths
-#include <math.h>       // Used for mathematical functions such as pow()
 #include <string>       // Generally useful for dealing with strings
 #include <thread>       // Used to run the window in a separate thread
+#include <numeric>  	// Used for std::accumulate 
+//#include <omp.h>        // Used for parallelisation of the metropolis function, massively reduces the code execution time
 
 #include "random.h"
 #include "potentials.h"
@@ -19,7 +20,7 @@ bool takeMeasuresFlag = true;    // Flag to determine whether to take measures a
 
 ///// Acceptance rate settings /////
 
-const double epsilon = 0.2;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate
+const double epsilon = 0.3;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Found to be best to set epsilon ~ 0.3 for both DWP and QHO, both of which result in an acceptance rate of ~ 74%
 const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
 
 ///// Decorrelation settings /////
@@ -29,17 +30,18 @@ const int measures = 100;                       // Number of measures taken afte
 
 ///// Thermalisation settings /////
 
-const double thermalisationConstant = 0.0004;   // Constant for checking thermalisation, decreasing the constant makes the check more strict, increasing it makes it less strict
-const int thermalisationCheckLimit = 15;        // How many consecutive times the thermalisation check must be passed before we consider the system thermalised
-const int thermalisationDecrement = 5;          // How much the thermalisation check counter is decremented by if the check fails
-const int thermalisationMaximum = 100000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
+const double acceptableError = 0.01;              // Ratio of the standard error to the mean for the ground state energy, used as a criterion for thermalisation
+const int thermalisationMaximum = 200000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
 const int thermalisationMinimum = 1000;       // Minimum number of iterations for thermalisation
-const int thermalisationMeasureInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
-// Be careful when changing the thermalisationMeasureInterval to be too small; this can massively increase file size
+const int thermalisationInterval = 100;    // Number of MC sweeps performed between measuring parameters during thermalisation
+// Be careful when changing the thermalisationInterval to be too small; this can massively increase file size
+std::vector<double> E0ThermTemp;            // Used for creating batches in one iteration of the thermalisation process
 
 ///// Repeats /////
 
-const int repeats = 5;                          // Number of repeats for finding standard error
+//const int threads = 6;                          // Number of threads to run in parallel, set to the number of cores on my computer (not yet implemented)
+const int repeats = 200;                          // Number of repeats for finding standard error (threads * repeats measures are taken in total)
+//const bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads (not yet working)
 
 ///// Lattice parameters /////
 
@@ -63,9 +65,6 @@ std::vector<double> E0Therm;     // Vector to store the evolution of the ground 
 std::vector<double> E0Decorr;        // Vector displaying the evolution of the ground state energy estimates over iterations
 std::vector<double> accRateTherm;     // Vector to store information about the acceptance rate over measures
 std::vector<double> accRateDecorr;	    // Vector to store the two-point correlation function 
-std::vector<double> GTherm;  // Vector to store the positions per path, used to produce the wavefunction
-std::vector<double> GDecorr;              // Vector to store ground state energies
-std::vector<double> psiTherm;              // Vector to store first excited energies
 std::vector<double> psiDecorr;              // Vector to store first excited energies
 std::vector<double> thermSweeps;              
 
@@ -94,25 +93,15 @@ void initialise(std::string boundary, std::string system);
 
 const int thermalise(bool winOn, double (*potentialDifferential)(double), double (*potential)(double));
 
-void takeThermMeasures(std::vector<double> positions, double (*potentialDifferential)(double), double (*potential)(double));
+void takeThermMeasures(std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double));
 
-void takeMeasures(std::vector<double> positions, double (*potentialDifferential)(double), double (*potential)(double));
+bool checkThermalised();
+
+void takeMeasures(std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double));
 
 ///// Helper functions /////
 
-void setBoundary(std::string boundary);
-
-double(*findPotential(const std::string& system))(double);
-
-double(*findPotentialDifferential(const std::string& system))(double);
-
-static double euclideanActionElement(double xin, double xfin, double (*potential)(double));  // Calculates the Euclidean action for two points on a path
-
-static double E0Calc(const std::vector<double>& path, double (*potentialDifferential)(double), double (*potential)(double)); // Calculates the ground state energy estimate for a given path using the virial theorem
-
-static std::vector<double> twoPointCorrelator(const std::vector<double>& path); // Calculates the two point correlator 
-
-void setBoundary(std::string boundary) {
+static void setBoundary(std::string boundary) {
     if (boundary == "Periodic") {         // Periodic boundary conditions
         start = 0, end = N;
     }
@@ -121,7 +110,7 @@ void setBoundary(std::string boundary) {
     }
 }
 
-double(*findPotential(const std::string& system))(double) {
+static double(*findPotential(const std::string& system))(double) {
     if (system == "FP") {       // Free particle
         return FP::potential;
     }
@@ -133,7 +122,7 @@ double(*findPotential(const std::string& system))(double) {
     }
 }
 
-double(*findPotentialDifferential(const std::string& system))(double) {
+static double(*findPotentialDifferential(const std::string& system))(double) {
     if (system == "FP") {       // Free particle
         return FP::potentialDifferential;
     }
@@ -145,24 +134,55 @@ double(*findPotentialDifferential(const std::string& system))(double) {
     }
 }
 
+static double vectorMean(const std::vector<double>& vector) {
+    return std::accumulate(vector.begin(), vector.end(), 0.0) / vector.size();
+}
+
+static double vectorVariance(const std::vector<double>& vector, double vectorMean) {
+    double variance = 0.0;
+    for (auto x : vector) variance += (x - vectorMean) * (x - vectorMean);
+	return variance / (vector.size() - 1);  // Bessel's correction for sample variance
+}
+
+static double MCSE(const std::vector<double>& samples) {
+    size_t N = samples.size();
+    if (N < 2) return NAN;
+
+    size_t batchSize = std::max<size_t>(1, static_cast<size_t>(std::sqrt(N)));
+    size_t M = N / batchSize;
+    if (M < 2) return NAN; // Need at least 2 batches
+
+    std::vector<double> batchMeans(M, 0.0);
+    for (size_t k = 0; k < M; ++k) {
+        size_t start = k * batchSize;
+        size_t end = start + batchSize;
+        double sum = std::accumulate(samples.begin() + start, samples.begin() + end, 0.0);
+        batchMeans[k] = sum / batchSize;
+    }
+
+    double bmMean = vectorMean(batchMeans);
+    double bmVar = vectorVariance(batchMeans, bmMean);
+    return std::sqrt(bmVar / M);
+}
+
 static double euclideanActionElement(double xin, double xfin, double (*potential)(double)) {
-    return ((m / (2 * a)) * pow((xfin - xin), 2)) + (a * potential(xin));
+    return ((m / (2 * a)) * (xfin - xin) * (xfin - xin)) + (a * potential(xin));
 }	    				
 
-static double E0Calc(const std::vector<double>& path, double (*potentialDifferential)(double), double (*potential)(double)) {
+static double E0Calc(const std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double)) {
     double E0Count = 0;
-    for (int i = 0; i < path.size(); i++) {
-        E0Count += (0.5 * path[i] * potentialDifferential(path[i]) + potential(path[i]));
+    for (int i = 0; i < positions.size(); i++) {
+        E0Count += (0.5 * positions[i] * potentialDifferential(positions[i]) + potential(positions[i]));
 	}
 	return E0Count / N;
 }
 
-static std::vector<double> twoPointCorrelator(const std::vector<double>& path) {
+static std::vector<double> twoPointCorrelator(const std::vector<double>& positions) {
     std::vector<double> correlationTemp(N, 0.0);
 
     for (int t = 0; t < N; t++) {
         for (int n = 0; n < N; n++) {
-            correlationTemp[n] += (path[(t + n) % N] * path[t]) / N;
+            correlationTemp[n] += (positions[(t + n) % N] * positions[t]) / N;
         }
     }
     return correlationTemp;
