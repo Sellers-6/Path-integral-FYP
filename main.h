@@ -35,6 +35,7 @@ const int thermalisationDecrement = 5;          // How much the thermalisation c
 const int thermalisationMaximum = 100000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
 const int thermalisationMinimum = 1000;       // Minimum number of iterations for thermalisation
 const int thermalisationMeasureInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
+// Be careful when changing the thermalisationMeasureInterval to be too small; this can massively increase file size
 
 ///// Repeats /////
 
