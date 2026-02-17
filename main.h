@@ -40,7 +40,7 @@ std::vector<double> E0ThermTemp;            // Used for creating batches in one 
 ///// Repeats /////
 
 //const int threads = 6;                          // Number of threads to run in parallel, set to the number of cores on my computer (not yet implemented)
-const int repeats = 200;                          // Number of repeats for finding standard error (threads * repeats measures are taken in total)
+const int repeats = 30;                          // Number of repeats for finding standard error (threads * repeats measures are taken in total)
 //const bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads (not yet working)
 
 ///// Lattice parameters /////
@@ -61,12 +61,13 @@ const double wellCentres = 2.0;     // Well centre positions, increasing this mo
 
 ///// Vectors to store data /////
 
-std::vector<double> E0Therm;     // Vector to store the evolution of the ground state energy during thermalisation
-std::vector<double> E0Decorr;        // Vector displaying the evolution of the ground state energy estimates over iterations
-std::vector<double> accRateTherm;     // Vector to store information about the acceptance rate over measures
-std::vector<double> accRateDecorr;	    // Vector to store the two-point correlation function 
-std::vector<double> psiDecorr;              // Vector to store first excited energies
-std::vector<double> thermSweeps;              
+std::vector<double> E0Therm;        //
+std::vector<double> E0Decorr;       //
+std::vector<double> accRateTherm;   //
+std::vector<double> accRateDecorr;	//
+std::vector<double> GDecorr;        //   
+std::vector<double> psiDecorr;      //
+std::vector<double> thermSweeps;    //           
 
 ///// Boundary conditions ///// 
 

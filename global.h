@@ -10,6 +10,7 @@ extern std::vector<double> E0Decorr;
 extern std::vector<double> accRateTherm;
 extern std::vector<double> accRateDecorr;
 extern std::vector<double> psiDecorr;
+extern std::vector<double> GDecorr;
 extern std::vector<double> thermSweeps;
 
 

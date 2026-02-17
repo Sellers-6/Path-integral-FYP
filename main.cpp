@@ -18,6 +18,13 @@ int main() {    // Accepts user choice of boundary conditions, system type, and 
         else if (choice == "6") { metropolisRepeat(true, "Periodic", "DWP"); }
         else if (choice == "7") { metropolisRepeat(false, "Dirichlet", "DWP"); }
         else if (choice == "8") { metropolisRepeat(true, "Dirichlet", "DWP"); }
+        else if (choice == "9") { // Secret option for running multiple systems/BCs in one go, used to produce data for the report
+            metropolisRepeat(false, "Periodic", "QHO");
+            metropolisRepeat(false, "Dirichlet", "QHO");
+            metropolisRepeat(false, "Periodic", "DWP");
+            metropolisRepeat(false, "Dirichlet", "DWP");
+            std::cout << "Exiting..." << std::endl; break;
+		}
         else if (choice == "0") { std::cout << "Exiting..." << std::endl; break; }
         else { std::cerr << "Invalid choice." << std::endl; }
     }
@@ -71,6 +78,15 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
     //csvWriteData(boundary, system);       // Legacy csv writing functions, replaced by h5 files
     writeData(boundary, system);            // Writes all data to a single h5 file, separated into groups
 
+	// Clear all vectors for the next run
+	E0Therm.clear();
+	accRateTherm.clear();
+	E0Decorr.clear();
+	accRateDecorr.clear();
+	psiDecorr.clear();
+    GDecorr.clear();
+	thermSweeps.clear();
+
     // Reprint the options to the user, wait for further input
     chooseSystem();
 }
@@ -96,19 +112,6 @@ void metropolis(bool winOn, std::string boundary, std::string system, int repeat
         }
         std::cout << " Completed measurements for iteration " << repeat + 1 << "." << std::endl;
     }
-    // Move all this into R
- //   int d = 0;
-	//for (int i = 1; i < 31; i++) { // Important to only ever iterate over the first few points of G, as the later points will be very noisy and can cause issues with the logarithm in the E1 calculation. Noise here can be attributed to the periodic boundary condition (Dirichlet is also periodic in a sense)
- //       double arg = G[i] / G[i + 1];
- //       if (arg <= 0) {
-	//		std::cerr << "Warning: Non-positive argument for logarithm in E1 calculation!" << std::endl;
- //       }
- //       else {
- //           E1 += E0 + (log(arg) / a);
- //           d++;
- //       }
- //   }
-	//E1 /= d;
 }
 
 void metropolisUpdate(bool winOn, double (*potential)(double)) {    // The heart of the simulation, the metropolis algorithm function
@@ -181,17 +184,6 @@ void takeThermMeasures(std::vector<double>& positions, double (*potentialDiffere
     // Record ground state energy
     E0Therm.push_back(E0Calc(positions, potentialDifferential, potential));
     E0ThermTemp.push_back(E0Calc(positions, potentialDifferential, potential));
-
-    // Record all the positions of the particle (technically all the information we need, other vectors are for convenience)
-    /*for (int j = 0; j < N; j++) {
-        psiTherm.push_back(positions[j]);
-    }*/
-
-    //// Record the two point correlator
-    //std::vector<double> corrTemp = twoPointCorrelator(positions);
-    //for (int j = 0; j < N; j++) {
-    //    GTherm.push_back(corrTemp[j]);                // Move into R
-    //}
 }
 
 bool checkThermalised() {
@@ -207,7 +199,6 @@ bool checkThermalised() {
             return true;
         }
     }
-        
     return false;
 }
 
@@ -220,15 +211,13 @@ void takeMeasures(std::vector<double>& positions, double (*potentialDifferential
     E0Decorr.push_back(E0Calc(positions, potentialDifferential, potential));
 
     // Record all the positions of the particle (technically all the information we need, other vectors are for convenience)
-    for (int j = 0; j < N; j++) {
-        psiDecorr.push_back(positions[j]);
-    }
+    psiDecorr.insert(psiDecorr.end(), positions.begin(), positions.end());
 
-    //// Record the two point correlator
-    //std::vector<double> corrTemp = twoPointCorrelator(positions); // Move into R
-    //for (int j = 0; j < N; j++) {
-    //    GDecorr.push_back(corrTemp[j]);
-    //}
+    // Compute the correlator once
+    std::vector<double> tempCorr = twoPointCorrelator(positions);
+
+    // Append all elements to GDecorr
+    GDecorr.insert(GDecorr.end(), tempCorr.begin(), tempCorr.end());
     
     // Increment measure count
     measureCount++;

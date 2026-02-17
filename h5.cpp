@@ -14,6 +14,7 @@ static std::vector<Observable> getObservables()
         {"accRateTherm", &accRateTherm},
         {"accRateDecorr", &accRateDecorr},
         {"psiDecorr", &psiDecorr},
+		{"GDecorr", &GDecorr},
         {"thermSweeps", &thermSweeps}
     };
 }
