@@ -5,15 +5,29 @@ library(gridExtra)  # side by side plots
 library(dplyr)
 library(rhdf5)
 
-h5ls("data.h5")
+# Variables from the simulation, needed for interpreting the data
 
-# vec <- h5read("dat3.h5", "/E0Therm/Periodic/QHO")
-# head(vec)
+a <- 2              # DWP variables
+lambda <- 1/12
 
-# bc <- "Periodic"    # or "Dirichlet"
-bc <- "Dirichlet"   # or "Periodic"
-sys <- "QHO"        # or "DWP"
-# sys <- "DWP"        # or "QHO"
+measures <- 100
+
+repeats <- 30
+
+pathLength <- 5000
+
+latticeSpacing <- 0.1
+
+thermalisationInterval <- 100
+
+acceptableError <- 0.01 # This was the ratio of the monte carlo error in ground state energy to the current average ground state energy
+
+# Boundary conditions and system type
+
+bc <- "Periodic"    # or "Dirichlet"
+# bc <- "Dirichlet"   # or "Periodic", I have noticed that Dirichlet is systematically worse than periodic boundary conditions
+# sys <- "QHO"        # or "DWP"
+sys <- "DWP"        # or "QHO"
 
 # Read data
 
@@ -29,43 +43,37 @@ accRateDecorrData <- as.numeric(unlist(h5read("data.h5", paste0("/accRateDecorr/
 
 psiDecorrData <- as.numeric(unlist(h5read("data.h5", paste0("/psiDecorr/", bc, "/", sys))))
 
-# Variables
+GDecorrData <- as.numeric(unlist(h5read("data.h5", paste0("/GDecorr/", bc, "/", sys))))
 
-a <- 2              # DWP variables
-lambda <- 1/12
-
-measures <- 200
-
-repeats <- length(E0DecorrData) / measures
-
-pathLength <- 5000
-
-#### Thermalisation ####
+##### Thermalisation #####
 
 # Some quick sanity checks
 
 min(thermSweeps)  # Not too small (<1000)
 max(thermSweeps)  # Not too big (>200000)
 
-
 mean(accRateThermData) * 100 # Should be ~ 60 - 80%
 
-# Track E0 as it thermalises, to best see this, an average of E0 for the first "minThermSweeps" is found
+# We need to do some work to the E0ThermData to get it into a form where we can plot the thermalisation curve.
+# We know that the number of measurements during thermalisation per repeat is given by the number of sweeps divided by the thermalisation interval.
 
-thermalisationInterval <- 100
-thermMeasures <- ceiling(thermSweeps / thermalisationInterval)
-sum(thermMeasures) == length(E0ThermData) # Needs to be True
+thermMeasures <- ceiling(thermSweeps / thermalisationInterval)  # Number of measurements during thermalisation per repeat
+sum(thermMeasures) == length(E0ThermData) # Should return true
 
+# We can split the E0ThermData into a list of vectors, where each vector corresponds to the thermalisation measurements for one repeat. 
 E0Groups <- rep(seq_along(thermMeasures), thermMeasures)
-
 E0Split <- split(E0ThermData, E0Groups)
 
+# Then by finding the minimum length of these vectors, we can trim them all to the same length.
+# This means we only plot the thermalisation curve up to the point where all repeats have measurements.
 minLen <- min(sapply(E0Split, length))
 E0Trimmed <- lapply(E0Split, `[`, 1:minLen)
 
+# We then combine these trimmed vectors into a matrix, where each column corresponds to a repeat and each row corresponds to a measurement index.
 E0Mat <- do.call(cbind, E0Trimmed)
-E0Avg <- rowMeans(E0Mat)
 
+# Then we take the average across repeats for each measurement index to get the average thermalisation curve.
+E0Avg <- rowMeans(E0Mat)
 
 ggplot(data.frame(index = 1:length(E0Avg), E0 = E0Avg), aes(x = index * thermalisationInterval, y = E0)) +
     geom_point() +
@@ -75,16 +83,15 @@ ggplot(data.frame(index = 1:length(E0Avg), E0 = E0Avg), aes(x = index * thermali
       title = paste("Thermalisation of", bc, sys)
     )
 
-# Decorrelation
+##### Decorrelated data - Data we can use to find expected behaviour of the system and compare to analytical results #####
 
-E0DecorrData <- as.numeric(unlist(h5read("data.h5", paste0("/E0Decorr/", bc, "/", sys))))
-
-E0Split <- split(E0DecorrData, rep(1:repeats, each = measures)) # Split into list of repeats
+# Before we can work with decorrelated data, we need to split it into repeats. 
+# We know that the number of measurements per repeat is given by measures.
+E0Split <- split(E0DecorrData, rep(1:repeats, each = measures)) 
 
 E0RepeatAvg <- sapply(E0Split, mean)  # Take mean per repeat
 
-length(E0RepeatAvg)
-bins <- 13
+bins <- 7 # Change this to change the number of bins in the histogram
 
 hE0 <- hist(E0RepeatAvg, breaks = bins, plot = FALSE) # Compute histogram breaks and bin width
 binWidth <- diff(hE0$breaks)[1]
@@ -98,42 +105,51 @@ normDist <- normDist / sum(normDist * dx)  # Normalisation
 
 # Histogram and normal curve
 histPlot <- ggplot() +
-  geom_histogram(aes(x = E0RepeatAvg, y = after_stat(density)),
+  geom_histogram(aes(x = E0RepeatAvg, y = after_stat(density)), # after_stat(density) normalises the histogram to a density
                  bins = bins, fill = "skyblue", color = "black") +
   geom_line(aes(x = continuousE0, y = normDist),
             color = "red", linewidth = 1) +
   labs(title = "Ground State Energy Histogram",
-       x = "Energy", y = "Probability Density") +
-  theme_minimal()
+       x = "Energy", y = "Probability Density") 
 
-# QQ plot
+# QQ plot - this is a plot of the quantiles of our data against the quantiles of a normal distribution. 
+# If the points lie approximately on a straight line, then our data is approximately normally distributed.
+# Furthermore, we can perform a Shapiro-Wilk test for normality, which gives us a p-value. 
+# If the p-value is above a certain threshold (usually 0.05), we fail to reject the null hypothesis that our
+# data is normally distributed. (i.e. we can treat it as normally distributed for the purposes of our analysis).
 shapiroTest <- shapiro.test(E0RepeatAvg)
 qqPlot <- ggplot(data.frame(E0RepeatAvg), aes(sample = E0RepeatAvg)) +
   stat_qq() +
   stat_qq_line(color = "red") +
   labs(title = paste0("QQ Plot (Shapiro-Wilk p = ", round(shapiroTest$p.value, 4), ")"),
-       x = "Theoretical Quantiles", y = "Sample Quantiles") +
-  theme_minimal()
+       x = "Theoretical Quantiles", y = "Sample Quantiles") 
 
 # Combined plots side by side
 grid.arrange(histPlot, qqPlot, ncol = 2)
 
-histPlot
+histPlot # Show histogram and normal curve
 
-mean(E0RepeatAvg)
-sd(E0RepeatAvg)
+qqPlot # Show QQ plot
+
+mean(E0RepeatAvg) # Should be close to the expected ground state energy (0.5 for QHO, ~0.68 for DWP)
+
+E0Range <- max(E0RepeatAvg) - min(E0RepeatAvg) 
+
+monteCarloStandardError <- mean(E0RepeatAvg) * acceptableError
+
+monteCarloStandardError * 2 # This is the 95% confidence interval for the mean, which should be smaller than the range of our data if we have a good estimate of the ground state energy.
+E0Range > monteCarloStandardError * 2 # This should return true if we have a good estimate of the ground state energy.
+
+mean(E0RepeatAvg) + monteCarloStandardError # Maximum E0 consistent with our data and error estimate
+mean(E0RepeatAvg) - monteCarloStandardError # Minimum E0 consistent with our
 
 # Wave function
 
-# matrixOfPositions <- as.numeric(as.matrix(waveFunction[[name]])) 
-# xVec <- as.vector(matrixOfPositions) 
-xVec <- as.numeric(unlist(h5read("data.h5", paste0("/psiDecorr/", bc, "/", sys))))
-
 bins <- 100
 
-hist(xVec, breaks = bins, main = "Histogram of positions",
+hist(psiDecorrData, breaks = bins, main = "Histogram of positions",
      xlab = "position", ylab = "count")
-h <- hist(xVec, breaks = 100, plot = FALSE)
+h <- hist(psiDecorrData, breaks = 100, plot = FALSE)
 
 counts <- sum(h$counts)                             # Total counts which equals measures * lattice size
 positionRange <- range(h$mids)[2] - range(h$mids)[1]  # Range of positions 
@@ -144,7 +160,7 @@ psi <- sqrt(h$counts / normFactor)                    # Normalized wave function
 if (sys == "QHO") {
   psiAnalytical <- exp(-(h$mids ^ 2) / 2)               # The analytical wavefunction of the QHO
 } else if (sys == "DWP") {
-   x0 <- sqrt(1 / (2 * a * lambda))   # approximate minima positions
+  x0 <- sqrt(1 / (2 * a * lambda))   # approximate minima positions
  
   # Double Gaussian superposition
   psiAnalytical <- exp(-((h$mids - x0)^2)/2) +
@@ -161,63 +177,30 @@ ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
 
 # Correlation function
 
-xVec <- as.numeric(unlist(h5read("data.h5", paste0("/psiDecorr/", bc, "/", sys))))
-
 expectedLength <- repeats * measures * pathLength
-length(xVec) == expectedLength # Ensure xVec is the correct length
+length(GDecorrData) == expectedLength # Ensure xVec is the correct length
 
 groupSize <- measures * pathLength
 
 repeatIDs <- rep(1:repeats, each = groupSize)
 
-xVecSplit <- split(xVec, repeatIDs)
+GDecorrDataSplit <- split(GDecorrData, repeatIDs)
 
-xVecSplitMat <- lapply(xVecSplit, function(v) {
+GDecorrDataSplitMat <- lapply(GDecorrDataSplit, function(v) {
   matrix(v, nrow = pathLength, ncol = measures)
 })
 
+# Compute the average correlation per repeat first
+correlationList <- lapply(GDecorrDataSplitMat, function(mat) {
+  rowMeans(mat)  # Average over measurements for each lag
+})
 
-twoPointCorrelator <- function(xMat) {
-  N <- nrow(xMat)  # path length
-  nMeas <- ncol(xMat)
-  
-  # Initialize correlation vector
-  corr <- numeric(N)
-  
-  # Loop over path positions
-  for (t in 1:N) {
-    # For each offset n = 0:(N-1)
-    for (n in 0:(N-1)) {
-      # Circular indexing like C++ modulo
-      idx <- ((t - 1 + n) %% N) + 1
-      # Average over measurements
-      corr[n + 1] <- corr[n + 1] + mean(xMat[t, ] * xMat[idx, ])
-    }
-  }
-  
-  # Normalize by path length
-  corr <- corr / N
-  return(corr)
-}
-
-twoPointCorrelator_fast <- function(xMat) {
-  # Average over measurements first
-  xAvg <- rowMeans(xMat)
-  N <- length(xAvg)
-  # Circular convolution via FFT
-  corr <- Re(fft(Conj(fft(xAvg)) * fft(xAvg), inverse = TRUE)) / N
-  return(corr)
-}
-
-correlationList <- lapply(xVecSplitMat, twoPointCorrelator_fast)
-
-# correlationList <- lapply(xVecSplitMat, twoPointCorrelator)
-
+# Average over all repeats
 correlationAvg <- Reduce("+", correlationList) / length(correlationList)
 
-# ---- Plot ----
+# Plot
 dfCorr <- data.frame(
-  lag = 0:(length(correlationAvg)-1),
+  lag = 0:(length(correlationAvg) - 1),
   correlation = correlationAvg
 )
 
@@ -229,8 +212,40 @@ ggplot(dfCorr, aes(x = lag, y = correlation)) +
     y = "G(t, 0)"
   )
 
+
 # E1 from the two-point correlator
 
+successfulCounts <- 0
+E1 <- 0
 
+for (i in 1:10) {
+
+  if (correlationAvg[i] <= 0 || correlationAvg[i + 1] <= 0) {
+    message("Correlation function has non-positive values, cannot compute E1.")
+  } 
+  else {
+    E1 <- E1 +
+      mean(E0RepeatAvg) +
+      log(correlationAvg[i] / correlationAvg[i + 1]) / latticeSpacing
+
+    successfulCounts <- successfulCounts + 1
+  }
+}
+
+E1 <- E1 / successfulCounts
+
+E1
+
+#####################
+
+##### WKB approximation #####
+
+k_x <- function(E, Vx) { # Oscillatory (allowed)
+  sqrt(2 * pmax(E - Vx, 0)) # pmax is used to ensure we don't take the square root of a negative number
+}
+
+kappa_x <- function(E, Vx) { # Decaying (forbidden)
+  sqrt(2 * pmax(Vx - E, 0))
+}
 
 # nolint end
