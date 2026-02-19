@@ -160,11 +160,7 @@ psi <- sqrt(h$counts / normFactor)                    # Normalized wave function
 if (sys == "QHO") {
   psiAnalytical <- exp(-(h$mids ^ 2) / 2)               # The analytical wavefunction of the QHO
 } else if (sys == "DWP") {
-  x0 <- sqrt(1 / (2 * a * lambda))   # approximate minima positions
- 
-  # Double Gaussian superposition
-  psiAnalytical <- exp(-((h$mids - x0)^2)/2) +
-                   exp(-((h$mids + x0)^2)/2)
+  psiAnalytical <- exp(-(h$mids ^ 2) / 2)  # Put the WKB approximation of the DWP wavefunction here, atm it is just the QHO one
 }
 
 psiAnalytical <- psiAnalytical / sqrt(sum(psiAnalytical ^ 2) * binWidth) # Normalising the analytical wavefunction 

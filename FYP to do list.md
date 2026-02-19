@@ -1,10 +1,16 @@
 \- Implement a multithreaded option to the C++ code, consider adding "#pragma omp simd" to forcibly vectorise certain loops
 
 
-\- Remove the correlation function vector from C++. This can be evaluated from the position data so can be done locally in R. It currently makes file size ~ 2x bigger
+\- Read Mackenzie, whole instantanton section! Should have more details than the Atland Simons book.
 
 
-\- WKB understanding - Shculmann and Sakurai, use this to evaluate accuracy of simulated values
+\- WKB understanding - Sakurai, use this to evaluate accuracy of simulated values if possible
+
+
+\- Use Schulmann to learn about the anharmonic potentials
+
+
+\- Think of arguements as to why we are using the path integral rather than the operator/schrodinger methods. One is that we cannot perturb the DWP in schrodinger???
 
 
 \- Read about how the Lattice size and spacing effects error (it is very small)
