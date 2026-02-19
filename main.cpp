@@ -14,15 +14,21 @@ int main() {    // Accepts user choice of boundary conditions, system type, and 
         else if (choice == "2") { metropolisRepeat(true, "Periodic", "QHO"); }
         else if (choice == "3") { metropolisRepeat(false, "Dirichlet", "QHO"); }
         else if (choice == "4") { metropolisRepeat(true, "Dirichlet", "QHO"); }
-        else if (choice == "5") { metropolisRepeat(false, "Periodic", "DWP"); }
-        else if (choice == "6") { metropolisRepeat(true, "Periodic", "DWP"); }
-        else if (choice == "7") { metropolisRepeat(false, "Dirichlet", "DWP"); }
-        else if (choice == "8") { metropolisRepeat(true, "Dirichlet", "DWP"); }
-        else if (choice == "9") { // Secret option for running multiple systems/BCs in one go, used to produce data for the report
+        else if (choice == "5") { metropolisRepeat(false, "Periodic", "AHO"); }
+        else if (choice == "6") { metropolisRepeat(true, "Periodic", "AHO"); }
+        else if (choice == "7") { metropolisRepeat(false, "Dirichlet", "AHO"); }
+        else if (choice == "8") { metropolisRepeat(true, "Dirichlet", "AHO"); }
+        else if (choice == "9") { metropolisRepeat(false, "Periodic", "DWP"); }
+        else if (choice == "10") { metropolisRepeat(true, "Periodic", "DWP"); }
+        else if (choice == "11") { metropolisRepeat(false, "Dirichlet", "DWP"); }
+        else if (choice == "12") { metropolisRepeat(true, "Dirichlet", "DWP"); }
+        else if (choice == "13") { // Run multiple systems/BCs in one go, used to produce data for the report
             metropolisRepeat(false, "Periodic", "QHO");
-            metropolisRepeat(false, "Dirichlet", "QHO");
+            //metropolisRepeat(false, "Dirichlet", "QHO");
+            metropolisRepeat(false, "Periodic", "AHO");
+            //metropolisRepeat(false, "Dirichlet", "AHO");
             metropolisRepeat(false, "Periodic", "DWP");
-            metropolisRepeat(false, "Dirichlet", "DWP");
+            //metropolisRepeat(false, "Dirichlet", "DWP");
             std::cout << "Exiting..." << std::endl; break;
 		}
         else if (choice == "0") { std::cout << "Exiting..." << std::endl; break; }
@@ -36,10 +42,15 @@ void chooseSystem() {  // Function to display user choices
     std::cout << "2: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (with path visualisation)" << std::endl;
 	std::cout << "3: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (without path visualisation)" << std::endl;
 	std::cout << "4: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (with path visualisation)" << std::endl;
-    std::cout << "5: Perform Metropolis algorithm with periodic boundary conditions on the DWP system (without path visualisation)" << std::endl;
-    std::cout << "6: Perform Metropolis algorithm with periodic boundary conditions on the DWP system (with path visualisation)" << std::endl;
-    std::cout << "7: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (without path visualisation)" << std::endl;
-    std::cout << "8: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with path visualisation)" << std::endl;
+    std::cout << "5: Perform Metropolis algorithm with periodic boundary conditions on the AHO system (without path visualisation)" << std::endl;
+    std::cout << "6: Perform Metropolis algorithm with periodic boundary conditions on the AHO system (with path visualisation)" << std::endl;
+    std::cout << "7: Perform Metropolis algorithm with Dirichlet boundary conditions on the AHO system (without path visualisation)" << std::endl;
+    std::cout << "8: Perform Metropolis algorithm with Dirichlet boundary conditions on the AHO system (with path visualisation)" << std::endl;
+    std::cout << "9: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (without path visualisation)" << std::endl;
+    std::cout << "10: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (with path visualisation)" << std::endl;
+    std::cout << "11: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (without path visualisation)" << std::endl;
+    std::cout << "12: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with path visualisation)" << std::endl;
+    std::cout << "13: Run all systems with periodic boundary conditions in one go without path visualisation (useful for producing data)" << std::endl;
     std::cout << "0: Exit" << std::endl;
     std::cout << "Warning: Program has a tendancy to crash when ran for long times with visualisation" << std::endl;
     std::cout << "Running the algorithm with path visualisation will very slightly increase the runtime of the program" << std::endl;
@@ -83,8 +94,10 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
 	accRateTherm.clear();
 	E0Decorr.clear();
 	accRateDecorr.clear();
-	psiDecorr.clear();
-    GDecorr.clear();
+    xTherm.clear();
+	xDecorr.clear();
+    GTwoDecorr.clear();
+    GFourDecorr.clear();
 	thermSweeps.clear();
 
     // Reprint the options to the user, wait for further input
@@ -184,6 +197,9 @@ void takeThermMeasures(std::vector<double>& positions, double (*potentialDiffere
     // Record ground state energy
     E0Therm.push_back(E0Calc(positions, potentialDifferential, potential));
     E0ThermTemp.push_back(E0Calc(positions, potentialDifferential, potential));
+
+    // Record all the positions of the particle (technically all the information we need, other vectors are for convenience)
+    xTherm.insert(xTherm.end(), positions.begin(), positions.end());
 }
 
 bool checkThermalised() {
@@ -211,13 +227,15 @@ void takeMeasures(std::vector<double>& positions, double (*potentialDifferential
     E0Decorr.push_back(E0Calc(positions, potentialDifferential, potential));
 
     // Record all the positions of the particle (technically all the information we need, other vectors are for convenience)
-    psiDecorr.insert(psiDecorr.end(), positions.begin(), positions.end());
+    xDecorr.insert(xDecorr.end(), positions.begin(), positions.end());
 
-    // Compute the correlator once
-    std::vector<double> tempCorr = twoPointCorrelator(positions);
+    // Compute the correlators once
+    std::vector<double> tempCorrTwo = twoPointCorrelator(positions);
+    std::vector<double> tempCorrFour = fourPointCorrelator(positions);
 
-    // Append all elements to GDecorr
-    GDecorr.insert(GDecorr.end(), tempCorr.begin(), tempCorr.end());
+    // Write the correlators
+    GTwoDecorr.insert(GTwoDecorr.end(), tempCorrTwo.begin(), tempCorrTwo.end());
+    GFourDecorr.insert(GFourDecorr.end(), tempCorrFour.begin(), tempCorrFour.end());
     
     // Increment measure count
     measureCount++;

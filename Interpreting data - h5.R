@@ -12,7 +12,7 @@ lambda <- 1/12
 
 measures <- 100
 
-repeats <- 30
+repeats <- 5
 
 pathLength <- 5000
 
@@ -22,12 +22,16 @@ thermalisationInterval <- 100
 
 acceptableError <- 0.01 # This was the ratio of the monte carlo error in ground state energy to the current average ground state energy
 
-# Boundary conditions and system type
+# Boundary conditions 
 
-bc <- "Periodic"    # or "Dirichlet"
-# bc <- "Dirichlet"   # or "Periodic", I have noticed that Dirichlet is systematically worse than periodic boundary conditions
-# sys <- "QHO"        # or "DWP"
-sys <- "DWP"        # or "QHO"
+bc <- "Periodic"
+# bc <- "Dirichlet"   # I have noticed that Dirichlet is systematically worse than periodic boundary conditions
+
+# System type
+
+# sys <- "QHO"
+sys <- "AHO"
+# sys <- "DWP"
 
 # Read data
 
@@ -37,13 +41,17 @@ E0ThermData <- as.numeric(unlist(h5read("data.h5", paste0("/E0Therm/", bc, "/", 
 
 accRateThermData <- as.numeric(unlist(h5read("data.h5", paste0("/accRateTherm/", bc, "/", sys))))
 
+xThermData <- as.numeric(unlist(h5read("data.h5", paste0("/xTherm/", bc, "/", sys))))
+
 E0DecorrData <- as.numeric(unlist(h5read("data.h5", paste0("/E0Decorr/", bc, "/", sys))))
 
 accRateDecorrData <- as.numeric(unlist(h5read("data.h5", paste0("/accRateDecorr/", bc, "/", sys))))
 
-psiDecorrData <- as.numeric(unlist(h5read("data.h5", paste0("/psiDecorr/", bc, "/", sys))))
+xDecorrData <- as.numeric(unlist(h5read("data.h5", paste0("/xDecorr/", bc, "/", sys))))
 
-GDecorrData <- as.numeric(unlist(h5read("data.h5", paste0("/GDecorr/", bc, "/", sys))))
+GTwoDecorrData <- as.numeric(unlist(h5read("data.h5", paste0("/GTwoDecorr/", bc, "/", sys))))
+
+GFourDecorrData <- as.numeric(unlist(h5read("data.h5", paste0("/GFourDecorr/", bc, "/", sys))))
 
 ##### Thermalisation #####
 
@@ -83,7 +91,13 @@ ggplot(data.frame(index = 1:length(E0Avg), E0 = E0Avg), aes(x = index * thermali
       title = paste("Thermalisation of", bc, sys)
     )
 
+# Thermalisation of average position
+
+#### FILL
+
 ##### Decorrelated data - Data we can use to find expected behaviour of the system and compare to analytical results #####
+
+# Ground state energy
 
 # Before we can work with decorrelated data, we need to split it into repeats. 
 # We know that the number of measurements per repeat is given by measures.
@@ -147,9 +161,9 @@ mean(E0RepeatAvg) - monteCarloStandardError # Minimum E0 consistent with our
 
 bins <- 100
 
-hist(psiDecorrData, breaks = bins, main = "Histogram of positions",
+hist(xDecorrData, breaks = bins, main = "Histogram of positions",
      xlab = "position", ylab = "count")
-h <- hist(psiDecorrData, breaks = 100, plot = FALSE)
+h <- hist(xDecorrData, breaks = 100, plot = FALSE)
 
 counts <- sum(h$counts)                             # Total counts which equals measures * lattice size
 positionRange <- range(h$mids)[2] - range(h$mids)[1]  # Range of positions 
@@ -159,6 +173,8 @@ psi <- sqrt(h$counts / normFactor)                    # Normalized wave function
 
 if (sys == "QHO") {
   psiAnalytical <- exp(-(h$mids ^ 2) / 2)               # The analytical wavefunction of the QHO
+} else if (sys == "AHO") {
+  psiAnalytical <- exp(-(h$mids ^ 2) / 2)  # Approximation for the AHO to go here
 } else if (sys == "DWP") {
   psiAnalytical <- exp(-(h$mids ^ 2) / 2)  # Put the WKB approximation of the DWP wavefunction here, atm it is just the QHO one
 }
@@ -171,23 +187,23 @@ ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
   geom_line(aes(x = h$mids, y = psiAnalytical)) +
   labs(title = "Wave Function", x = "Position", y = "Psi")
 
-# Correlation function
+# Two point correlation function
 
 expectedLength <- repeats * measures * pathLength
-length(GDecorrData) == expectedLength # Ensure xVec is the correct length
+length(GTwoDecorrData) == expectedLength # Ensure xVec is the correct length
 
 groupSize <- measures * pathLength
 
 repeatIDs <- rep(1:repeats, each = groupSize)
 
-GDecorrDataSplit <- split(GDecorrData, repeatIDs)
+GTwoDecorrDataSplit <- split(GTwoDecorrData, repeatIDs)
 
-GDecorrDataSplitMat <- lapply(GDecorrDataSplit, function(v) {
+GTwoDecorrDataSplitMat <- lapply(GTwoDecorrDataSplit, function(v) {
   matrix(v, nrow = pathLength, ncol = measures)
 })
 
 # Compute the average correlation per repeat first
-correlationList <- lapply(GDecorrDataSplitMat, function(mat) {
+correlationList <- lapply(GTwoDecorrDataSplitMat, function(mat) {
   rowMeans(mat)  # Average over measurements for each lag
 })
 
@@ -203,9 +219,9 @@ dfCorr <- data.frame(
 ggplot(dfCorr, aes(x = lag, y = correlation)) +
   geom_line(color = "#000000") +
   labs(
-    title = paste("Decorrelation function for", bc, sys),
+    title = paste("Two point decorrelation function for", bc, sys),
     x = "Time (index of the path)",
-    y = "G(t, 0)"
+    y = "G_2(t, 0)"
   )
 
 
@@ -232,16 +248,69 @@ E1 <- E1 / successfulCounts
 
 E1
 
-#####################
+E1 - mean(E0Avg)
 
-##### WKB approximation #####
+# Four point correlation function
 
-k_x <- function(E, Vx) { # Oscillatory (allowed)
-  sqrt(2 * pmax(E - Vx, 0)) # pmax is used to ensure we don't take the square root of a negative number
+expectedLength <- repeats * measures * pathLength
+length(GFourDecorrData) == expectedLength # Ensure xVec is the correct length
+
+groupSize <- measures * pathLength
+
+repeatIDs <- rep(1:repeats, each = groupSize)
+
+GFourDecorrDataSplit <- split(GFourDecorrData, repeatIDs)
+
+GFourDecorrDataSplitMat <- lapply(GFourDecorrDataSplit, function(v) {
+  matrix(v, nrow = pathLength, ncol = measures)
+})
+
+# Compute the average correlation per repeat first
+correlationList <- lapply(GFourDecorrDataSplitMat, function(mat) {
+  rowMeans(mat)  # Average over measurements for each lag
+})
+
+# Average over all repeats
+correlationAvg <- Reduce("+", correlationList) / length(correlationList)
+
+# Plot
+dfCorr <- data.frame(
+  lag = 0:(length(correlationAvg) - 1),
+  correlation = correlationAvg
+)
+
+ggplot(dfCorr, aes(x = lag, y = correlation)) +
+  geom_line(color = "#000000") +
+  labs(
+    title = paste("Four point decorrelation function for", bc, sys),
+    x = "Time (index of the path)",
+    y = "G_4(t, 0)"
+  )
+
+
+# E2 from the four point correlator
+
+successfulCounts <- 0
+E2 <- 0
+
+for (i in 1:10) {
+
+  if (correlationAvg[i] <= 0 || correlationAvg[i + 1] <= 0) {
+    message("Correlation function has non-positive values, cannot compute E1.")
+  } 
+  else {
+    E2 <- E2 +
+      mean(E0RepeatAvg) +
+      log(correlationAvg[i] / correlationAvg[i + 1]) / latticeSpacing
+
+    successfulCounts <- successfulCounts + 1
+  }
 }
 
-kappa_x <- function(E, Vx) { # Decaying (forbidden)
-  sqrt(2 * pmax(Vx - E, 0))
-}
+E2 <- E2 / successfulCounts
+
+E2
+
+E2 - mean(E0Avg)
 
 # nolint end

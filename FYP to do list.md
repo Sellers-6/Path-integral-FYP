@@ -1,10 +1,10 @@
 \- Implement a multithreaded option to the C++ code, consider adding "#pragma omp simd" to forcibly vectorise certain loops
 
 
-\- Read Mackenzie, whole instantanton section! Should have more details than the Atland Simons book.
+\- Read Mackenzie instantanton section
 
 
-\- WKB understanding - Sakurai, use this to evaluate accuracy of simulated values if possible
+\- WKB understanding - Sakurai, this resource is somewhat limited in its applications to the DWP
 
 
 \- Use Schulmann to learn about the anharmonic potentials

@@ -40,7 +40,7 @@ std::vector<double> E0ThermTemp;            // Used for creating batches in one 
 ///// Repeats /////
 
 //const int threads = 6;                          // Number of threads to run in parallel, set to the number of cores on my computer (not yet implemented)
-const int repeats = 50;                          // Number of repeats for finding standard error (threads * repeats measures are taken in total)
+const int repeats = 5;                          // Number of repeats for finding standard error (threads * repeats measures are taken in total)
 //const bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads (not yet working)
 
 ///// Lattice parameters /////
@@ -54,6 +54,10 @@ const double a = 0.1;											// Lattice spacing (I don't understand why this 
 const int m = 1;                    // Unit mass
 const int omega = 1;                // Unit frequency
 
+///// AHO specific parameters /////
+
+const double quarticFactor = 1;     // Quartic factor for the anharmonic oscillator
+
 ///// DWP specific parameters /////
 
 const double lambda = 2.0;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
@@ -65,8 +69,10 @@ std::vector<double> E0Therm;        //
 std::vector<double> E0Decorr;       //
 std::vector<double> accRateTherm;   //
 std::vector<double> accRateDecorr;	//
-std::vector<double> GDecorr;        //   
-std::vector<double> psiDecorr;      //
+std::vector<double> xTherm;         //
+std::vector<double> xDecorr;        //
+std::vector<double> GTwoDecorr;     //
+std::vector<double> GFourDecorr;    //   
 std::vector<double> thermSweeps;    //           
 
 ///// Boundary conditions ///// 
@@ -118,6 +124,9 @@ static double(*findPotential(const std::string& system))(double) {
     else if (system == "QHO") { // Quantum harmonic oscillator
         return QHO::potential;
     }
+    else if (system == "AHO") { // Anharmonic oscillator
+        return AHO::potential;
+    }
     else if (system == "DWP") { // Double-well potential
         return DWP::potential;
     }
@@ -129,6 +138,9 @@ static double(*findPotentialDifferential(const std::string& system))(double) {
     }
     else if (system == "QHO") { // Quantum harmonic oscillator
         return QHO::potentialDifferential;
+    }
+    else if (system == "AHO") { // Anharmonic oscillator
+        return AHO::potentialDifferential;
     }
     else if (system == "DWP") { // Double-well potential
         return DWP::potentialDifferential;
@@ -186,5 +198,35 @@ static std::vector<double> twoPointCorrelator(const std::vector<double>& positio
             correlationTemp[n] += (positions[(t + n) % N] * positions[t]) / N;
         }
     }
+    return correlationTemp;
+}
+
+static double x2Mean(const double* x, size_t N)
+{
+    double sum = 0.0;
+
+    for (size_t i = 0; i < N; ++i)
+        sum += x[i] * x[i];
+
+    return sum / N;
+}
+
+static std::vector<double> fourPointCorrelator(const std::vector<double>& positions) {
+    std::vector<double> correlationTemp(N, 0.0);
+    
+    double x2 = x2Mean(positions.data(), positions.size());
+
+    for (int t = 0; t < N; t++) {
+        for (int n = 0; n < N; n++) {
+
+            correlationTemp[n] += (positions[(t + n) % N] * positions[(t + n) % N]) * (positions[t] * positions[t]) / N;
+        }
+    }
+
+    for (int n = 0; n < N; n++) {   // Remove the vacuum piece 
+
+        correlationTemp[n] -= x2 * x2;
+    }
+
     return correlationTemp;
 }

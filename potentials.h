@@ -35,6 +35,21 @@ public:
 };
 
 
+/////// Anharmonic Oscillator ///////
+
+
+class AHO
+{
+public:
+    static double potential(double x) {
+        return 0.5 * m * omega * omega * x * x + quarticFactor * (x * x * x * x);
+    }
+    static double potentialDifferential(double x) {
+        return m * omega * omega * x;
+    }
+};
+
+
 /////// Double-Well Potential ///////
 
 
