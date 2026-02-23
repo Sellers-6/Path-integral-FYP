@@ -38,22 +38,24 @@ int main() {    // Accepts user choice of boundary conditions, system type, and 
 }
 
 void chooseSystem() {  // Function to display user choices
-    std::cout << "1: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (without path visualisation)" << std::endl;
-    std::cout << "2: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (with path visualisation)" << std::endl;
-	std::cout << "3: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (without path visualisation)" << std::endl;
-	std::cout << "4: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (with path visualisation)" << std::endl;
-    std::cout << "5: Perform Metropolis algorithm with periodic boundary conditions on the AHO system (without path visualisation)" << std::endl;
-    std::cout << "6: Perform Metropolis algorithm with periodic boundary conditions on the AHO system (with path visualisation)" << std::endl;
-    std::cout << "7: Perform Metropolis algorithm with Dirichlet boundary conditions on the AHO system (without path visualisation)" << std::endl;
-    std::cout << "8: Perform Metropolis algorithm with Dirichlet boundary conditions on the AHO system (with path visualisation)" << std::endl;
-    std::cout << "9: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (without path visualisation)" << std::endl;
-    std::cout << "10: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (with path visualisation)" << std::endl;
-    std::cout << "11: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (without path visualisation)" << std::endl;
-    std::cout << "12: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with path visualisation)" << std::endl;
-    std::cout << "13: Run all systems with periodic boundary conditions in one go without path visualisation (useful for producing data)" << std::endl;
-    std::cout << "0: Exit" << std::endl;
-    std::cout << "Warning: Program has a tendancy to crash when ran for long times with visualisation" << std::endl;
-    std::cout << "Running the algorithm with path visualisation will very slightly increase the runtime of the program" << std::endl;
+    std::string chooseSystemString = "1: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (without path visualisation) \n"
+        "2: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (with path visualisation)\n"
+        "3: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (without path visualisation)\n"
+        "4: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (with path visualisation)\n"
+        "5: Perform Metropolis algorithm with periodic boundary conditions on the AHO system (without path visualisation)\n"
+        "6: Perform Metropolis algorithm with periodic boundary conditions on the AHO system (with path visualisation)\n"
+        "7: Perform Metropolis algorithm with Dirichlet boundary conditions on the AHO system (without path visualisation)\n"
+        "8: Perform Metropolis algorithm with Dirichlet boundary conditions on the AHO system (with path visualisation)\n"
+        "9: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (without path visualisation)\n"
+        "10: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (with path visualisation)\n"
+        "11: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (without path visualisation)\n"
+        "12: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with path visualisation)\n"
+        "13: Run all systems with periodic boundary conditions in one go without path visualisation (useful for producing data)\n"
+        "0: Exit\n"
+        "Warning: Program has a tendancy to crash when ran for long times with visualisation\n"
+        "Running the algorithm with path visualisation will very slightly increase the runtime of the program";
+
+    std::cout << chooseSystemString << std::endl;
 }
 
 void metropolisRepeat(bool winOn, std::string boundary, std::string system) { // Loop over repeats

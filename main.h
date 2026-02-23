@@ -40,7 +40,7 @@ std::vector<double> E0ThermTemp;            // Used for creating batches in one 
 ///// Repeats /////
 
 //const int threads = 6;                          // Number of threads to run in parallel, set to the number of cores on my computer (not yet implemented)
-const int repeats = 5;                          // Number of repeats for finding standard error (threads * repeats measures are taken in total)
+int repeats = 200;                          // Number of repeats for finding standard error (threads * repeats measures are taken in total)
 //const bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads (not yet working)
 
 ///// Lattice parameters /////
@@ -60,7 +60,7 @@ const double quarticFactor = 1;     // Quartic factor for the anharmonic oscilla
 
 ///// DWP specific parameters /////
 
-const double lambda = 2.0;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
+const double lambda = 0.75;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
 const double wellCentres = 2.0;     // Well centre positions, increasing this moves the wells further apart
 
 ///// Vectors to store data /////
