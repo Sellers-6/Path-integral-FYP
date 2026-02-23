@@ -11,7 +11,10 @@ tive at producing accurate estimates for the eigenvalues of the quartic oscillat
 potentials [18]. " - Path integral Monte Carlo method for the quantum anharmonic oscillator
 
 
-\- Properly implement and analyse the anharmonic potentials, find their exact solutions using the schroedinger picture.
+\- Use Dirichlet BCs to enforce these conditions from Mackenzie "As a final note, we have calculated the PI with q = q′ = a; a good exercise is to do the analogous calculation for q = −a, q′ = a". Both of these can be simulated and have their energy splitting calculated.
+
+
+\- Properly implement and analyse the anharmonic potentials, find their exact solutions using the schroedinger picture. (Use Mittal as a reference)
 
 
 \- Learn about "Spline fitting" and possibly use this to connect "knots" in the DWP or anharmonic oscillator plots.
