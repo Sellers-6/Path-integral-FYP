@@ -1,13 +1,20 @@
 \- Implement a multithreaded option to the C++ code, consider adding "#pragma omp simd" to forcibly vectorise certain loops
 
 
-\- Read Mackenzie instantanton section
+\- Read section in Creutz Freedman that details the numerics of the DWP - Mackenzie only included tunneling up to an unknown constant which was non-trivial to calculate.
 
 
-\- WKB understanding - Sakurai, this resource is somewhat limited in its applications to the DWP
+\- WKB understanding - Sakurai, this resource is somewhat limited in its applications to the DWP. We can still use WKB to display the necessity of Numerical estimations in certain systems.
+" the Wentzel–Kramers–Brillouin (WKB) method [1], which can be derived as
+a semi-classical approximation to the Feynman path integral [20–22], is particularly effec-
+tive at producing accurate estimates for the eigenvalues of the quartic oscillator and other
+potentials [18]. " - Path integral Monte Carlo method for the quantum anharmonic oscillator
 
 
-\- Use Schulmann to learn about the anharmonic potentials
+\- Properly implement and analyse the anharmonic potentials, find their exact solutions using the schroedinger picture.
+
+
+\- Learn about "Spline fitting" and possibly use this to connect "knots" in the DWP or anharmonic oscillator plots.
 
 
 \- Think of arguements as to why we are using the path integral rather than the operator/schrodinger methods. One is that we cannot perturb the DWP in schrodinger???

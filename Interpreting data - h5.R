@@ -8,11 +8,31 @@ library(rhdf5)
 # Variables from the simulation, needed for interpreting the data
 
 a <- 2              # DWP variables
-lambda <- 1/12
+lambda <- 3 / a ^2
+
+S_inst <- sqrt(lambda / 3) * (2 * (a ^ 3)) / 3 # Two equivelant ways of calculating the instanton action
+S_inst
+S_inst <- (2 / 3) * (a ^ 2) 
+S_inst
+
+alpha <- 1 / 12 # A complicated calculation performed in Zinn-Justin 1993 gives this value
+
+K <- sqrt(S_inst / (2 * pi)) * (alpha ^ -0.5) # A prefactor for the splitting energy
+K
+4 / sqrt(pi)
+
+Splitting_energy <- K * exp(-S_inst)
+Splitting_energy
+
+E0_inst <- 0.5 - (Splitting_energy / 2)
+E1_inst <- 0.5 + (Splitting_energy / 2)
+E0_inst
+E1_inst
+
 
 measures <- 100
 
-repeats <- 5
+repeats <- 200
 
 pathLength <- 5000
 
@@ -24,14 +44,14 @@ acceptableError <- 0.01 # This was the ratio of the monte carlo error in ground 
 
 # Boundary conditions 
 
-bc <- "Periodic"
-# bc <- "Dirichlet"   # I have noticed that Dirichlet is systematically worse than periodic boundary conditions
+# bc <- "Periodic"
+bc <- "Dirichlet"   # I have noticed that Dirichlet is systematically worse than periodic boundary conditions
 
 # System type
 
 # sys <- "QHO"
-sys <- "AHO"
-# sys <- "DWP"
+# sys <- "AHO"
+sys <- "DWP"
 
 # Read data
 
@@ -186,6 +206,12 @@ ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
   geom_point() +
   geom_line(aes(x = h$mids, y = psiAnalytical)) +
   labs(title = "Wave Function", x = "Position", y = "Psi")
+
+ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Wave Function", x = "Position", y = "Psi")
+
 
 # Two point correlation function
 
