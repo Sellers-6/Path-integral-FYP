@@ -7,8 +7,8 @@ library(rhdf5)
 
 # Variables from the simulation, needed for interpreting the data
 
-a <- 2              # DWP variables
-lambda <- 3 / a ^2
+a <- 3              # DWP variables
+lambda <- 0.1
 
 S_inst <- sqrt(lambda / 3) * (2 * (a ^ 3)) / 3 # Two equivelant ways of calculating the instanton action
 S_inst
@@ -29,16 +29,14 @@ E1_inst <- 0.5 + (Splitting_energy / 2)
 E0_inst
 E1_inst
 
-
 measures <- 100
 
-repeats <- 200
+repeats <- 30
 
 pathLength <- 5000
 
 latticeSpacing <- 0.1
-
-thermalisationInterval <- 100
+thermalisationInterval <- 10000
 
 acceptableError <- 0.01 # This was the ratio of the monte carlo error in ground state energy to the current average ground state energy
 
@@ -322,7 +320,7 @@ E2 <- 0
 for (i in 1:10) {
 
   if (correlationAvg[i] <= 0 || correlationAvg[i + 1] <= 0) {
-    message("Correlation function has non-positive values, cannot compute E1.")
+    message("Correlation function has non-positive values, cannot compute E2.")
   } 
   else {
     E2 <- E2 +
@@ -340,3 +338,4 @@ E2
 E2 - mean(E0Avg)
 
 # nolint end
+

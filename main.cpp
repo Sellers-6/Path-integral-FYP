@@ -112,7 +112,7 @@ void metropolis(bool winOn, std::string boundary, std::string system, int repeat
 
     // Thermalise the system
     int thermalisationSweeps = thermalise(winOn, potentialDifferential, potential);
-    takeMeasures(positions, potentialDifferential, potential); // First measurement after thermalisation
+    if (takeMeasuresFlag == true) { takeMeasures(positions, potentialDifferential, potential); } // First measurement after thermalisation
     std::cout << "Iteration " << repeat + 1 << " thermalised after " << thermalisationSweeps << " sweeps.";
     thermSweeps.push_back(thermalisationSweeps);
 
@@ -161,10 +161,10 @@ void metropolisUpdate(bool winOn, double (*potential)(double)) {    // The heart
 void initialise(std::string boundary, std::string system) {   // Initialises variables and path
     // Reset the path
     positions = std::vector<double>(N, 0.0); // Reset the path
-    //if (system == "DWP") // DWP requires a different initial (cold) path since the potential wells are not centered around 0
-    //{
-    //    positions = std::vector<double>(N, wellCentres);
-    //}
+    if (system == "DWP") // DWP requires a different initial (cold) path since the potential wells are not centered around 0
+    {
+        positions = std::vector<double>(N, wellCentres);
+    }
 
     // Reset the counters for sweeps and measures
     sweep = 0;
@@ -178,14 +178,16 @@ const int thermalise(bool winOn, double (*potentialDifferential)(double), double
     while (thermalised == false) {
         metropolisUpdate(winOn, potential);
         sweep++;
-        if ((sweep - 1) % thermalisationInterval == 0) { // Store E0 during thermalisation for plotting purposes (not necessary for the algorithm itself)
-            takeThermMeasures(positions, potentialDifferential, potential);
-            thermalised = checkThermalised();
-            if (sweep >= thermalisationMaximum) {
-                std::cout << "Failed to thermalise after " << thermalisationMaximum << " sweeps, proceeding with measurements anyway." << std::endl;
-                return thermalisationMaximum;
-                thermalised = true;
+        if (takeMeasuresFlag == true) {
+            if ((sweep - 1) % thermalisationInterval == 0) { // Store E0 during thermalisation for plotting purposes (not necessary for the algorithm itself)
+                takeThermMeasures(positions, potentialDifferential, potential);
+                thermalised = checkThermalised();
             }
+        }
+        if (sweep >= thermalisationMaximum) {
+            std::cout << "Failed to thermalise after " << thermalisationMaximum << " sweeps, proceeding with measurements anyway." << std::endl;
+            return thermalisationMaximum;
+            thermalised = true;
         }
     }
     return sweep;

@@ -35,8 +35,8 @@ void window(const std::vector<double>& positions, bool& runningFlag) {
         //if (maxVal - minVal < 1e-6) maxVal = minVal + 1e-6;
 
 		// For simplicity, we can use a fixed y-axis range based on the expected values of the path
-		double minVal = -4.0;
-		double maxVal = 4.0;
+		double minVal = -6.0;
+		double maxVal = 6.0;
 
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
