@@ -4,6 +4,9 @@
 \- Read section in Creutz Freedman that details the numerics of the DWP - Mackenzie only included tunneling up to an unknown constant which was non-trivial to calculate.
 
 
+\- David grabovsky Instanton paper
+
+
 \- WKB understanding - Sakurai, this resource is somewhat limited in its applications to the DWP. We can still use WKB to display the necessity of Numerical estimations in certain systems.
 " the Wentzel–Kramers–Brillouin (WKB) method [1], which can be derived as
 a semi-classical approximation to the Feynman path integral [20–22], is particularly effec-
