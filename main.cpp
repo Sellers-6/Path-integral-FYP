@@ -166,6 +166,13 @@ void initialise(std::string boundary, std::string system) {   // Initialises var
         positions = std::vector<double>(N, wellCentres);
     }
 
+    if (hot_start == true) {
+        for (int i = 0; i < N; i++) {
+            double y = rfRange(-1, 1);
+            positions[i] = y * max_distance;
+        }
+    }
+
     // Reset the counters for sweeps and measures
     sweep = 0;
     measureCount = 0;

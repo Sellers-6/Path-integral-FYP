@@ -7,8 +7,8 @@ library(rhdf5)
 
 # Variables from the simulation, needed for interpreting the data
 
-a <- 3              # DWP variables
-lambda <- 0.1
+a <- 2              # DWP variables
+lambda <- 0.16
 
 S_inst <- sqrt(lambda / 3) * (2 * (a ^ 3)) / 3 # Two equivelant ways of calculating the instanton action
 S_inst
@@ -33,17 +33,17 @@ measures <- 100
 
 repeats <- 30
 
-pathLength <- 5000
+pathLength <- 10000
 
 latticeSpacing <- 0.1
-thermalisationInterval <- 10000
+thermalisationInterval <- 1000
 
 acceptableError <- 0.01 # This was the ratio of the monte carlo error in ground state energy to the current average ground state energy
 
 # Boundary conditions 
 
-# bc <- "Periodic"
-bc <- "Dirichlet"   # I have noticed that Dirichlet is systematically worse than periodic boundary conditions
+bc <- "Periodic"
+# bc <- "Dirichlet"   # I have noticed that Dirichlet is systematically worse than periodic boundary conditions
 
 # System type
 
@@ -338,4 +338,3 @@ E2
 E2 - mean(E0Avg)
 
 # nolint end
-
