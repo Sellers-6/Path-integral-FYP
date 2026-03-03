@@ -68,88 +68,171 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
     winRunning = winOn;
     std::thread windowThread(window, std::ref(positions), std::ref(winRunning));
 
-    // Loop the metropolis function "repeats" times 
-    for (int repeat = 0; repeat < repeats; repeat++) {
-        metropolis(winOn, boundary, system, repeat);
-    }
 
-    // Kill the window thread
-    winRunning = false;
-    windowThread.join();
+    if (multThreads == true) {  // Running with multiple threads, much faster.
+        // First kill the window thread. This can be fixed later but for now, it is much quicker to not have the window taking up a thread (or 6)
+        winRunning = false;
+        windowThread.join();
 
-    /*if (multThreads == true) {
-        omp_set_num_threads(threads);
+        std::vector<RepeatData> repeatResults(repeats); // Store results of all repeats
+
         #pragma omp parallel for
-        for (int thread = 0; thread < threads; thread++) {
-            for (int repeat = 0; repeat < repeats; repeat++) {
-                metropolis(winOn, boundary, system, thread + repeat * threads); // Not working yet
-            };
+        for (int r = 0; r < repeats; ++r) {
+            std::mt19937 rng(seed + r);
+
+            RepeatData data(N);
+
+            metropolis(winOn, boundary, system, r, rng, data, potential, potentialDifferential);
+
+            repeatResults[r] = data;            
         }
-    }*/
+        // Merge thread-safe results after parallel region
+        E0Therm.clear();
+        accRateTherm.clear(); 
+        E0Decorr.clear();
+        GTwoDecorr.clear();
+        GFourDecorr.clear();
+        xDecorr.clear();
+        accRateDecorr.clear();
+
+
+        for (int r = 0; r < repeats; ++r) {
+            const auto& data = repeatResults[r];
+
+			// Ground-state energy during thermalisation
+            E0Therm.insert(E0Therm.end(), data.E0Therm.begin(), data.E0Therm.end());
+
+			// Acceptance rates during thermalisation
+            accRateTherm.insert(accRateTherm.end(), data.accRateTherm.begin(), data.accRateTherm.end());
+
+            // Ground-state energy
+            E0Decorr.insert(E0Decorr.end(), data.E0DecorrTemp.begin(), data.E0DecorrTemp.end());
+
+            // Positions for decorrelated measurements
+            xDecorr.insert(xDecorr.end(), data.xDecorr.begin(), data.xDecorr.end());
+
+            // Acceptance rates
+            accRateDecorr.insert(accRateDecorr.end(), data.accRateDecorr.begin(), data.accRateDecorr.end());
+
+            // Correlators — sum them up for later averaging
+            if (GTwoDecorr.empty()) {
+                GTwoDecorr = data.GTwoDecorrTemp;
+            }
+            else {
+                for (size_t i = 0; i < GTwoDecorr.size(); ++i)
+                    GTwoDecorr[i] += data.GTwoDecorrTemp[i];
+            }
+
+            if (GFourDecorr.empty()) {
+                GFourDecorr = data.GFourDecorrTemp;
+            }
+            else {
+                for (size_t i = 0; i < GFourDecorr.size(); ++i)
+                    GFourDecorr[i] += data.GFourDecorrTemp[i];
+            }
+        }
+
+        // Average correlators over repeats
+        for (size_t i = 0; i < GTwoDecorr.size(); ++i)
+            GTwoDecorr[i] /= repeats;
+
+        for (size_t i = 0; i < GFourDecorr.size(); ++i)
+            GFourDecorr[i] /= repeats;
+    }
+    else {
+        // Single-threaded
+        for (int repeat = 0; repeat < repeats; repeat++) {
+            std::mt19937 rng(seed);
+            RepeatData data;
+            data.positions = std::vector<double>(N, 0.0);
+            data.GTwoDecorrTemp = std::vector<double>(N, 0.0);
+            data.GFourDecorrTemp = std::vector<double>(N, 0.0);
+
+            metropolis(winOn, boundary, system, repeat, rng, data, potential, potentialDifferential);
+
+            E0Decorr.insert(E0Decorr.end(), data.E0DecorrTemp.begin(), data.E0DecorrTemp.end());
+            GTwoDecorr.insert(GTwoDecorr.end(), data.GTwoDecorrTemp.begin(), data.GTwoDecorrTemp.end());
+            GFourDecorr.insert(GFourDecorr.end(), data.GFourDecorrTemp.begin(), data.GFourDecorrTemp.end());
+            xDecorr.insert(xDecorr.end(), data.xDecorr.begin(), data.xDecorr.end());
+            accRateDecorr.insert(accRateDecorr.end(), data.accRateDecorr.begin(), data.accRateDecorr.end());
+        }
+
+        winRunning = false;
+        windowThread.join();
+    }
     
 	// Write data to files
     //csvWriteData(boundary, system);       // Legacy csv writing functions, replaced by h5 files
     writeData(boundary, system);            // Writes all data to a single h5 file, separated into groups
 
 	// Clear all vectors for the next run
-	E0Therm.clear();
-	accRateTherm.clear();
-	E0Decorr.clear();
-	accRateDecorr.clear();
-    xTherm.clear();
-	xDecorr.clear();
+    E0Therm.clear();
+    accRateTherm.clear();
+    E0Decorr.clear();
+    accRateDecorr.clear();
+    xDecorr.clear();
     GTwoDecorr.clear();
     GFourDecorr.clear();
-	thermSweeps.clear();
+    thermSweeps.clear();
 
     // Reprint the options to the user, wait for further input
     chooseSystem();
 }
 
-void metropolis(bool winOn, std::string boundary, std::string system, int repeat) { // Metropolis function which gets called initially, then calls other functions to perform the algorithm
+void metropolis(bool winOn, std::string boundary, std::string system, int repeat, std::mt19937& rng, RepeatData& data,
+    double (*potential)(double), double (*potentialDifferential)(double)) { // Metropolis function which gets called initially, then calls other functions to perform the algorithm
     // Set initial path and counters to 0
-    initialise(boundary, system);
+    initialise(boundary, system, rng, data);
 
     // Thermalise the system
-    int thermalisationSweeps = thermalise(winOn, potentialDifferential, potential);
-    if (takeMeasuresFlag == true) { takeMeasures(positions, potentialDifferential, potential); } // First measurement after thermalisation
+    int thermalisationSweeps = thermalise(winOn, potentialDifferential, potential, rng, data);
+    if (takeMeasuresFlag == true) { takeMeasures(data.positions, potentialDifferential, potential, data); } // First measurement after thermalisation
     std::cout << "Iteration " << repeat + 1 << " thermalised after " << thermalisationSweeps << " sweeps.";
     thermSweeps.push_back(thermalisationSweeps);
 
 	// Take measures of the path every "decorrelation" sweeps
     if (takeMeasuresFlag == true) {
-        while (measureCount < measures) {
-            metropolisUpdate(winOn, potential);
-            sweep++;
-            if (remainder(sweep, decorrelation) == 0) {
-                takeMeasures(positions, potentialDifferential, potential);
+        while (data.measureCount < measures) {
+            metropolisUpdate(winOn, potential, rng, data);
+            data.sweep++;
+            if (remainder(data.sweep, decorrelation) == 0) {
+                takeMeasures(data.positions, potentialDifferential, potential, data);
             }
         }
+        for (int n = 0; n < N; ++n) {
+            data.GTwoDecorrTemp[n] /= measures;
+        }
+        data.vacuumPiece /= measures;  // Average of the vacuum piece
+        for (int n = 0; n < N; ++n) {
+            data.GFourDecorrTemp[n] = data.GFourDecorrTemp[n] / measures - data.vacuumPiece * data.vacuumPiece;
+        }
+        GTwoDecorr.insert(GTwoDecorr.end(), data.GTwoDecorrTemp.begin(), data.GTwoDecorrTemp.end());
+        GFourDecorr.insert(GFourDecorr.end(), data.GFourDecorrTemp.begin(), data.GFourDecorrTemp.end());
         std::cout << " Completed measurements for iteration " << repeat + 1 << "." << std::endl;
     }
 }
 
-void metropolisUpdate(bool winOn, double (*potential)(double)) {    // The heart of the simulation, the metropolis algorithm function
+void metropolisUpdate(bool winOn, double (*potential)(double), std::mt19937& rng, RepeatData& data) {    // The heart of the simulation, the metropolis algorithm function
     double newPosition;
     for (int i = start; i < end; i++) {
-        double y = rfRange(-1, 1);  // See random.h, sets a random number between -1 and 1
-        newPosition = positions[i] + epsilon * y; // Incrementing one position by float between -epsilon and +epsilon
-        double actionDelta = euclideanActionElement(newPosition, positions[(i + 1) % N], potential) -
-            euclideanActionElement(positions[i], positions[(i + 1) % N], potential) +
-            euclideanActionElement(positions[(i - 1 + N) % N], newPosition, potential) -
-            euclideanActionElement(positions[(i - 1 + N) % N], positions[i], potential);
-        double positionDelta = newPosition - positions[i];
-        if (actionDelta < 0) { // Favorable move
-            positions[i] = newPosition; // Updates position stored (no need to store rejected position)
-            acceptedMoves++;
-        }
-        else {  // Unfavorable move
-            auto& rng = globalRng();
-            float r = static_cast<float>(rfRange(0, 1));
-            if (r < exp(-actionDelta)) { // Accept move with probability exp(-deltaS)
-                positions[i] = newPosition; // Updates position stored (no need to store rejected position)
-                acceptedMoves++;
-            }
+        double y = uniformMinus1to1(rng);  // Sets a random number between -1 and 1
+        newPosition = data.positions[i] + epsilon * y; // Incrementing one position by float between -epsilon and +epsilon
+		double oldPosition = data.positions[i];
+		double leftPosition = data.positions[(i - 1 + N) % N];   // Previous position, with periodic BCs
+		double rightPosition = data.positions[(i + 1) % N];      // Next position, with periodic BCs
+        double kineticDelta =
+            (rightPosition - newPosition) * (rightPosition - newPosition) 
+            - (rightPosition - oldPosition) * (rightPosition - oldPosition)
+            + (newPosition - leftPosition) * (newPosition - leftPosition)
+            - (oldPosition - leftPosition) * (oldPosition - leftPosition);
+
+        double potentialDelta = potential(newPosition) - potential(oldPosition);
+
+        double actionDelta = (m * 0.5 * aInverse) * kineticDelta + a * potentialDelta;
+        // Metropolis acceptance
+        if (actionDelta < 0 || uniform01(rng) < exp(-actionDelta)) { // Accepted move
+            data.positions[i] = newPosition;
+            data.acceptedMoves++;
         }
     }
     // Update the window if user wanted visualisation
@@ -158,96 +241,103 @@ void metropolisUpdate(bool winOn, double (*potential)(double)) {    // The heart
     }
 }
 
-void initialise(std::string boundary, std::string system) {   // Initialises variables and path
+void initialise(std::string boundary, std::string system, std::mt19937& rng, RepeatData& data) {   // Initialises variables and path
     // Reset the path
-    positions = std::vector<double>(N, 0.0); // Reset the path
+    data.positions = std::vector<double>(N, 0.0); // Reset the path
     if (system == "DWP") // DWP requires a different initial (cold) path since the potential wells are not centered around 0
     {
-        positions = std::vector<double>(N, wellCentres);
+        data.positions = std::vector<double>(N, wellCentres);
     }
+    
+    data.GTwoDecorrTemp = std::vector<double>(N, 0.0);
+    data.GFourDecorrTemp = std::vector<double>(N, 0.0);
+    data.E0DecorrTemp.clear();
 
-    if (hot_start == true) {
-        for (int i = 0; i < N; i++) {
-            double y = rfRange(-1, 1);
-            positions[i] = y * max_distance;
-        }
+    data.sweep = 0;
+    data.measureCount = 0;
+    data.acceptedMoves = 0;
+    data.vacuumPiece = 0.0;
+
+    if (hot_start) {
+        for (int i = 0; i < N; i++)
+            data.positions[i] = uniformMinus1to1(rng) * max_distance;
     }
-
-    // Reset the counters for sweeps and measures
-    sweep = 0;
-    measureCount = 0;
-
-    E0ThermTemp.clear();
 }
 
-const int thermalise(bool winOn, double (*potentialDifferential)(double), double (*potential)(double)) { // Thermalisation function to reach equilibrium before measurements
+const int thermalise(bool winOn, double (*potentialDifferential)(double), double (*potential)(double), std::mt19937& rng, RepeatData& data) { // Thermalisation function to reach equilibrium before measurements
 	bool thermalised = false;
     while (thermalised == false) {
-        metropolisUpdate(winOn, potential);
-        sweep++;
+        metropolisUpdate(winOn, potential, rng, data);
+        data.sweep++;
         if (takeMeasuresFlag == true) {
-            if ((sweep - 1) % thermalisationInterval == 0) { // Store E0 during thermalisation for plotting purposes (not necessary for the algorithm itself)
-                takeThermMeasures(positions, potentialDifferential, potential);
-                thermalised = checkThermalised();
+            if ((data.sweep - 1) % thermalisationInterval == 0) { // Store E0 during thermalisation for plotting purposes (not necessary for the algorithm itself)
+                takeThermMeasures(data.positions, potentialDifferential, potential, data);
+                thermalised = checkThermalised(data);
             }
         }
-        if (sweep >= thermalisationMaximum) {
+        if (data.sweep >= thermalisationMaximum) {
             std::cout << "Failed to thermalise after " << thermalisationMaximum << " sweeps, proceeding with measurements anyway." << std::endl;
             return thermalisationMaximum;
-            thermalised = true;
         }
     }
-    return sweep;
+    return data.sweep;
 }
 
-void takeThermMeasures(std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double)) {
+void takeThermMeasures(std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double), RepeatData& data) {
     // Record acceptance rate between decorrelations
-    accRateTherm.push_back((double)(acceptedMoves) / (N * (double)thermalisationInterval));
-    acceptedMoves = 0;
+    data.accRateTherm.push_back((double)(data.acceptedMoves) / (N * (double)thermalisationInterval));
+    data.acceptedMoves = 0;
 
     // Record ground state energy
-    E0Therm.push_back(E0Calc(positions, potentialDifferential, potential));
-    E0ThermTemp.push_back(E0Calc(positions, potentialDifferential, potential));
-
-    // Record all the positions of the particle (technically all the information we need, other vectors are for convenience)
-    xTherm.insert(xTherm.end(), positions.begin(), positions.end());
+    data.E0Therm.push_back(E0Calc(positions, potentialDifferential, potential));
+    data.E0ThermTemp.push_back(E0Calc(positions, potentialDifferential, potential));
 }
 
-bool checkThermalised() {
-    std::vector<double> E0Samples = E0ThermTemp;
+bool checkThermalised(const RepeatData& data) {
+    double E0Mean = vectorMean(data.E0ThermTemp);
+    double E0MCSE = MCSE(data.E0ThermTemp);
 
-    double E0Mean = vectorMean(E0Samples);
-    double E0MCSE = MCSE(E0Samples);
-
-    //std::cout << "E0 = " << E0Mean << " +- " << E0MCSE << " (MCSE)" << std::endl;
-    
     if (E0MCSE / E0Mean < acceptableError) {
-        if (sweep > thermalisationMinimum) {
+        if (data.sweep > thermalisationMinimum) {
             return true;
         }
     }
     return false;
 }
 
-void takeMeasures(std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double)) {    // Takes all measurements at current path state in one function
+void takeMeasures(std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double), RepeatData& data) {    // Takes all measurements at current path state in one function
     // Record acceptance rate between decorrelations
-    accRateDecorr.push_back((double)(acceptedMoves) / (N * (double)decorrelation));
-    acceptedMoves = 0;
+    data.accRateDecorr.push_back((double)(data.acceptedMoves) / (N * (double)decorrelation));
+    data.acceptedMoves = 0;
 
     // Record ground state energy
-    E0Decorr.push_back(E0Calc(positions, potentialDifferential, potential));
+    double E0 = E0Calc(positions, potentialDifferential, potential);
+    data.E0DecorrTemp.push_back(E0);
 
-    // Record all the positions of the particle (technically all the information we need, other vectors are for convenience)
-    xDecorr.insert(xDecorr.end(), positions.begin(), positions.end());
+    // Record all the positions of the particle
+    data.xDecorr.insert(data.xDecorr.end(), positions.begin(), positions.end());
 
     // Compute the correlators once
     std::vector<double> tempCorrTwo = twoPointCorrelator(positions);
-    std::vector<double> tempCorrFour = fourPointCorrelator(positions);
+    std::vector<double> tempCorrFour = fourPointCorrelator(positions, data.vacuumPiece);
 
     // Write the correlators
-    GTwoDecorr.insert(GTwoDecorr.end(), tempCorrTwo.begin(), tempCorrTwo.end());
-    GFourDecorr.insert(GFourDecorr.end(), tempCorrFour.begin(), tempCorrFour.end());
-    
+    if (data.measureCount == 0) {
+        data.GTwoDecorrTemp = tempCorrTwo;
+    }
+    else {
+        for (int n = 0; n < N; ++n)
+            data.GTwoDecorrTemp[n] += tempCorrTwo[n];
+    }
+
+    if (data.measureCount == 0) {
+        data.GFourDecorrTemp = tempCorrFour;
+    }
+    else {
+        for (int n = 0; n < N; ++n)
+            data.GFourDecorrTemp[n] += tempCorrFour[n];
+    }
+
     // Increment measure count
-    measureCount++;
+    data.measureCount++;
 }

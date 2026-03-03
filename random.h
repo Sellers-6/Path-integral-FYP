@@ -9,31 +9,32 @@
 // TLDR: Use the following line of code to produce a random (ish) number between a and b:
 // float randomNumber = rfRange(a, b);
 
+const int seed = 6;
+
 typedef std::mt19937 MyRng; // certain generator for random numbers
 
 inline MyRng& globalRng() {
     static MyRng rng;
     static bool seeded = false;
     if (!seeded) {
-        rng.seed(6);
+        rng.seed(seed);
         seeded = true;
     }
     return rng;
 }
 
-static std::uniform_real_distribution<float> rf(0.0f, 1.0f);
-double rfRange(double left, double right) {
-    auto& rng = globalRng(); 
-    double x = rf(rng);
-    if (left < right) {
-        return x * (right - left) + left; // Produces a random number between left and right boundaries with uniform dist
-    }
-    else if (left == right) {
-        std::cout << "Warning! Left boundary was equal to right boundary! Using left as 0 and right as 1." << std::endl;
-        return x;
-    }
-    else {
-        std::cout << "Warning! Left boundary was larger than right boundary! Flipping the boundaries as easy fix." << std::endl;
-        return x * (left - right) + right;
-    }
+// Uniform [0,1)
+inline double uniform01(MyRng& rng) {
+    std::uniform_real_distribution<double> dist(0.0, 1.0);
+    return dist(rng);
+}
+
+// Uniform [a,b)
+inline double uniformRange(double a, double b, MyRng& rng) {
+    return a + (b - a) * uniform01(rng);
+}
+
+// Uniform [-1,1)
+inline double uniformMinus1to1(MyRng& rng) {
+    return 2.0 * uniform01(rng) - 1.0;
 }

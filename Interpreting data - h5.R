@@ -29,14 +29,14 @@ E1_inst <- 0.5 + (Splitting_energy / 2)
 E0_inst
 E1_inst
 
-measures <- 100
+measures <- 50
 
-repeats <- 30
+repeats <- 50
 
 pathLength <- 10000
 
-latticeSpacing <- 0.1
-thermalisationInterval <- 1000
+latticeSpacing <- 0.05
+thermalisationInterval <- 100
 
 acceptableError <- 0.01 # This was the ratio of the monte carlo error in ground state energy to the current average ground state energy
 
@@ -58,8 +58,6 @@ thermSweeps <- as.numeric(unlist(h5read("data.h5", paste0("/thermSweeps/", bc, "
 E0ThermData <- as.numeric(unlist(h5read("data.h5", paste0("/E0Therm/", bc, "/", sys))))
 
 accRateThermData <- as.numeric(unlist(h5read("data.h5", paste0("/accRateTherm/", bc, "/", sys))))
-
-xThermData <- as.numeric(unlist(h5read("data.h5", paste0("/xTherm/", bc, "/", sys))))
 
 E0DecorrData <- as.numeric(unlist(h5read("data.h5", paste0("/E0Decorr/", bc, "/", sys))))
 
@@ -163,7 +161,8 @@ histPlot # Show histogram and normal curve
 
 qqPlot # Show QQ plot
 
-mean(E0RepeatAvg) # Should be close to the expected ground state energy (0.5 for QHO, ~0.68 for DWP)
+E0Avg <- mean(E0RepeatAvg) # Should be close to the expected ground state energy (0.5 for QHO, ~0.68 for DWP)
+E0Avg
 
 E0Range <- max(E0RepeatAvg) - min(E0RepeatAvg) 
 
@@ -213,31 +212,9 @@ ggplot(data.frame(x = h$mids, psi = psi), aes(x = x, y = psi)) +
 
 # Two point correlation function
 
-expectedLength <- repeats * measures * pathLength
-length(GTwoDecorrData) == expectedLength # Ensure xVec is the correct length
-
-groupSize <- measures * pathLength
-
-repeatIDs <- rep(1:repeats, each = groupSize)
-
-GTwoDecorrDataSplit <- split(GTwoDecorrData, repeatIDs)
-
-GTwoDecorrDataSplitMat <- lapply(GTwoDecorrDataSplit, function(v) {
-  matrix(v, nrow = pathLength, ncol = measures)
-})
-
-# Compute the average correlation per repeat first
-correlationList <- lapply(GTwoDecorrDataSplitMat, function(mat) {
-  rowMeans(mat)  # Average over measurements for each lag
-})
-
-# Average over all repeats
-correlationAvg <- Reduce("+", correlationList) / length(correlationList)
-
-# Plot
 dfCorr <- data.frame(
-  lag = 0:(length(correlationAvg) - 1),
-  correlation = correlationAvg
+  lag = 0:(length(GTwoDecorrData) - 1),
+  correlation = GTwoDecorrData
 )
 
 ggplot(dfCorr, aes(x = lag, y = correlation)) +
@@ -256,13 +233,13 @@ E1 <- 0
 
 for (i in 1:10) {
 
-  if (correlationAvg[i] <= 0 || correlationAvg[i + 1] <= 0) {
+  if (GTwoDecorrData[i] <= 0 || GTwoDecorrData[i + 1] <= 0) {
     message("Correlation function has non-positive values, cannot compute E1.")
   } 
   else {
     E1 <- E1 +
       mean(E0RepeatAvg) +
-      log(correlationAvg[i] / correlationAvg[i + 1]) / latticeSpacing
+      log(GTwoDecorrData[i] / GTwoDecorrData[i + 1]) / latticeSpacing
 
     successfulCounts <- successfulCounts + 1
   }
@@ -272,35 +249,13 @@ E1 <- E1 / successfulCounts
 
 E1
 
-E1 - mean(E0Avg)
+E1 - mean(E0RepeatAvg)
 
 # Four point correlation function
 
-expectedLength <- repeats * measures * pathLength
-length(GFourDecorrData) == expectedLength # Ensure xVec is the correct length
-
-groupSize <- measures * pathLength
-
-repeatIDs <- rep(1:repeats, each = groupSize)
-
-GFourDecorrDataSplit <- split(GFourDecorrData, repeatIDs)
-
-GFourDecorrDataSplitMat <- lapply(GFourDecorrDataSplit, function(v) {
-  matrix(v, nrow = pathLength, ncol = measures)
-})
-
-# Compute the average correlation per repeat first
-correlationList <- lapply(GFourDecorrDataSplitMat, function(mat) {
-  rowMeans(mat)  # Average over measurements for each lag
-})
-
-# Average over all repeats
-correlationAvg <- Reduce("+", correlationList) / length(correlationList)
-
-# Plot
 dfCorr <- data.frame(
-  lag = 0:(length(correlationAvg) - 1),
-  correlation = correlationAvg
+  lag = 0:(length(GFourDecorrData) - 1),
+  correlation = GFourDecorrData
 )
 
 ggplot(dfCorr, aes(x = lag, y = correlation)) +
@@ -319,13 +274,13 @@ E2 <- 0
 
 for (i in 1:10) {
 
-  if (correlationAvg[i] <= 0 || correlationAvg[i + 1] <= 0) {
+  if (GFourDecorrData[i] <= 0 || GFourDecorrData[i + 1] <= 0) {
     message("Correlation function has non-positive values, cannot compute E2.")
   } 
   else {
     E2 <- E2 +
       mean(E0RepeatAvg) +
-      log(correlationAvg[i] / correlationAvg[i + 1]) / latticeSpacing
+      log(GFourDecorrData[i] / GFourDecorrData[i + 1]) / latticeSpacing
 
     successfulCounts <- successfulCounts + 1
   }
