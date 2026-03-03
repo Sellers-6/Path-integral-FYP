@@ -25,8 +25,8 @@ const int accRateInterval = 1000;               // Number of sweeps between reco
 
 ///// Decorrelation settings /////
 
-const int decorrelation = 250;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures. Decorrelation takes far longer in the DWP system!
-const int measures = 50;                       // Number of measures taken after thermalisation
+const int decorrelation = 2500;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures. Decorrelation takes far longer in the DWP system!
+const int measures = 500;                       // Number of measures taken after thermalisation
 
 ///// Initialisation settings /////
 
@@ -36,17 +36,16 @@ const double max_distance = 4;
 ///// Thermalisation settings /////
 
 const double acceptableError = 0.01;              // Ratio of the standard error to the mean for the ground state energy, used as a criterion for thermalisation
-const int thermalisationMaximum = 20000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
-const int thermalisationMinimum = 20000;       // Minimum number of iterations for thermalisation
+const int thermalisationMaximum = 200000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
+const int thermalisationMinimum = 200000;       // Minimum number of iterations for thermalisation
 const int thermalisationInterval = 100;    // Number of MC sweeps performed between measuring parameters during thermalisation
 // Be careful when changing the thermalisationInterval to be too small; this can massively increase file size
 std::vector<double> E0ThermTemp;            // Used for creating batches in one iteration of the thermalisation process
 
 ///// Repeats /////
 
-const int threads = 6;                          // Number of threads to run in parallel, set to the number of cores on my computer (not yet implemented)
-int repeats = 50;                          // Number of repeats for finding standard error (threads * repeats measures are taken in total)
-const bool multThreads = true;                      // Flag to determine whether to run the metropolis function in multiple threads (not yet working)
+int repeats = 50;                          // Number of repeats for finding standard error 
+const bool multThreads = true;                      // Flag to determine whether to run the metropolis function in multiple threads 
 
 ///// Lattice parameters /////
 
@@ -66,8 +65,11 @@ const double quarticFactor = 1;     // Quartic factor for the anharmonic oscilla
 
 ///// DWP specific parameters /////
 
-const double lambda = 0.75;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
-const double wellCentres = 2;     // Well centre positions, increasing this moves the wells further apart
+const double wellCentres = 2.5;     // Well centre positions, increasing this moves the wells further apart
+const double lambda = 1 / (8 * wellCentres * wellCentres);          // Coupling constant, increasing this deepens the wells and increases the barrier between them
+
+const double omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.
+// To use that the ground and first excited states are centred around 0.5, we require that omegaDWP = 1, which gives the relation lambda = 1 / (8 * wellCentres^2). 
 
 ///// Vectors to store data /////
 
