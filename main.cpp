@@ -66,7 +66,6 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
 
 
     if (multThreads == true) {  // Running with multiple threads, much faster.
-        // Window thread setup
         std::vector<RepeatData> repeatResults(repeats); // Store results of all repeats
 
         #pragma omp parallel for
