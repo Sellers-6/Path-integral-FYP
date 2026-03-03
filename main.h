@@ -25,8 +25,8 @@ const int accRateInterval = 1000;               // Number of sweeps between reco
 
 ///// Decorrelation settings /////
 
-const int decorrelation = 2500;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures. Decorrelation takes far longer in the DWP system!
-const int measures = 500;                       // Number of measures taken after thermalisation
+const int decorrelation = 250;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures. Decorrelation takes far longer in the DWP system!
+const int measures = 50;                       // Number of measures taken after thermalisation
 
 ///// Initialisation settings /////
 
@@ -37,15 +37,15 @@ const double max_distance = 4;
 
 const double acceptableError = 0.01;              // Ratio of the standard error to the mean for the ground state energy, used as a criterion for thermalisation
 const int thermalisationMaximum = 200000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
-const int thermalisationMinimum = 200000;       // Minimum number of iterations for thermalisation
+const int thermalisationMinimum = 1000;       // Minimum number of iterations for thermalisation
 const int thermalisationInterval = 100;    // Number of MC sweeps performed between measuring parameters during thermalisation
 // Be careful when changing the thermalisationInterval to be too small; this can massively increase file size
 std::vector<double> E0ThermTemp;            // Used for creating batches in one iteration of the thermalisation process
 
 ///// Repeats /////
 
-int repeats = 50;                          // Number of repeats for finding standard error 
-const bool multThreads = true;                      // Flag to determine whether to run the metropolis function in multiple threads 
+int repeats = 2;                          // Number of repeats for finding standard error 
+bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads 
 
 ///// Lattice parameters /////
 

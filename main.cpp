@@ -10,19 +10,20 @@ int main() {    // Accepts user choice of boundary conditions, system type, and 
 	while (true) {
 		std::cout << "Enter choice: ";
         std::cin >> choice;
-        if (choice == "1") { metropolisRepeat(false, "Periodic", "QHO"); }
+        if (choice == "1") { multThreads = true;  metropolisRepeat(false, "Periodic", "QHO"); }
         else if (choice == "2") { metropolisRepeat(true, "Periodic", "QHO"); }
-        else if (choice == "3") { metropolisRepeat(false, "Dirichlet", "QHO"); }
+        else if (choice == "3") { multThreads = true;  metropolisRepeat(false, "Dirichlet", "QHO"); }
         else if (choice == "4") { metropolisRepeat(true, "Dirichlet", "QHO"); }
-        else if (choice == "5") { metropolisRepeat(false, "Periodic", "AHO"); }
+        else if (choice == "5") { multThreads = true;  metropolisRepeat(false, "Periodic", "AHO"); }
         else if (choice == "6") { metropolisRepeat(true, "Periodic", "AHO"); }
-        else if (choice == "7") { metropolisRepeat(false, "Dirichlet", "AHO"); }
+        else if (choice == "7") { multThreads = true;  metropolisRepeat(false, "Dirichlet", "AHO"); }
         else if (choice == "8") { metropolisRepeat(true, "Dirichlet", "AHO"); }
-        else if (choice == "9") { metropolisRepeat(false, "Periodic", "DWP"); }
+        else if (choice == "9") { multThreads = true;  metropolisRepeat(false, "Periodic", "DWP"); }
         else if (choice == "10") { metropolisRepeat(true, "Periodic", "DWP"); }
-        else if (choice == "11") { metropolisRepeat(false, "Dirichlet", "DWP"); }
+        else if (choice == "11") { multThreads = true;  metropolisRepeat(false, "Dirichlet", "DWP"); }
         else if (choice == "12") { metropolisRepeat(true, "Dirichlet", "DWP"); }
         else if (choice == "13") { // Run multiple systems/BCs in one go, used to produce data for the report
+            multThreads = true; 
             metropolisRepeat(false, "Periodic", "QHO");
             //metropolisRepeat(false, "Dirichlet", "QHO");
             metropolisRepeat(false, "Periodic", "AHO");
@@ -38,22 +39,21 @@ int main() {    // Accepts user choice of boundary conditions, system type, and 
 }
 
 void chooseSystem() {  // Function to display user choices
-    std::string chooseSystemString = "1: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (without path visualisation) \n"
+    std::string chooseSystemString = "1: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (with multi-threading) \n"
         "2: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (with path visualisation)\n"
-        "3: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (without path visualisation)\n"
+        "3: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (with multi-threading)\n"
         "4: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (with path visualisation)\n"
-        "5: Perform Metropolis algorithm with periodic boundary conditions on the AHO system (without path visualisation)\n"
+        "5: Perform Metropolis algorithm with periodic boundary conditions on the AHO system (with multi-threading)\n"
         "6: Perform Metropolis algorithm with periodic boundary conditions on the AHO system (with path visualisation)\n"
-        "7: Perform Metropolis algorithm with Dirichlet boundary conditions on the AHO system (without path visualisation)\n"
+        "7: Perform Metropolis algorithm with Dirichlet boundary conditions on the AHO system (with multi-threading)\n"
         "8: Perform Metropolis algorithm with Dirichlet boundary conditions on the AHO system (with path visualisation)\n"
-        "9: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (without path visualisation)\n"
+        "9: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (with multi-threading)\n"
         "10: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (with path visualisation)\n"
-        "11: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (without path visualisation)\n"
+        "11: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with multi-threading)\n"
         "12: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with path visualisation)\n"
         "13: Run all systems with periodic boundary conditions in one go without path visualisation (useful for producing data)\n"
         "0: Exit\n"
-        "Warning: Program has a tendancy to crash when ran for long times with visualisation\n"
-        "Running the algorithm with path visualisation will very slightly increase the runtime of the program";
+        "Warning: Program has a tendancy to crash when ran for long times with visualisation";
 
     std::cout << chooseSystemString << std::endl;
 }
@@ -63,17 +63,10 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
     setBoundary(boundary);
 	potential = findPotential(system);
 	potentialDifferential = findPotentialDifferential(system);
-    
-    // Window thread setup
-    winRunning = winOn;
-    std::thread windowThread(window, std::ref(positions), std::ref(winRunning));
 
 
     if (multThreads == true) {  // Running with multiple threads, much faster.
-        // First kill the window thread. This can be fixed later but for now, it is much quicker to not have the window taking up a thread (or 6)
-        winRunning = false;
-        windowThread.join();
-
+        // Window thread setup
         std::vector<RepeatData> repeatResults(repeats); // Store results of all repeats
 
         #pragma omp parallel for
@@ -84,7 +77,9 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
 
             metropolis(winOn, boundary, system, r, rng, data, potential, potentialDifferential);
 
-            repeatResults[r] = data;            
+            repeatResults[r] = data;
+
+            std::cout << "Finished collecting data for iteration " << r + 1 << std::endl;
         }
         // Merge thread-safe results after parallel region
         E0Therm.clear();
@@ -139,14 +134,14 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
         for (size_t i = 0; i < GFourDecorr.size(); ++i)
             GFourDecorr[i] /= repeats;
     }
-    else {
-        // Single-threaded
+    else { // Single-threaded version. Slower but allows visualisation.
+        RepeatData data(N);
+        
+        // Window thread setup
+        winRunning = winOn;
+        std::thread windowThread(window, std::ref(data.positions), std::ref(winRunning)); 
         for (int repeat = 0; repeat < repeats; repeat++) {
-            std::mt19937 rng(seed);
-            RepeatData data;
-            data.positions = std::vector<double>(N, 0.0);
-            data.GTwoDecorrTemp = std::vector<double>(N, 0.0);
-            data.GFourDecorrTemp = std::vector<double>(N, 0.0);
+            std::mt19937 rng(seed + repeat);
 
             metropolis(winOn, boundary, system, repeat, rng, data, potential, potentialDifferential);
 
@@ -155,8 +150,8 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
             GFourDecorr.insert(GFourDecorr.end(), data.GFourDecorrTemp.begin(), data.GFourDecorrTemp.end());
             xDecorr.insert(xDecorr.end(), data.xDecorr.begin(), data.xDecorr.end());
             accRateDecorr.insert(accRateDecorr.end(), data.accRateDecorr.begin(), data.accRateDecorr.end());
+            std::cout << "Finished collecting data for iteration " << repeat + 1 << std::endl;
         }
-
         winRunning = false;
         windowThread.join();
     }
@@ -187,7 +182,7 @@ void metropolis(bool winOn, std::string boundary, std::string system, int repeat
     // Thermalise the system
     int thermalisationSweeps = thermalise(winOn, potentialDifferential, potential, rng, data);
     if (takeMeasuresFlag == true) { takeMeasures(data.positions, potentialDifferential, potential, data); } // First measurement after thermalisation
-    std::cout << "Iteration " << repeat + 1 << " thermalised after " << thermalisationSweeps << " sweeps.";
+    //std::cout << "Iteration " << repeat + 1 << " thermalised after " << thermalisationSweeps << " sweeps.";
     thermSweeps.push_back(thermalisationSweeps);
 
 	// Take measures of the path every "decorrelation" sweeps
@@ -208,7 +203,7 @@ void metropolis(bool winOn, std::string boundary, std::string system, int repeat
         }
         GTwoDecorr.insert(GTwoDecorr.end(), data.GTwoDecorrTemp.begin(), data.GTwoDecorrTemp.end());
         GFourDecorr.insert(GFourDecorr.end(), data.GFourDecorrTemp.begin(), data.GFourDecorrTemp.end());
-        std::cout << " Completed measurements for iteration " << repeat + 1 << "." << std::endl;
+        //std::cout << " Completed measurements for iteration " << repeat + 1 << "." << std::endl;
     }
 }
 
@@ -276,7 +271,7 @@ const int thermalise(bool winOn, double (*potentialDifferential)(double), double
             }
         }
         if (data.sweep >= thermalisationMaximum) {
-            std::cout << "Failed to thermalise after " << thermalisationMaximum << " sweeps, proceeding with measurements anyway." << std::endl;
+            //std::cout << "Failed to thermalise after " << thermalisationMaximum << " sweeps, proceeding with measurements anyway." << std::endl;
             return thermalisationMaximum;
         }
     }
