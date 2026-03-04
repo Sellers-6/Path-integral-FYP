@@ -10,12 +10,12 @@ static std::vector<Observable> getObservables()
 {
     return {
         {"E0Therm", &E0Therm},
-        {"E0Decorr", &E0Decorr},
+        {"E0", &E0},
         {"accRateTherm", &accRateTherm},
-        {"accRateDecorr", &accRateDecorr},
-        {"xDecorr", &xDecorr},
-		{"GTwoDecorr", &GTwoDecorr},
-        {"GFourDecorr", &GFourDecorr},
+        {"accRate", &accRate},
+        {"histogram", &histogram},
+		{"GTwo", &GTwo},
+        {"GFour", &GFour},
         {"thermSweeps", &thermSweeps}
     };
 }

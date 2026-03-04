@@ -6,12 +6,12 @@
 ///// Vectors for data /////
 
 extern std::vector<double> E0Therm;
-extern std::vector<double> E0Decorr;
+extern std::vector<double> E0;
 extern std::vector<double> accRateTherm;
-extern std::vector<double> accRateDecorr;
-extern std::vector<double> xDecorr;
-extern std::vector<double> GTwoDecorr;
-extern std::vector<double> GFourDecorr;
+extern std::vector<double> accRate;
+extern std::vector<double> histogram;
+extern std::vector<double> GTwo;
+extern std::vector<double> GFour;
 extern std::vector<double> thermSweeps;
 
 ///// Lattice parameters /////
