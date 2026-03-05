@@ -1,5 +1,8 @@
 #include "h5.h"
 
+const char* fileName = "data";
+const char* fullFileName = "data.h5";
+
 struct Observable
 {
     std::string name;
@@ -23,12 +26,12 @@ static std::vector<Observable> getObservables()
 static hid_t openOrCreateFile()
 {
     H5Eset_auto2(H5E_DEFAULT, nullptr, nullptr);
-    hid_t file = H5Fopen("data.h5", H5F_ACC_RDWR, H5P_DEFAULT);
+    hid_t file = H5Fopen(fullFileName, H5F_ACC_RDWR, H5P_DEFAULT);
 
     if (file < 0)
     {
         file = H5Fcreate(
-            "data.h5",
+            fullFileName,
             H5F_ACC_TRUNC,
             H5P_DEFAULT,
             H5P_DEFAULT
@@ -107,7 +110,7 @@ static void writeVector(hid_t group, const std::vector<double>& data) {
 
     hid_t dataset = H5Dcreate(
         group,
-        "data",
+        fileName,
         H5T_NATIVE_DOUBLE,
         space,
         H5P_DEFAULT,

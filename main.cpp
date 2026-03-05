@@ -4,13 +4,13 @@
 #include "main.h"
 
 int main() {    // Accepts user choice of boundary conditions, system type, and window visualisation
-    std::cout << "Simulating quantum systems with different potentials using Feynman path integral and Metropolis algorithm" << std::endl;
+    std::cout << "Simulating quantum systems with different potentials using the Feynman path integral and Metropolis algorithm";
     std::string choice;
 	chooseSystem(); // Print the options to the user
 	while (true) {
 		std::cout << "Enter choice: ";
         std::cin >> choice;
-        if (choice == "1") { multThreads = true;  metropolisRepeat(false, "Periodic", "QHO"); }
+        if (choice == "1")      { multThreads = true;  metropolisRepeat(false, "Periodic", "QHO"); }
         else if (choice == "2") { metropolisRepeat(true, "Periodic", "QHO"); }
         else if (choice == "3") { multThreads = true;  metropolisRepeat(false, "Dirichlet", "QHO"); }
         else if (choice == "4") { metropolisRepeat(true, "Dirichlet", "QHO"); }
@@ -25,21 +25,24 @@ int main() {    // Accepts user choice of boundary conditions, system type, and 
         else if (choice == "13") { // Run multiple systems/BCs in one go, used to produce data for the report
             multThreads = true; 
             metropolisRepeat(false, "Periodic", "QHO");
-            //metropolisRepeat(false, "Dirichlet", "QHO");
+            metropolisRepeat(false, "Dirichlet", "QHO");
             metropolisRepeat(false, "Periodic", "AHO");
-            //metropolisRepeat(false, "Dirichlet", "AHO");
+            metropolisRepeat(false, "Dirichlet", "AHO");
             metropolisRepeat(false, "Periodic", "DWP");
-            //metropolisRepeat(false, "Dirichlet", "DWP");
+            metropolisRepeat(false, "Dirichlet", "DWP");
             std::cout << "Exiting..." << std::endl; break;
 		}
         else if (choice == "0") { std::cout << "Exiting..." << std::endl; break; }
         else { std::cerr << "Invalid choice." << std::endl; }
+
+        // Reprint the options to the user, wait for further input
+        chooseSystem();
     }
     return 0;
 }
 
 void chooseSystem() {  // Function to display user choices
-    std::string chooseSystemString = "1: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (with multi-threading) \n"
+    std::string chooseSystemString = "\n1: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (with multi-threading) \n"
         "2: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (with path visualisation)\n"
         "3: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (with multi-threading)\n"
         "4: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (with path visualisation)\n"
@@ -59,6 +62,8 @@ void chooseSystem() {  // Function to display user choices
 }
 
 void metropolisRepeat(bool winOn, std::string boundary, std::string system) { // Loop over repeats
+    std::cout << "Performing MCMC algorithm for the " << system << " with " << boundary << " boundary conditions." << std::endl;
+
 	// Set up the potentials and boundary conditions for the simulation based on user choice
     setBoundary(boundary);
 	potential = findPotential(system);
@@ -66,25 +71,30 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
 
     // Set histogram range
     if (system == "FP") {
-        xMax = 4.0; // Free particle isn't really a bound system, so this range exists only to allow production of a histogram
-        xMin = -4.0;
+        xMax = 5.0; // Free particle isn't really a bound system, so this range exists only to allow production of a histogram
+        xMin = -5.0;
     }
 	else if (system == "QHO" || system == "AHO") { // Anharmonic oscillator has the same quadratic term as the harmonic oscillator, so we can use that to set the histogram range
         double sigmaQHO = 1.0 / (std::sqrt(2.0 * m * omega)); 
-        xMax = ceil(sigmaQHO * 4.0);  // Set the maximum x value for the histogram to be 4 standard deviations of the analytic ground state wavefunction
+        xMax = ceil(sigmaQHO * 4.0) + 1;  // Set the maximum x value for the histogram to be 4 standard deviations of the analytic ground state wavefunction (plus padding)
         xMin = -xMax;
     }
     else if (system == "DWP") {
 		double sigmaDWP = 1.0 / (std::sqrt(omegaDWP)); // Use the frequency of the wells to calculate the standard deviation of the wavefunction in each well
-        xMax = ceil(wellCentres + 4.0 * sigmaDWP); 
+        xMax = ceil(wellCentres + 4.0 * sigmaDWP) + 1; 
 		xMin = -xMax; 
 	}	
     // Set the bin width for the histogram based on the range of positions and the number of bins
     binWidth = (xMax - xMin) / numBins;
 
     if (multThreads == true) {  // Running with multiple threads, much faster.
+        std::cout << "Using multiple threads to speed up the simulation. Taking " << measures << " measures and running " << repeats << " repeats." << std::endl;
+        std::cout << "                                           Percent complete                                           " << std::endl;
+        std::cout << "<       10        20        30        40        50        60        70        80        90        100>" << std::endl;
+        std::cout << "<";
         std::vector<RepeatData> repeatResults(repeats); // Store results of all repeats
-
+        double iterationNumber = 1.0;
+        double percentDone = 0.0;
         #pragma omp parallel for
         for (int r = 0; r < repeats; ++r) {
             std::mt19937 rng(seed + r);
@@ -95,8 +105,15 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
 
             repeatResults[r] = data;
 
-            std::cout << "Finished collecting data for iteration " << r + 1 << std::endl;
+            while ((iterationNumber / repeats) * 100.0 > percentDone) {
+                std::cout << "-";
+                percentDone++;
+            }
+            
+            iterationNumber++;
         }
+        std::cout << ">";
+
         // Merge thread-safe results after parallel region
         E0Therm.clear();
         accRateTherm.clear(); 
@@ -141,6 +158,15 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
                 for (size_t i = 0; i < GFour.size(); ++i)
                     GFour[i] += data.GFourTemp[i];
             }
+
+            // Histogram for the wavefunction
+            if (histogram.empty()) {
+                histogram = data.histogramTemp;  
+            }
+            else {
+                for (int i = 0; i < numBins; ++i)
+                    histogram[i] += data.histogramTemp[i];
+            }
         }
 
         // Average correlators over repeats
@@ -151,7 +177,9 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
             GFour[i] /= repeats;
     }
     else { // Single-threaded version. Slower but allows visualisation.
-        RepeatData data(N, numBins);
+        std::cout << "Providing a visualisation of the evolution of the path. Running " << repeats << " repeats and taking " << measures << " measures." << std::endl;
+
+        RepeatData data(N, numBins);    // Still use this for the single threaded version, though it's not necessary it is convenient
         
         // Window thread setup
         winRunning = winOn;
@@ -186,9 +214,6 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
     GFour.clear();
 	histogramTemp.clear();
     thermSweeps.clear();
-
-    // Reprint the options to the user, wait for further input
-    chooseSystem();
 }
 
 void metropolis(bool winOn, std::string boundary, std::string system, int repeat, std::mt19937& rng, RepeatData& data,

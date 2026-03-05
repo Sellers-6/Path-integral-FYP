@@ -17,7 +17,7 @@
 ///// Simulation settings /////
 
 const bool takeMeasuresFlag = true;    // Flag to determine whether to take measures (If this is turned off, thermalisation will only complete after thermalisationMaximum!)
-const bool takeThermMeasuresFlag = false;
+const bool takeThermMeasuresFlag = true;
 const int numBins = 100;              // Number of bins for the histogram of positions
 
 ///// Acceptance rate settings /////
@@ -27,7 +27,7 @@ const int accRateInterval = 1000;               // Number of sweeps between reco
 
 ///// Decorrelation settings /////
 
-const int decorrelation = 250;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures. Decorrelation takes far longer in the DWP system!
+const int decorrelation = 2500;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures. Decorrelation takes far longer in the DWP system!
 const int measures = 500;                       // Number of measures taken after thermalisation
 
 ///// Initialisation settings /////
@@ -37,16 +37,17 @@ const double max_distance = 4;
 
 ///// Thermalisation settings /////
 
-const double acceptableError = 0.01;              // Ratio of the standard error to the mean for the ground state energy, used as a criterion for thermalisation
-const int thermalisationMaximum = 20000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
-const int thermalisationMinimum = 20000;       // Minimum number of iterations for thermalisation
-const int thermalisationInterval = 100;    // Number of MC sweeps performed between measuring parameters during thermalisation
+// thermalisationMaximum is the default value for thermalisation sweeps if takeThermMeasuresFlag is set to false
+const int thermalisationMaximum = 500000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
+const int thermalisationMinimum = 10000;       // Minimum number of iterations for thermalisation
+const int thermalisationInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
 // Be careful when changing the thermalisationInterval to be too small; this can massively increase file size
+const double acceptableError = 0.01;              // Ratio of the standard error to the mean for the ground state energy, used as a criterion for thermalisation
 std::vector<double> E0ThermTemp;            // Used for creating batches in one iteration of the thermalisation process
 
 ///// Repeats /////
 
-int repeats = 36;                          // Number of repeats for finding standard error 
+int repeats = 60;                          // Number of repeats for finding standard error 
 bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads 
 
 ///// Lattice parameters /////
@@ -67,7 +68,7 @@ const double quarticFactor = 1;     // Quartic factor for the anharmonic oscilla
 
 ///// DWP specific parameters /////
 
-const double wellCentres = 2.5;     // Well centre positions, increasing this moves the wells further apart
+const double wellCentres = 2.0;     // Well centre positions, increasing this moves the wells further apart
 const double lambda = 3 / (wellCentres * wellCentres);          // Coupling constant, increasing this deepens the wells and increases the barrier between them
 
 const double omegaDWP = std::sqrt(8 * (lambda / 24) * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.
@@ -106,32 +107,32 @@ std::vector<double> GTwoTemp;
 std::vector<double> GFourTemp;
 std::vector<double> histogramTemp;
 
-///// Shared data /////
+///// Shared data between threads /////
 
 struct RepeatData {
-    // === Path positions ===
+    // Path positions
     std::vector<double> positions;        // Current path of the particle
     std::vector<double> positionsTemp;          // All particle positions recorded for decorrelated measurements
 
-    // === Measurement accumulators ===
+    // Measurement vectors (and vacuum piece)
     std::vector<double> E0Temp;     // Ground-state energy measurements during this repeat
     std::vector<double> GTwoTemp;   // Two-point correlator accumulator for this repeat
     std::vector<double> GFourTemp;  // Four-point correlator accumulator for this repeat
-    double vacuumPiece;                   // For four-point correlator subtraction (per-thread)
+    double vacuumPiece;             // For four-point correlator subtraction (per-thread)
     std::vector<double> accRate;    // Acceptance rate per repeat (decorrelation steps)
     std::vector<double> histogramTemp;
 
-    // === Thermalisation data ===
+    // Thermalisation data
     std::vector<double> E0Therm;          // Ground-state energy during thermalisation
     std::vector<double> E0ThermTemp;      // Temporary accumulator to check thermalisation
     std::vector<double> accRateTherm;     // Acceptance rate during thermalisation
 
-    // === Metropolis counters ===
+    // Metropolis counters
     int sweep;           // Current sweep number
     int measureCount;    // Number of measurements taken so far
     int acceptedMoves;   // Count of accepted moves since last measurement
 
-    // === Constructor to initialise vectors ===
+    // Constructor to initialise vectors
     RepeatData(int N = 0, int numBins = 0) {
         positions = std::vector<double>(N, 0.0);
         positionsTemp.clear();
@@ -151,6 +152,7 @@ struct RepeatData {
         acceptedMoves = 0;
     }
 };
+
 ///// Function declarations /////
 
 void chooseSystem();                                      // Allows user to choose which system to perform metropolis algorithm on
@@ -340,16 +342,3 @@ static std::vector<double> fourPointCorrelator(const std::vector<double>& positi
 
     return correlationTemp;
 }
-
-//static std::vector<double> fourPointCorrelator(const std::vector<double>& positions, double& vacuumPiece) {
-//    std::vector<double> correlationTemp(N, 0.0);
-//    
-//    vacuumPiece += x2Mean(positions.data(), positions.size());  // Only update local copy
-//
-//    for (int t = 0; t < N; t++) {
-//        for (int n = 0; n < N; n++) {  
-//            correlationTemp[n] += (positions[(t + n) % N] * positions[(t + n) % N]) * (positions[t] * positions[t]) / N;
-//        }
-//    }
-//    return correlationTemp;
-//}
