@@ -41,3 +41,6 @@ obj/
 *.recipe
 *.FileListAbsolute.txt
 *.applocal.log
+
+# Ignore old csv files
+*.csv
