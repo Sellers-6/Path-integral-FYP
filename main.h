@@ -28,7 +28,7 @@ const int accRateInterval = 1000;               // Number of sweeps between reco
 ///// Decorrelation settings /////
 
 const int decorrelation = 2500;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures. Decorrelation takes far longer in the DWP system!
-const int measures = 500;                       // Number of measures taken after thermalisation
+const int measures = 50;                       // Number of measures taken after thermalisation
 
 ///// Initialisation settings /////
 
@@ -38,7 +38,7 @@ const double max_distance = 4;
 ///// Thermalisation settings /////
 
 // thermalisationMaximum is the default value for thermalisation sweeps if takeThermMeasuresFlag is set to false
-const int thermalisationMaximum = 500000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
+const int thermalisationMaximum = 100000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
 const int thermalisationMinimum = 10000;       // Minimum number of iterations for thermalisation
 const int thermalisationInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
 // Be careful when changing the thermalisationInterval to be too small; this can massively increase file size
@@ -47,7 +47,7 @@ std::vector<double> E0ThermTemp;            // Used for creating batches in one 
 
 ///// Repeats /////
 
-int repeats = 60;                          // Number of repeats for finding standard error 
+int repeats = 32;                          // Number of repeats for finding standard error 
 bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads 
 
 ///// Lattice parameters /////
@@ -68,11 +68,15 @@ const double quarticFactor = 1;     // Quartic factor for the anharmonic oscilla
 
 ///// DWP specific parameters /////
 
-const double wellCentres = 2.0;     // Well centre positions, increasing this moves the wells further apart
-const double lambda = 3 / (wellCentres * wellCentres);          // Coupling constant, increasing this deepens the wells and increases the barrier between them
+//const double wellCentres = 2.0;     // Well centre positions, increasing this moves the wells further apart
+//const double lambda = 3 / (wellCentres * wellCentres);          // Coupling constant, increasing this deepens the wells and increases the barrier between them
+
+const double wellCentres = 1.8;     // Well centre positions, increasing this moves the wells further apart
+const double lambda = 12;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
 
 const double omegaDWP = std::sqrt(8 * (lambda / 24) * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.
 // To use that the ground and first excited states are centred around 0.5, we require that omegaDWP = 1, which gives the relation lambda = 1 / (8 * wellCentres^2). 
+const int tunnellingThreshold = 0.2 * wellCentres;     // Threshold for determining whether the particle is in the left or right well
 
 ///// Vectors to store data /////
 
@@ -85,6 +89,8 @@ std::vector<double> GTwo;     //
 std::vector<double> GFour;    //   
 std::vector<double> thermSweeps;    //   
 std::vector<double> histogram;
+std::vector<double> instantons;
+std::vector<double> antiInstantons;
 
 ///// Boundary conditions ///// 
 
@@ -106,6 +112,8 @@ double vacuumPiece;                 // Counts the vacuum piece of the four point
 std::vector<double> GTwoTemp;
 std::vector<double> GFourTemp;
 std::vector<double> histogramTemp;
+std::vector<double> instantonsTemp;	
+std::vector<double> antiInstantonsTemp;
 
 ///// Shared data between threads /////
 
@@ -121,6 +129,8 @@ struct RepeatData {
     double vacuumPiece;             // For four-point correlator subtraction (per-thread)
     std::vector<double> accRate;    // Acceptance rate per repeat (decorrelation steps)
     std::vector<double> histogramTemp;
+    std::vector<double> instantonsTemp;
+    std::vector<double> antiInstantonsTemp;
 
     // Thermalisation data
     std::vector<double> E0Therm;          // Ground-state energy during thermalisation
@@ -132,16 +142,23 @@ struct RepeatData {
     int measureCount;    // Number of measurements taken so far
     int acceptedMoves;   // Count of accepted moves since last measurement
 
+	// Tunnelling data
+
+
+
     // Constructor to initialise vectors
     RepeatData(int N = 0, int numBins = 0) {
         positions = std::vector<double>(N, 0.0);
         positionsTemp.clear();
+
         E0Temp.clear();
         GTwoTemp = std::vector<double>(N, 0.0);
         GFourTemp = std::vector<double>(N, 0.0);
-        histogramTemp = std::vector<double>(numBins, 0.0);
-        accRate.clear();
         vacuumPiece = 0.0;
+        accRate.clear();
+        histogramTemp = std::vector<double>(numBins, 0.0);
+        instantonsTemp.clear();
+        antiInstantonsTemp.clear();
 
         E0Therm.clear();
         E0ThermTemp.clear();
@@ -341,4 +358,11 @@ static std::vector<double> fourPointCorrelator(const std::vector<double>& positi
 	}
 
     return correlationTemp;
+}
+
+static int whichWell(double x, double threshold)
+{
+    if (x > threshold)  return 1;   // right well
+	if (x < -threshold) return -1;  // left well
+    return 0;                       // barrier
 }

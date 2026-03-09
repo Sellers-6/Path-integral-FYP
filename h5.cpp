@@ -17,8 +17,10 @@ static std::vector<Observable> getObservables()
         {"accRateTherm", &accRateTherm},
         {"accRate", &accRate},
         {"histogram", &histogram},
-		{"GTwo", &GTwo},
+        {"GTwo", &GTwo},
         {"GFour", &GFour},
+        {"instantons", &instantons},
+        {"antiInstantons", &antiInstantons},
         {"thermSweeps", &thermSweeps}
     };
 }

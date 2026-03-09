@@ -17,14 +17,18 @@
   quarticFactor <- 1
 
   # DWP variables
-  a <- 1.5
+  a <- 2.0
   lambda <- 3 / (a^2)
+
+  a <- 1.8
+  lambda <- 12
+
   omegaDWP <- sqrt(8 * (lambda / 24) * a^2)
 
   # Simulation values
-  measures <- 500
+  measures <- 50
 
-  repeats <- 60
+  repeats <- 32
 
   pathLength <- 10000
   latticeSpacing <- 0.05
@@ -35,8 +39,8 @@
 
 # Boundary conditions and system type
 {
-  # bc <- "Periodic"
-  bc <- "Dirichlet"
+  bc <- "Periodic"
+  # bc <- "Dirichlet"
 
   # sys <- "QHO"
   # sys <- "AHO"
@@ -53,6 +57,8 @@
   E0Data <- as.numeric(unlist(h5read(dataFile, paste0("/E0/", bc, "/", sys))))
   accRateData <- as.numeric(unlist(h5read(dataFile, paste0("/accRate/", bc, "/", sys))))
   histogramData <- as.numeric(unlist(h5read(dataFile, paste0("/histogram/", bc, "/", sys))))
+  instantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/instantons/", bc, "/", sys))))
+  antiInstantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/antiInstantons/", bc, "/", sys))))
   GTwoData <- as.numeric(unlist(h5read(dataFile, paste0("/GTwo/", bc, "/", sys))))
   GFourData <- as.numeric(unlist(h5read(dataFile, paste0("/GFour/", bc, "/", sys))))
 }
@@ -299,6 +305,12 @@ E1 - E0
 }
 
 E2 - E0
+
+# Tunnelling data
+
+head(instantonsData)
+head(antiInstantonsData)
+instantonsData
 
 # Some extra calculations 
 

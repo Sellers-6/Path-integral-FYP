@@ -122,6 +122,8 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
         GFour.clear();
         positionsTemp.clear();
 		histogram.clear();
+		instantons.clear();
+		antiInstantons.clear();
         accRate.clear();
 
         for (int r = 0; r < repeats; ++r) {
@@ -167,6 +169,9 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
                 for (int i = 0; i < numBins; ++i)
                     histogram[i] += data.histogramTemp[i];
             }
+
+            instantons.insert(instantons.end(), data.instantonsTemp.begin(), data.instantonsTemp.end());
+            antiInstantons.insert(antiInstantons.end(), data.antiInstantonsTemp.begin(), data.antiInstantonsTemp.end());
         }
 
         // Average correlators over repeats
@@ -192,7 +197,9 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
             E0.insert(E0.end(), data.E0Temp.begin(), data.E0Temp.end());
             GTwo.insert(GTwo.end(), data.GTwoTemp.begin(), data.GTwoTemp.end());
             GFour.insert(GFour.end(), data.GFourTemp.begin(), data.GFourTemp.end());
-            positionsTemp.insert(positionsTemp.end(), data.positionsTemp.begin(), data.positionsTemp.end());
+			histogram.insert(histogram.end(), data.histogramTemp.begin(), data.histogramTemp.end());
+			instantons.insert(instantons.end(), data.instantonsTemp.begin(), data.instantonsTemp.end());
+			antiInstantons.insert(antiInstantons.end(), data.antiInstantonsTemp.begin(), data.antiInstantonsTemp.end());
             accRate.insert(accRate.end(), data.accRate.begin(), data.accRate.end());
             std::cout << "Finished collecting data for iteration " << repeat + 1 << std::endl;
         }
@@ -213,6 +220,8 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
     GTwo.clear();
     GFour.clear();
 	histogramTemp.clear();
+	instantons.clear();
+	antiInstantons.clear();
     thermSweeps.clear();
 }
 
@@ -251,6 +260,9 @@ void metropolis(bool winOn, std::string boundary, std::string system, int repeat
             data.histogramTemp[i] /= (measures * N);
         }
 		histogram.insert(histogram.end(), data.histogramTemp.begin(), data.histogramTemp.end());
+
+		instantons.insert(instantons.end(), data.instantonsTemp.begin(), data.instantonsTemp.end());
+		antiInstantons.insert(antiInstantons.end(), data.antiInstantonsTemp.begin(), data.antiInstantonsTemp.end());
 
         //std::cout << " Completed measurements for iteration " << repeat + 1 << "." << std::endl;
     }
@@ -320,7 +332,7 @@ const int thermalise(bool winOn, double (*potentialDifferential)(double), double
                 thermalised = checkThermalised(data);   // Only check thermalisation every "thermalisationInterval" sweeps to reduce calls of the expensive MCSE function
             }
             if (data.sweep >= thermalisationMaximum) {
-                std::cout << "Failed to thermalise after " << thermalisationMaximum << " sweeps, proceeding with measurements anyway." << std::endl;
+                //std::cout << "Failed to thermalise after " << thermalisationMaximum << " sweeps, proceeding with measurements anyway." << std::endl;
                 return thermalisationMaximum;
             }
         }
@@ -398,6 +410,42 @@ void takeMeasures(std::vector<double>& positions, double (*potentialDifferential
             data.histogramTemp[bin] += 1.0;
         }
     }
+
+    int prev = whichWell(positions[0], tunnellingThreshold);
+
+	int instantons = 0;
+	int antiInstantons = 0;
+
+    for (int i = 1; i < N; i++)
+    {
+        int curr = whichWell(positions[i], tunnellingThreshold);
+
+        if (curr == 0) continue;   // Ignore barrier
+
+        if (prev == -1 && curr == 1)
+            instantons++;
+
+        if (prev == 1 && curr == -1)
+            antiInstantons++;
+
+        prev = curr;
+    }
+
+	// Check for tunnelling in the first position to account for the periodic boundary conditions
+
+    int curr = whichWell(positions[0], tunnellingThreshold);
+
+    if (curr != 0)  // Ignore barrier
+    {
+        if (prev == -1 && curr == 1)
+            instantons++;
+
+        if (prev == 1 && curr == -1)
+            antiInstantons++;
+    }
+
+	data.instantonsTemp.push_back(instantons);
+	data.antiInstantonsTemp.push_back(antiInstantons);
 
     // Increment measure count
     data.measureCount++;
