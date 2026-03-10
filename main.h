@@ -38,23 +38,22 @@ const double max_distance = 4;
 ///// Thermalisation settings /////
 
 // thermalisationMaximum is the default value for thermalisation sweeps if takeThermMeasuresFlag is set to false
-const int thermalisationMaximum = 100000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
-const int thermalisationMinimum = 10000;       // Minimum number of iterations for thermalisation
+const int thermalisationMaximum = 500000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
+const int thermalisationMinimum = 100000;       // Minimum number of iterations for thermalisation
 const int thermalisationInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
-// Be careful when changing the thermalisationInterval to be too small; this can massively increase file size
 const double acceptableError = 0.01;              // Ratio of the standard error to the mean for the ground state energy, used as a criterion for thermalisation
 std::vector<double> E0ThermTemp;            // Used for creating batches in one iteration of the thermalisation process
 
 ///// Repeats /////
 
-int repeats = 32;                          // Number of repeats for finding standard error 
+int repeats = 64;                          // Number of repeats for finding standard error 
 bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads 
 
 ///// Lattice parameters /////
 
-const int N = 10000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
+const int N = 5000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Lattice points (represents the "path" of the particle)
-const double a = 0.05;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
+const double a = 0.1;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
 const double aInverse = 1.0 / a;											
 
 ///// QHO specific parameters /////
@@ -68,13 +67,10 @@ const double quarticFactor = 1;     // Quartic factor for the anharmonic oscilla
 
 ///// DWP specific parameters /////
 
-//const double wellCentres = 2.0;     // Well centre positions, increasing this moves the wells further apart
-//const double lambda = 3 / (wellCentres * wellCentres);          // Coupling constant, increasing this deepens the wells and increases the barrier between them
+const double wellCentres = 2;     // Well centre positions, increasing this moves the wells further apart
+const double lambda = 0.1;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
 
-const double wellCentres = 1.8;     // Well centre positions, increasing this moves the wells further apart
-const double lambda = 12;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
-
-const double omegaDWP = std::sqrt(8 * (lambda / 24) * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.
+const double omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.
 // To use that the ground and first excited states are centred around 0.5, we require that omegaDWP = 1, which gives the relation lambda = 1 / (8 * wellCentres^2). 
 const int tunnellingThreshold = 0.2 * wellCentres;     // Threshold for determining whether the particle is in the left or right well
 

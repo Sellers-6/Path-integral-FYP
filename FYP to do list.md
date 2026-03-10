@@ -1,7 +1,5 @@
 \- Comment on changes made to the code, added paralelisation
 
-\- Calculate K from the Atland Simons book
-
 \- Research the "the fate of the false vacuum" from the Sydney Coleman book (printed one)
 
 \- Finish the David grabovsky Instanton lecture notes

@@ -17,21 +17,30 @@
   quarticFactor <- 1
 
   # DWP variables
-  a <- 2.0
-  lambda <- 3 / (a^2)
+  a <- 2
+  lambda <- 0.1
 
-  a <- 1.8
-  lambda <- 12
+  omegaDWP <- sqrt(8 * lambda * a^2)
 
-  omegaDWP <- sqrt(8 * (lambda / 24) * a^2)
+  S_inst <- (2/3) * omegaDWP * (a^2) 
+
+  alpha <- 1 / 12 # A complicated calculation performed in Zinn-Justin 1993 (or ABCs of Instantons) gives this value
+
+  K <- omegaDWP * sqrt(S_inst / (2 * pi)) * (alpha ^ -0.5) # A prefactor for the splitting energy
+
+  splittingEnergy <- K * exp(-S_inst)
+
+  E0_inst <- 0.5 * omegaDWP - (splittingEnergy / 2)
+  E1_inst <- 0.5 * omegaDWP + (splittingEnergy / 2)
 
   # Simulation values
   measures <- 50
 
-  repeats <- 32
+  repeats <- 64
 
-  pathLength <- 10000
-  latticeSpacing <- 0.05
+  pathLength <- 5000
+  latticeSpacing <- 0.1
+  beta <- pathLength * latticeSpacing
 
   thermalisationInterval <- 100
   acceptableError <- 0.01 
@@ -39,8 +48,8 @@
 
 # Boundary conditions and system type
 {
-  bc <- "Periodic"
-  # bc <- "Dirichlet"
+  # bc <- "Periodic"
+  bc <- "Dirichlet"
 
   # sys <- "QHO"
   # sys <- "AHO"
@@ -220,7 +229,7 @@ psi <- sqrt(prob_density)
   } else if (sys == "AHO") {
     psiAnalytical <- exp(-(x_values^2) / 2)  # Placeholder
   } else if (sys == "DWP") {
-    psiAnalytical <- exp(-(x_values^2) / 2)  # Placeholder
+    psiAnalytical <- exp(-(omegaDWP / 2) * (x_values + a)^2) + exp(-(omegaDWP / 2) * (x_values - a)^2) # Approximate by 2 Gaussians
   }
 
   # Normalise the analytical wavefunction 
@@ -310,27 +319,37 @@ E2 - E0
 
 head(instantonsData)
 head(antiInstantonsData)
-instantonsData
+
+beta / mean(instantonsData)
+
+1 / omegaDWP
 
 # Some extra calculations 
 
-S_inst <- sqrt(lambda / 3) * (2 * (a ^ 3)) / 3 
-S_inst
-
-alpha <- 1 / 12 # A complicated calculation performed in Zinn-Justin 1993 gives this value
-
-K <- sqrt(S_inst / (2 * pi)) * (alpha ^ -0.5) # A prefactor for the splitting energy
-K
-4 / sqrt(pi)
-
-Splitting_energy <- K * exp(-S_inst)
-Splitting_energy
-
-E0_inst <- 0.5 - (Splitting_energy / 2)
-E1_inst <- 0.5 + (Splitting_energy / 2)
 E0_inst
 E1_inst
-E1
 E0
+E1
+splittingEnergy
+E1 - E0
+
+E0_ABC <- (omegaDWP / 2) - (sqrt(2 * (omegaDWP^3) / (pi * lambda)) * exp(-(omegaDWP^3) / (12 * lambda)) * (omegaDWP / 2))
+E1_ABC <- (omegaDWP / 2) + (sqrt(2 * (omegaDWP^3) / (pi * lambda)) * exp(-(omegaDWP^3) / (12 * lambda)) * (omegaDWP / 2)) 
+E0_ABC
+E1_ABC
+
+E1_ABC - E0_ABC
+
+E0_Grabovsky <- ((2 * a * sqrt(2 * lambda)) * 0.5) - (((a * sqrt(2 * lambda)) / pi) * exp(-2 # was -4
+                                                                                              * (a^3) * sqrt(2 * lambda)))
+E1_Grabovsky <- ((2 * a * sqrt(2 * lambda)) * 0.5) + (((a * sqrt(2 * lambda)) / pi) * exp(-2 * (a^3) * sqrt(2 * lambda)))
+
+2 * a * sqrt(2 * lambda) * 0.5 == (omegaDWP / 2)
+
+E0_Grabovsky
+E1_Grabovsky
+
+E1_Grabovsky - E0_Grabovsky
+(omegaDWP / pi) * exp(-omegaDWP * (a^2))
 
 # nolint end

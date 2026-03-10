@@ -57,9 +57,9 @@ class DWP
 {
 public:
     inline static double potential(double x) {
-        return (lambda / 24) * (x * x - wellCentres * wellCentres) * (x * x - wellCentres * wellCentres);
+        return lambda * (x * x - wellCentres * wellCentres) * (x * x - wellCentres * wellCentres);
     }
     inline static double potentialDifferential(double x) {
-        return (lambda / 6) * (((x * x * x) - x * (wellCentres * wellCentres)));
+        return lambda * 4 * (((x * x * x) - x * (wellCentres * wellCentres)));
     }
 };
