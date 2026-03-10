@@ -17,8 +17,8 @@
   quarticFactor <- 1
 
   # DWP variables
-  a <- 2
-  lambda <- 0.1
+  a <- 5
+  lambda <- 0.001
 
   omegaDWP <- sqrt(8 * lambda * a^2)
 
@@ -38,8 +38,8 @@
 
   repeats <- 64
 
-  pathLength <- 5000
-  latticeSpacing <- 0.1
+  pathLength <- 50000
+  latticeSpacing <- 0.01
   beta <- pathLength * latticeSpacing
 
   thermalisationInterval <- 100
@@ -48,12 +48,12 @@
 
 # Boundary conditions and system type
 {
-  # bc <- "Periodic"
-  bc <- "Dirichlet"
+  bc <- "Periodic"
+  # bc <- "Dirichlet"
 
-  # sys <- "QHO"
+  sys <- "QHO"
   # sys <- "AHO"
-  sys <- "DWP"
+  # sys <- "DWP"
 }
 
 # Read data

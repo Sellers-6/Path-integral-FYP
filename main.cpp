@@ -318,6 +318,17 @@ void initialise(std::string boundary, std::string system, std::mt19937& rng, Rep
         for (int i = 0; i < N; i++)
             data.positions[i] = uniformMinus1to1(rng) * max_distance;
     }
+
+    if (split_wells) {
+        for (int i = 0; i < N; i++) {
+            if (i < N / 2) {
+                data.positions[i] = wellCentres; // Start half the path in one well
+            }
+            else {
+                data.positions[i] = -wellCentres; // Start the other half in the other well
+            }
+        }
+    }
 }
 
 const int thermalise(bool winOn, double (*potentialDifferential)(double), double (*potential)(double), std::mt19937& rng, RepeatData& data) { // Thermalisation function to reach equilibrium before measurements

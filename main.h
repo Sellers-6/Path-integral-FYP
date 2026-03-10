@@ -32,7 +32,8 @@ const int measures = 50;                       // Number of measures taken after
 
 ///// Initialisation settings /////
 
-const bool hot_start = false;
+const bool hot_start = true;
+const bool split_wells = false;
 const double max_distance = 4;
 
 ///// Thermalisation settings /////
@@ -46,8 +47,8 @@ std::vector<double> E0ThermTemp;            // Used for creating batches in one 
 
 ///// Repeats /////
 
-int repeats = 64;                          // Number of repeats for finding standard error 
-bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads 
+const int repeats = 64;                          // Number of repeats for finding standard error 
+bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads, changed by user input
 
 ///// Lattice parameters /////
 
@@ -67,8 +68,8 @@ const double quarticFactor = 1;     // Quartic factor for the anharmonic oscilla
 
 ///// DWP specific parameters /////
 
-const double wellCentres = 2;     // Well centre positions, increasing this moves the wells further apart
-const double lambda = 0.1;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
+const double wellCentres = 5;     // Well centre positions, increasing this moves the wells further apart
+const double lambda = 0.001;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
 
 const double omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.
 // To use that the ground and first excited states are centred around 0.5, we require that omegaDWP = 1, which gives the relation lambda = 1 / (8 * wellCentres^2). 
