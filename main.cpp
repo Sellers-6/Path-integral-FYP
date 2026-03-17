@@ -268,41 +268,135 @@ void metropolis(bool winOn, std::string boundary, std::string system, int repeat
     }
 }
 
+//void metropolisUpdate(bool winOn, double (*potential)(double), std::mt19937& rng, RepeatData& data) {    // The heart of the simulation, the metropolis algorithm function
+//    double newPosition;
+//    for (int i = start; i < end; i++) {
+//        double y = uniformMinus1to1(rng);  // Sets a random number between -1 and 1
+//        newPosition = data.positions[i] + epsilon * y; // Incrementing one position by float between -epsilon and +epsilon
+//		double oldPosition = data.positions[i];
+//		double leftPosition = data.positions[(i - 1 + N) % N];   // Previous position, with periodic BCs
+//		double rightPosition = data.positions[(i + 1) % N];      // Next position, with periodic BCs
+//        double kineticDelta =
+//            (rightPosition - newPosition) * (rightPosition - newPosition) 
+//            - (rightPosition - oldPosition) * (rightPosition - oldPosition)
+//            + (newPosition - leftPosition) * (newPosition - leftPosition)
+//            - (oldPosition - leftPosition) * (oldPosition - leftPosition);
+//
+//        double potentialDelta = potential(newPosition) - potential(oldPosition);
+//
+//        double actionDelta = (m * 0.5 * aInverse) * kineticDelta + a * potentialDelta;
+//        // Metropolis acceptance
+//        if (actionDelta < 0 || uniform01(rng) < exp(-actionDelta)) { // Accepted move
+//            data.positions[i] = newPosition;
+//            data.acceptedMoves++;
+//        }
+//    }
+//    // Update the window if user wanted visualisation
+//    if (winOn == true) {
+//        std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+//    }
+//}
+
 void metropolisUpdate(bool winOn, double (*potential)(double), std::mt19937& rng, RepeatData& data) {    // The heart of the simulation, the metropolis algorithm function
-    double newPosition;
+
     for (int i = start; i < end; i++) {
-        double y = uniformMinus1to1(rng);  // Sets a random number between -1 and 1
-        newPosition = data.positions[i] + epsilon * y; // Incrementing one position by float between -epsilon and +epsilon
-		double oldPosition = data.positions[i];
-		double leftPosition = data.positions[(i - 1 + N) % N];   // Previous position, with periodic BCs
-		double rightPosition = data.positions[(i + 1) % N];      // Next position, with periodic BCs
-        double kineticDelta =
-            (rightPosition - newPosition) * (rightPosition - newPosition) 
-            - (rightPosition - oldPosition) * (rightPosition - oldPosition)
-            + (newPosition - leftPosition) * (newPosition - leftPosition)
-            - (oldPosition - leftPosition) * (oldPosition - leftPosition);
 
-        double potentialDelta = potential(newPosition) - potential(oldPosition);
+        bool doBlock = (uniform01(rng) < 0.2);  // 20% block updates
 
-        double actionDelta = (m * 0.5 * aInverse) * kineticDelta + a * potentialDelta;
-        // Metropolis acceptance
-        if (actionDelta < 0 || uniform01(rng) < exp(-actionDelta)) { // Accepted move
-            data.positions[i] = newPosition;
-            data.acceptedMoves++;
+        if (!doBlock) {
+            // Single update - original
+            double y = uniformMinus1to1(rng);
+            double newPosition = data.positions[i] + epsilon * y;
+
+            double oldPosition = data.positions[i];
+            double leftPosition = data.positions[(i - 1 + N) % N];
+            double rightPosition = data.positions[(i + 1) % N];
+
+            double kineticDelta =
+                (rightPosition - newPosition) * (rightPosition - newPosition)
+                - (rightPosition - oldPosition) * (rightPosition - oldPosition)
+                + (newPosition - leftPosition) * (newPosition - leftPosition)
+                - (oldPosition - leftPosition) * (oldPosition - leftPosition);
+
+            double potentialDelta = potential(newPosition) - potential(oldPosition);
+
+            double actionDelta = (m * 0.5 * aInverse) * kineticDelta + a * potentialDelta;
+
+            if (actionDelta < 0 || uniform01(rng) < exp(-actionDelta)) {
+                data.positions[i] = newPosition;
+                data.acceptedMoves++;
+            }
+
+        }
+        else {
+            // Block update
+            int L = 20;  // block size 
+
+            double y = uniformMinus1to1(rng);
+            double delta = epsilon * y;
+
+            std::vector<double> oldVals(L);
+
+            for (int j = 0; j < L; j++) {
+                int idx = (i + j) % N;
+                oldVals[j] = data.positions[idx];
+            }
+
+            for (int j = 0; j < L; j++) {
+                int idx = (i + j) % N;
+                data.positions[idx] += delta;
+            }
+
+            int leftEdge = (i - 1 + N) % N;
+            int first = i % N;
+            int last = (i + L - 1) % N;
+            int rightEdge = (i + L) % N;
+
+            double oldFirst = oldVals[0];
+            double newFirst = data.positions[first];
+
+            double oldLast = oldVals[L - 1];
+            double newLast = data.positions[last];
+
+            double leftPos = data.positions[leftEdge];
+            double rightPos = data.positions[rightEdge];
+
+            double kineticDelta =
+                (newFirst - leftPos) * (newFirst - leftPos)
+                - (oldFirst - leftPos) * (oldFirst - leftPos)
+                + (rightPos - newLast) * (rightPos - newLast)
+                - (rightPos - oldLast) * (rightPos - oldLast);
+
+            // Potential change: sum over block
+            double potentialDelta = 0.0;
+            for (int j = 0; j < L; j++) {
+                int idx = (i + j) % N;
+                potentialDelta += potential(data.positions[idx]) - potential(oldVals[j]);
+            }
+
+            double actionDelta = (m * 0.5 * aInverse) * kineticDelta + a * potentialDelta;
+
+            if (!(actionDelta < 0 || uniform01(rng) < exp(-actionDelta))) {
+                for (int j = 0; j < L; j++) {
+                    int idx = (i + j) % N;
+                    data.positions[idx] = oldVals[j];
+                }
+            }
+            else {
+                data.acceptedMoves++;
+            }
         }
     }
-    // Update the window if user wanted visualisation
-    if (winOn == true) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(delay));
-    }
 }
+
 
 void initialise(std::string boundary, std::string system, std::mt19937& rng, RepeatData& data) {   // Initialises variables and path
     // Reset the path
     data.positions = std::vector<double>(N, 0.0); // Reset the path
     if (system == "DWP") // DWP requires a different initial (cold) path since the potential wells are not centered around 0
     {
-        data.positions = std::vector<double>(N, wellCentres);
+        data.positions = std::vector<double>(N, wellCentres * side);
+		side *= -1; // Start the next run in the opposite well to encourage tunnelling and faster thermalisation
     }
     
     data.GTwoTemp = std::vector<double>(N, 0.0);

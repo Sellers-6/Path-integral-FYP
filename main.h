@@ -22,7 +22,7 @@ const int numBins = 100;              // Number of bins for the histogram of pos
 
 ///// Acceptance rate settings /////
 
-const double epsilon = 0.4;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
+const double epsilon = 0.25;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
 const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
 
 ///// Decorrelation settings /////
@@ -32,22 +32,23 @@ const int measures = 50;                       // Number of measures taken after
 
 ///// Initialisation settings /////
 
-const bool hot_start = true;
+const bool hot_start = false;
 const bool split_wells = false;
 const double max_distance = 4;
+int side = 1;    // For the split wells initialisation, determines which well the particle starts in (1 for right, -1 for left)
 
 ///// Thermalisation settings /////
 
 // thermalisationMaximum is the default value for thermalisation sweeps if takeThermMeasuresFlag is set to false
-const int thermalisationMaximum = 500000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
-const int thermalisationMinimum = 100000;       // Minimum number of iterations for thermalisation
+const int thermalisationMaximum = 100000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
+const int thermalisationMinimum = 10000;       // Minimum number of iterations for thermalisation
 const int thermalisationInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
 const double acceptableError = 0.01;              // Ratio of the standard error to the mean for the ground state energy, used as a criterion for thermalisation
 std::vector<double> E0ThermTemp;            // Used for creating batches in one iteration of the thermalisation process
 
 ///// Repeats /////
 
-const int repeats = 64;                          // Number of repeats for finding standard error 
+const int repeats = 32;                          // Number of repeats for finding standard error 
 bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads, changed by user input
 
 ///// Lattice parameters /////
@@ -68,8 +69,8 @@ const double quarticFactor = 1;     // Quartic factor for the anharmonic oscilla
 
 ///// DWP specific parameters /////
 
-const double wellCentres = 5;     // Well centre positions, increasing this moves the wells further apart
-const double lambda = 0.001;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
+const double wellCentres = 1.5;     // Well centre positions, increasing this moves the wells further apart
+const double lambda = 1;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
 
 const double omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.
 // To use that the ground and first excited states are centred around 0.5, we require that omegaDWP = 1, which gives the relation lambda = 1 / (8 * wellCentres^2). 

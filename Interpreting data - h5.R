@@ -17,8 +17,8 @@
   quarticFactor <- 1
 
   # DWP variables
-  a <- 5
-  lambda <- 0.001
+  a <- 1.5
+  lambda <- 1
 
   omegaDWP <- sqrt(8 * lambda * a^2)
 
@@ -36,13 +36,13 @@
   # Simulation values
   measures <- 50
 
-  repeats <- 64
+  repeats <- 32
 
-  pathLength <- 50000
-  latticeSpacing <- 0.01
+  pathLength <- 5000
+  latticeSpacing <- 0.1
   beta <- pathLength * latticeSpacing
 
-  thermalisationInterval <- 100
+  thermalisationInterval <- 10
   acceptableError <- 0.01 
 }
 
@@ -51,9 +51,9 @@
   bc <- "Periodic"
   # bc <- "Dirichlet"
 
-  sys <- "QHO"
+  # sys <- "QHO"
   # sys <- "AHO"
-  # sys <- "DWP"
+  sys <- "DWP"
 }
 
 # Read data
@@ -77,37 +77,65 @@
 min(thermSweeps)
 max(thermSweeps)
 
+# Acceptance rate
 mean(accRateThermData) * 100 # Should be ~ 50 - 80%
 
-# Getting thermalisation of the ground state energy into a nice form
+# Getting average thermalisation of the ground state energy
+
 {
-  # We know that the number of measurements during thermalisation per repeat is given by the number of sweeps divided by the thermalisation interval.
-  thermMeasures <- ceiling(thermSweeps / thermalisationInterval)  # Number of measurements during thermalisation per repeat
-  sum(thermMeasures) == length(E0ThermData) # Should return true
+  # Compute differences between consecutive points
+  diffE <- diff(E0ThermData)
 
-  # We can split the E0ThermData into a list of vectors, where each vector corresponds to the thermalisation measurements for one repeat. 
-  E0Groups <- rep(seq_along(thermMeasures), thermMeasures)
-  E0Split <- split(E0ThermData, E0Groups)
+  # Detect new repeat starts by large negative jumps in energy
+  threshold <- -0.3  # adjust for different systems
+  new_repeat_indices <- which(diffE < threshold) + 1  # +1 because diff shifts index
 
-  # Then by finding the minimum length of these vectors, we can trim them all to the same length.
-  # This means we only plot the thermalisation curve up to the point where all repeats have measurements.
-  minLen <- min(sapply(E0Split, length))
-  E0Trimmed <- lapply(E0Split, `[`, 1:minLen)
+  # Include the very first point as start of first repeat
+  repeat_starts <- c(1, new_repeat_indices)
 
-  # We then combine these trimmed vectors into a matrix, where each column corresponds to a repeat and each row corresponds to a measurement index.
+  # Assign repeat IDs to each data point
+  repeat_id <- rep(seq_along(repeat_starts), 
+                  times = c(diff(c(repeat_starts, length(E0ThermData)+1))))
+
+  # Build a data frame for plotting
+  df_detected <- data.frame(
+    sweep_index = seq_along(E0ThermData),
+    E0 = E0ThermData,
+    rep = factor(repeat_id)
+  )
+
+  # Compute per-repeat lengths
+  repeat_lengths <- diff(c(repeat_starts, length(E0ThermData) + 1))
+
+  # Find the minimum length to align all repeats
+  min_len <- min(repeat_lengths)
+
+  # Extract and trim each repeat
+  E0Trimmed <- lapply(seq_along(repeat_starts), function(i) {
+    start <- repeat_starts[i]
+    end <- start + min_len - 1
+    E0ThermData[start:end]
+  })
+
+  # Combine into a matrix: rows = sweeps, columns = repeats
   E0Mat <- do.call(cbind, E0Trimmed)
 
-  # Then we take the average across repeats for each measurement index to get the average thermalisation curve.
+  # Compute average thermalisation curve across repeats
   E0Avg <- rowMeans(E0Mat)
+
+  # Build a sweep index for plotting 
+  sweep_index <- seq_len(min_len)  # simple sweep numbers
 }
 
-ggplot(data.frame(index = 1:length(E0Avg), E0 = E0Avg), aes(x = index * thermalisationInterval, y = E0)) +
-    geom_point() +
-    labs(
-      x = "Measurement index",
-      y = "E0",
-      title = paste("Thermalisation of", bc, sys)
-    )
+# Plot average thermalisation
+ggplot(data.frame(sweep = sweep_index, E0 = E0Avg), aes(x = sweep, y = E0)) +
+  geom_line(color = "blue", size = 1) +
+  labs(
+    x = "MC Sweep (aligned)",
+    y = "Average E0",
+    title = "Average Thermalisation Across Repeats"
+  ) +
+  theme_minimal()
 
 ##### Decorrelated data - Data we can compare against theory #####
 
@@ -324,6 +352,10 @@ beta / mean(instantonsData)
 
 1 / omegaDWP
 
+# Condition for good instanton sampling
+
+S_inst # Must be >> 1
+
 # Some extra calculations 
 
 E0_inst
@@ -341,7 +373,7 @@ E1_ABC
 E1_ABC - E0_ABC
 
 E0_Grabovsky <- ((2 * a * sqrt(2 * lambda)) * 0.5) - (((a * sqrt(2 * lambda)) / pi) * exp(-2 # was -4
-                                                                                              * (a^3) * sqrt(2 * lambda)))
+                                                                                             * (a^3) * sqrt(2 * lambda)))
 E1_Grabovsky <- ((2 * a * sqrt(2 * lambda)) * 0.5) + (((a * sqrt(2 * lambda)) / pi) * exp(-2 * (a^3) * sqrt(2 * lambda)))
 
 2 * a * sqrt(2 * lambda) * 0.5 == (omegaDWP / 2)
