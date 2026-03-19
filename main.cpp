@@ -132,17 +132,11 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
 			// Ground-state energy during thermalisation
             E0Therm.insert(E0Therm.end(), data.E0Therm.begin(), data.E0Therm.end());
 
-			// Acceptance rates during thermalisation
-            accRateTherm.insert(accRateTherm.end(), data.accRateTherm.begin(), data.accRateTherm.end());
-
             // Ground-state energy
             E0.insert(E0.end(), data.E0Temp.begin(), data.E0Temp.end());
 
             // Positions for decorrelated measurements
             positionsTemp.insert(positionsTemp.end(), data.positionsTemp.begin(), data.positionsTemp.end());
-
-            // Acceptance rates
-            accRate.insert(accRate.end(), data.accRate.begin(), data.accRate.end());
 
             // Correlators — sum them up for later averaging
             if (GTwo.empty()) {
@@ -200,7 +194,6 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
 			histogram.insert(histogram.end(), data.histogramTemp.begin(), data.histogramTemp.end());
 			instantons.insert(instantons.end(), data.instantonsTemp.begin(), data.instantonsTemp.end());
 			antiInstantons.insert(antiInstantons.end(), data.antiInstantonsTemp.begin(), data.antiInstantonsTemp.end());
-            accRate.insert(accRate.end(), data.accRate.begin(), data.accRate.end());
             std::cout << "Finished collecting data for iteration " << repeat + 1 << std::endl;
         }
         winRunning = false;

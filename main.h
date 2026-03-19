@@ -22,7 +22,7 @@ const int numBins = 100;              // Number of bins for the histogram of pos
 
 ///// Acceptance rate settings /////
 
-const double epsilon = 0.25;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
+const double epsilon = 0.2;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
 const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
 
 ///// Decorrelation settings /////
@@ -42,20 +42,20 @@ int side = 1;    // For the split wells initialisation, determines which well th
 // thermalisationMaximum is the default value for thermalisation sweeps if takeThermMeasuresFlag is set to false
 const int thermalisationMaximum = 100000;       // Maximum number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
 const int thermalisationMinimum = 10000;       // Minimum number of iterations for thermalisation
-const int thermalisationInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
+const int thermalisationInterval = 1;    // Number of MC sweeps performed between measuring parameters during thermalisation
 const double acceptableError = 0.01;              // Ratio of the standard error to the mean for the ground state energy, used as a criterion for thermalisation
 std::vector<double> E0ThermTemp;            // Used for creating batches in one iteration of the thermalisation process
 
 ///// Repeats /////
 
-const int repeats = 32;                          // Number of repeats for finding standard error 
+const int repeats = 12;                          // Number of repeats for finding standard error 
 bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads, changed by user input
 
 ///// Lattice parameters /////
 
-const int N = 5000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
+const int N = 1600;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Lattice points (represents the "path" of the particle)
-const double a = 0.1;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
+const double a = 0.05;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
 const double aInverse = 1.0 / a;											
 
 ///// QHO specific parameters /////
@@ -69,7 +69,7 @@ const double quarticFactor = 1;     // Quartic factor for the anharmonic oscilla
 
 ///// DWP specific parameters /////
 
-const double wellCentres = 1.5;     // Well centre positions, increasing this moves the wells further apart
+const double wellCentres = 1.6;     // Well centre positions, increasing this moves the wells further apart
 const double lambda = 1;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
 
 const double omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.
@@ -273,30 +273,13 @@ static std::vector<double> twoPointCorrelator(const std::vector<double>& positio
 
     std::vector<double> correlationTemp(N, 0.0);
 
-    int halfTime = N / 2;   // Use symmetry: only compute up to N/2
-
     for (int t = 0; t < N; t++) {
 
         double position_t = positions[t];
 
-        // Since the modulo function is expensive, we wrap around by taking away N
-        // To avoid branching in the inner loop, we split it into two parts: one for the non-wrapping case and one for the wrapping case.
-
-        // Case 1: no wrap
-        int maxNoWrap = std::min(halfTime, N - t - 1);
-        for (int n = 0; n <= maxNoWrap; n++) {
-            correlationTemp[n] += positions[t + n] * position_t;
+        for (int n = 0; n < N; n++) {
+			correlationTemp[n] += positions[(t + n) % N] * position_t;
         }
-
-        // Case 2: wrap
-        for (int n = maxNoWrap + 1; n <= halfTime; n++) {
-            correlationTemp[n] += positions[t + n - N] * position_t;
-        }
-    }
-
-    // Mirror symmetric half
-    for (int n = 1; n < halfTime; n++) {
-        correlationTemp[N - n] = correlationTemp[n];
     }
 
     // Normalise
