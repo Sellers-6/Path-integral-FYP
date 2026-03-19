@@ -17,7 +17,7 @@
   quarticFactor <- 1
 
   # DWP variables
-  a <- 1.5
+  a <- 1.6
   lambda <- 1
 
   omegaDWP <- sqrt(8 * lambda * a^2)
@@ -36,13 +36,13 @@
   # Simulation values
   measures <- 50
 
-  repeats <- 32
+  repeats <- 12
 
-  pathLength <- 5000
-  latticeSpacing <- 0.1
+  pathLength <- 1600
+  latticeSpacing <- 0.05
   beta <- pathLength * latticeSpacing
 
-  thermalisationInterval <- 10
+  thermalisationInterval <- 1
   acceptableError <- 0.01 
 }
 
@@ -282,6 +282,8 @@ dfCorr <- data.frame(
   correlation = GTwoData
 )
 
+# GTwoData
+
 ggplot(dfCorr, aes(x = lag, y = correlation)) +
   geom_line(color = "#000000") +
   labs(
@@ -312,17 +314,27 @@ ggplot(dfCorr, aes(x = lag, y = correlation)) +
 {
   successfulCounts <- 0; E1 <- 0
 
-  for (i in 1:10) {
+  LHS <- 1; RHS <- 800
+
+  correlatorRatios <- numeric(RHS - LHS + 1) # To store the log ratios for each lag
+
+  for (i in LHS:RHS) {
     if (GTwoData[i] <= 0 || GTwoData[i + 1] <= 0) {
       message("Correlation function has non-positive values, cannot compute E1.")
     } 
     else {
       E1 <- E1 + mean(E0RepeatAvg) + log(GTwoData[i] / GTwoData[i + 1]) / latticeSpacing
+      correlatorRatios[i - LHS + 1] <- log(GTwoData[i] / GTwoData[i + 1]) / latticeSpacing
       successfulCounts <- successfulCounts + 1
     }
   }
   E1 <- E1 / successfulCounts; E1
 }
+
+ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag, y = ratio)) +
+  geom_line(color = "blue") +
+  labs(title = "Log Ratio of Two Point Correlation Function",
+       x = "Lag", y = "log(G_2(t) / G_2(t+1))")
 
 E1 - E0
 
@@ -347,14 +359,14 @@ E2 - E0
 
 head(instantonsData)
 head(antiInstantonsData)
-
+mean(instantonsData)
 beta / mean(instantonsData)
 
 1 / omegaDWP
 
 # Condition for good instanton sampling
 
-S_inst # Must be >> 1
+exp(-S_inst) # Must be << 1
 
 # Some extra calculations 
 
@@ -365,23 +377,6 @@ E1
 splittingEnergy
 E1 - E0
 
-E0_ABC <- (omegaDWP / 2) - (sqrt(2 * (omegaDWP^3) / (pi * lambda)) * exp(-(omegaDWP^3) / (12 * lambda)) * (omegaDWP / 2))
-E1_ABC <- (omegaDWP / 2) + (sqrt(2 * (omegaDWP^3) / (pi * lambda)) * exp(-(omegaDWP^3) / (12 * lambda)) * (omegaDWP / 2)) 
-E0_ABC
-E1_ABC
-
-E1_ABC - E0_ABC
-
-E0_Grabovsky <- ((2 * a * sqrt(2 * lambda)) * 0.5) - (((a * sqrt(2 * lambda)) / pi) * exp(-2 # was -4
-                                                                                             * (a^3) * sqrt(2 * lambda)))
-E1_Grabovsky <- ((2 * a * sqrt(2 * lambda)) * 0.5) + (((a * sqrt(2 * lambda)) / pi) * exp(-2 * (a^3) * sqrt(2 * lambda)))
-
-2 * a * sqrt(2 * lambda) * 0.5 == (omegaDWP / 2)
-
-E0_Grabovsky
-E1_Grabovsky
-
-E1_Grabovsky - E0_Grabovsky
-(omegaDWP / pi) * exp(-omegaDWP * (a^2))
-
 # nolint end
+
+3.63^2
