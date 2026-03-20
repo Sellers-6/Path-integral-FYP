@@ -17,7 +17,7 @@
   quarticFactor <- 1
 
   # DWP variables
-  a <- 1.6
+  a <- 1.5
   lambda <- 1
 
   omegaDWP <- sqrt(8 * lambda * a^2)
@@ -36,14 +36,15 @@
   # Simulation values
   measures <- 50
 
-  repeats <- 12
+  repeats <- 32
 
-  pathLength <- 1600
-  latticeSpacing <- 0.05
+  pathLength <- 10000
+  latticeSpacing <- 0.01
   beta <- pathLength * latticeSpacing
 
-  thermalisationInterval <- 1
-  acceptableError <- 0.01 
+  thermSweeps <- 200000
+  thermInterval <- 100
+  thermMeasures <- thermSweeps / thermInterval
 }
 
 # Boundary conditions and system type
@@ -59,8 +60,7 @@
 # Read data
 {
   dataFile <- "data.h5"
-    
-  thermSweeps <- as.numeric(unlist(h5read(dataFile, paste0("/thermSweeps/", bc, "/", sys))))
+  
   E0ThermData <- as.numeric(unlist(h5read(dataFile, paste0("/E0Therm/", bc, "/", sys))))
   accRateThermData <- as.numeric(unlist(h5read(dataFile, paste0("/accRateTherm/", bc, "/", sys))))
   E0Data <- as.numeric(unlist(h5read(dataFile, paste0("/E0/", bc, "/", sys))))
@@ -74,64 +74,33 @@
 
 ##### Thermalisation #####
 
-min(thermSweeps)
-max(thermSweeps)
-
 # Acceptance rate
 mean(accRateThermData) * 100 # Should be ~ 50 - 80%
 
 # Getting average thermalisation of the ground state energy
 
 {
-  # Compute differences between consecutive points
-  diffE <- diff(E0ThermData)
+  # Trim data to an integer number of repeats
+  E0TrimmedData <- E0ThermData[1:(repeats * thermMeasures)]
 
-  # Detect new repeat starts by large negative jumps in energy
-  threshold <- -0.3  # adjust for different systems
-  new_repeat_indices <- which(diffE < threshold) + 1  # +1 because diff shifts index
-
-  # Include the very first point as start of first repeat
-  repeat_starts <- c(1, new_repeat_indices)
-
-  # Assign repeat IDs to each data point
-  repeat_id <- rep(seq_along(repeat_starts), 
-                  times = c(diff(c(repeat_starts, length(E0ThermData)+1))))
-
-  # Build a data frame for plotting
-  df_detected <- data.frame(
-    sweep_index = seq_along(E0ThermData),
-    E0 = E0ThermData,
-    rep = factor(repeat_id)
-  )
-
-  # Compute per-repeat lengths
-  repeat_lengths <- diff(c(repeat_starts, length(E0ThermData) + 1))
-
-  # Find the minimum length to align all repeats
-  min_len <- min(repeat_lengths)
-
-  # Extract and trim each repeat
-  E0Trimmed <- lapply(seq_along(repeat_starts), function(i) {
-    start <- repeat_starts[i]
-    end <- start + min_len - 1
-    E0ThermData[start:end]
-  })
-
-  # Combine into a matrix: rows = sweeps, columns = repeats
-  E0Mat <- do.call(cbind, E0Trimmed)
+  # Split into repeats: each column is one repeat
+  E0Mat <- matrix(E0TrimmedData, nrow = thermMeasures, ncol = repeats, byrow = FALSE)
 
   # Compute average thermalisation curve across repeats
-  E0Avg <- rowMeans(E0Mat)
+  E0ThermAvgs <- rowMeans(E0Mat)
 
-  # Build a sweep index for plotting 
-  sweep_index <- seq_len(min_len)  # simple sweep numbers
+  # Build sweep index for plotting
+  sweepIndex <- seq_len(thermMeasures)
+
+  # Build data frame for plotting
+  E0ThermDF <- data.frame(sweep = sweepIndex, E0 = E0ThermAvgs)
 }
 
 # Plot average thermalisation
-ggplot(data.frame(sweep = sweep_index, E0 = E0Avg), aes(x = sweep, y = E0)) +
+ggplot(data.frame(sweep = sweepIndex, E0 = E0ThermAvgs), aes(x = sweep * thermInterval, y = E0)) +
   geom_line(color = "blue", size = 1) +
   labs(
-    x = "MC Sweep (aligned)",
+    x = "MC Sweep",
     y = "Average E0",
     title = "Average Thermalisation Across Repeats"
   ) +
@@ -140,6 +109,20 @@ ggplot(data.frame(sweep = sweep_index, E0 = E0Avg), aes(x = sweep, y = E0)) +
 ##### Decorrelated data - Data we can compare against theory #####
 
 ### Ground state energy
+
+{
+  decorrelationCheckLength <- 200
+  measureIndex <- seq_len(decorrelationCheckLength)
+}
+
+ggplot(data.frame(sweep = measureIndex, E0 = E0Data[1:decorrelationCheckLength]), aes(x = sweep, y = E0)) +
+  geom_line(color = "blue", size = 1) +
+  labs(
+    x = "MC Sweep",
+    y = "Average E0",
+    title = "Average Thermalisation Across Repeats"
+  ) +
+  theme_minimal()
 
 # Histogram and shapiro test
 {
@@ -189,13 +172,9 @@ qqPlot # Show QQ plot
 {
   E0 <- mean(E0RepeatAvg) # Should be close to the expected ground state energy (0.5 for QHO, ~0.68 for DWP)
 
-  E0Range <- max(E0RepeatAvg) - min(E0RepeatAvg)
-  monteCarloStandardError <- mean(E0RepeatAvg) * acceptableError
-
-  monteCarloStandardError * 2 # This is the 95% confidence interval for the mean, which should be smaller than the range of our data if we have a good estimate of the ground state energy.
-  E0Range > monteCarloStandardError * 2 # This should return true if we have a good estimate of the ground state energy.
+  E0StandardError <- sd(E0RepeatAvg) / sqrt(length(E0RepeatAvg))  # Standard error
 }
-E0; mean(E0RepeatAvg) + monteCarloStandardError; mean(E0RepeatAvg) - monteCarloStandardError 
+E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError 
 
 ### Wave function
 
@@ -281,7 +260,7 @@ dfCorr <- data.frame(
   lag = 0:(length(GTwoData) - 1),
   correlation = GTwoData
 )
-
+sqrt(min(GTwoData))
 # GTwoData
 
 ggplot(dfCorr, aes(x = lag, y = correlation)) +
@@ -314,13 +293,13 @@ ggplot(dfCorr, aes(x = lag, y = correlation)) +
 {
   successfulCounts <- 0; E1 <- 0
 
-  LHS <- 1; RHS <- 800
+  LHS <- 1; RHS <- pathLength / 2
 
   correlatorRatios <- numeric(RHS - LHS + 1) # To store the log ratios for each lag
 
   for (i in LHS:RHS) {
     if (GTwoData[i] <= 0 || GTwoData[i + 1] <= 0) {
-      message("Correlation function has non-positive values, cannot compute E1.")
+      message("Correlation function has non-positive values, cannot compute logarithmic ratio.")
     } 
     else {
       E1 <- E1 + mean(E0RepeatAvg) + log(GTwoData[i] / GTwoData[i + 1]) / latticeSpacing
@@ -331,10 +310,33 @@ ggplot(dfCorr, aes(x = lag, y = correlation)) +
   E1 <- E1 / successfulCounts; E1
 }
 
-ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag, y = ratio)) +
+ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag * latticeSpacing, y = ratio)) +
   geom_line(color = "blue") +
   labs(title = "Log Ratio of Two Point Correlation Function",
        x = "Lag", y = "log(G_2(t) / G_2(t+1))")
+
+find_flat_region <- function(x, y, window = 10) {
+  n <- length(x)
+  slopes <- rep(NA, n - window + 1)
+  
+  for (i in 1:(n - window + 1)) {
+    fit <- lm(y[i:(i+window-1)] ~ x[i:(i+window-1)])
+    slopes[i] <- abs(coef(fit)[2])
+  }
+  
+  best_idx <- which.min(slopes)
+  
+  list(
+    start = best_idx,
+    end = best_idx + window - 1,
+    slope = slopes[best_idx]
+  )
+}
+
+find_flat_region(seq(1:length(correlatorRatios)), correlatorRatios)
+
+min(correlatorRatios)
+which.min(correlatorRatios)
 
 E1 - E0
 
@@ -378,5 +380,3 @@ splittingEnergy
 E1 - E0
 
 # nolint end
-
-3.63^2

@@ -42,5 +42,6 @@ obj/
 *.FileListAbsolute.txt
 *.applocal.log
 
-# Ignore old csv files
+# Ignore data files
 *.csv
+*.h5

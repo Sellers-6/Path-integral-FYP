@@ -12,7 +12,6 @@ extern std::vector<double> accRate;
 extern std::vector<double> histogram;
 extern std::vector<double> GTwo;
 extern std::vector<double> GFour;
-extern std::vector<double> thermSweeps;
 extern std::vector<double> instantons;
 extern std::vector<double> antiInstantons;
 
