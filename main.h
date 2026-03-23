@@ -28,8 +28,19 @@ const int accRateInterval = 1000;               // Number of sweeps between reco
 
 ///// Decorrelation settings /////
 
-const int decorrelation = 10000;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures. Decorrelation takes far longer in the DWP system!
+int decorrSweeps;                               // Set by user input based on the system being simulated
+const int decorrSweepsQHO = 250;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
+const int decorrSweepsAHO = 250;			        
+const int decorrSweepsDWP = 10000;			        // Decorrelation takes longer in the DWP system
 const int measures = 50;                       // Number of measures taken after thermalisation
+
+///// Thermalisation settings /////
+
+int thermSweeps;                                // Set by user input based on the system being simulated
+const int thermSweepsQHO = 1500;       // Number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
+const int thermSweepsAHO = 1500;       
+const int thermSweepsDWP = 200000;     // Thermalisation also takes longer in the DWP system
+const int thermInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
 
 ///// Initialisation settings /////
 
@@ -37,11 +48,6 @@ const bool hot_start = false;
 const bool split_wells = false;
 const double max_distance = 4;
 int side = 1;    // For the split wells initialisation, determines which well the particle starts in (1 for right, -1 for left)
-
-///// Thermalisation settings /////
-
-const int thermSweeps = 200000;       // Number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
-const int thermInterval = 100;    // Number of MC sweeps performed between measuring parameters during thermalisation
 
 ///// Repeats /////
 

@@ -176,6 +176,7 @@ qqPlot # Show QQ plot
 }
 E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError 
 
+
 ### Wave function
 
 # Histogram data frame creation
@@ -369,6 +370,10 @@ beta / mean(instantonsData)
 # Condition for good instanton sampling
 
 exp(-S_inst) # Must be << 1
+
+S_inst_approximation <- log(pathLength / mean(instantonsData)) # This is an approximation for the instanton action based on the number of tunnelling events observed in the simulation (N is the total number of paths sampled, tunnelingEvents is the number of paths that exhibited tunnelling)
+S_inst_approximation * omegaDWP / pi * sqrt(S_inst_approximation)
+S_inst
 
 # Some extra calculations 
 

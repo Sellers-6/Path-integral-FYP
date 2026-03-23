@@ -14,6 +14,7 @@ extern std::vector<double> GTwo;
 extern std::vector<double> GFour;
 extern std::vector<double> instantons;
 extern std::vector<double> antiInstantons;
+extern std::vector<double> headerInfo;   // Stores the parameters of the run, written to the h5 file as an attribute for reference
 
 
 
