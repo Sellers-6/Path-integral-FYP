@@ -210,6 +210,9 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
         winRunning = false;
         windowThread.join();
     }
+
+    constructHeaderInfo(system);
+    headerInfo.push_back(epsilon);
     
 	// Write data to files
     //csvWriteData(boundary, system);       // Legacy csv writing functions, replaced by h5 files
@@ -226,6 +229,7 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
 	histogram.clear();
 	instantons.clear();
 	antiInstantons.clear();
+	headerInfo.clear();
 }
 
 void metropolis(bool winOn, std::string boundary, std::string system, int repeat, std::mt19937& rng, RepeatData& data,

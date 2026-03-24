@@ -31,7 +31,7 @@ const int accRateInterval = 1000;               // Number of sweeps between reco
 int decorrSweeps;                               // Set by user input based on the system being simulated
 const int decorrSweepsQHO = 250;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
 const int decorrSweepsAHO = 250;			        
-const int decorrSweepsDWP = 10000;			        // Decorrelation takes longer in the DWP system
+const int decorrSweepsDWP = 2000;			        // Decorrelation takes longer in the DWP system
 const int measures = 50;                       // Number of measures taken after thermalisation
 
 ///// Thermalisation settings /////
@@ -39,7 +39,7 @@ const int measures = 50;                       // Number of measures taken after
 int thermSweeps;                                // Set by user input based on the system being simulated
 const int thermSweepsQHO = 1500;       // Number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
 const int thermSweepsAHO = 1500;       
-const int thermSweepsDWP = 200000;     // Thermalisation also takes longer in the DWP system
+const int thermSweepsDWP = 20000;     // Thermalisation also takes longer in the DWP system
 const int thermInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
 
 ///// Initialisation settings /////
@@ -56,9 +56,9 @@ bool multThreads = false;                      // Flag to determine whether to r
 
 ///// Lattice parameters /////
 
-const int N = 10000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
+const int N = 5000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Lattice points (represents the "path" of the particle)
-const double a = 0.01;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
+const double a = 0.1;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
 const double aInverse = 1.0 / a;											
 
 ///// QHO specific parameters /////
@@ -90,6 +90,7 @@ std::vector<double> GFour;    //
 std::vector<double> histogram;
 std::vector<double> instantons;
 std::vector<double> antiInstantons;
+std::vector<double> headerInfo;
 
 ///// Boundary conditions ///// 
 
@@ -309,4 +310,28 @@ static int whichWell(double x, double threshold)
     if (x > threshold)  return 1;   // right well
 	if (x < -threshold) return -1;  // left well
     return 0;                       // barrier
+}
+
+void constructHeaderInfo(const std::string& system) {
+    headerInfo.clear();
+	headerInfo.push_back(N);    // Lattice points
+	headerInfo.push_back(a);    // Lattice spacing
+	headerInfo.push_back(epsilon);  // Maximum random displacement for Metropolis algorithm
+	headerInfo.push_back(accRateInterval);  // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
+	headerInfo.push_back(decorrSweeps); // Number of sweeps between taking measures to reduce correlation
+	headerInfo.push_back(thermSweeps);  // Number of sweeps for thermalisation, after which we assume the system is thermalised and take measures
+	headerInfo.push_back(thermInterval);  // Number of sweeps between measuring parameters during thermalisation
+	headerInfo.push_back(measures); // Number of measures taken after thermalisation
+    headerInfo.push_back(repeats);   // Number of repeats for finding standard error
+    headerInfo.push_back(numBins);  // Number of bins for the histogram of positions
+    if (system == "QHO") {
+        headerInfo.push_back(omega);  // Frequency for the quantum harmonic oscillator potential
+    }
+    else if (system == "AHO") {
+        headerInfo.push_back(quarticFactor);  // Quartic factor for the anharmonic oscillator potential
+	}
+    else if (system == "DWP") {
+        headerInfo.push_back(wellCentres);  // Well centre positions for the double well potential
+        headerInfo.push_back(lambda);       // Coupling constant for the double well potential
+	}
 }

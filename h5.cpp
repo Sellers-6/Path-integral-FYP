@@ -20,7 +20,8 @@ static std::vector<Observable> getObservables()
         {"GTwo", &GTwo},
         {"GFour", &GFour},
         {"instantons", &instantons},
-        {"antiInstantons", &antiInstantons}
+        {"antiInstantons", &antiInstantons},
+        {"headerInfo", &headerInfo}
     };
 }
 
