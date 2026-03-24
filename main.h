@@ -182,10 +182,7 @@ static void setBoundary(std::string boundary) {
 }
 
 inline double(*findPotential(const std::string& system))(double) {
-    if (system == "FP") {       // Free particle
-        return FP::potential;
-    }
-    else if (system == "QHO") { // Quantum harmonic oscillator
+    if (system == "QHO") { // Quantum harmonic oscillator
         return QHO::potential;
     }
     else if (system == "AHO") { // Anharmonic oscillator
@@ -197,10 +194,7 @@ inline double(*findPotential(const std::string& system))(double) {
 }
 
 inline double(*findPotentialDifferential(const std::string& system))(double) {
-    if (system == "FP") {       // Free particle
-        return FP::potentialDifferential;
-    }
-    else if (system == "QHO") { // Quantum harmonic oscillator
+    if (system == "QHO") { // Quantum harmonic oscillator
         return QHO::potentialDifferential;
     }
     else if (system == "AHO") { // Anharmonic oscillator

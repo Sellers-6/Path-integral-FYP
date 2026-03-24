@@ -5,20 +5,6 @@
 double (*potential)(double);
 double (*potentialDifferential)(double);
 
-/////// Free Particle ///////
-
-
-class FP
-{
-public:
-    inline static double potential(double x) {
-        return 0;
-    }
-    inline static double potentialDifferential(double x) {
-        return 0;
-    }
-};
-
 
 /////// Quantum Harmonic Oscillator ///////
 
