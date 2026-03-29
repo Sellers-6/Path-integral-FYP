@@ -1,5 +1,7 @@
 \- Comment on changes made to the code, added paralelisation
 
+\- Learn how errors accumulate from discretisations/approximation limits from DWP analysis
+
 \- Research the "the fate of the false vacuum" from the Sydney Coleman book (printed one)
 
 \- Finish the David grabovsky Instanton lecture notes

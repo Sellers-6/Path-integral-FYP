@@ -56,7 +56,7 @@ bool multThreads = false;                      // Flag to determine whether to r
 
 ///// Lattice parameters /////
 
-const int N = 5000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
+const int N = 800;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Lattice points (represents the "path" of the particle)
 const double a = 0.1;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
 const double aInverse = 1.0 / a;											
@@ -319,7 +319,8 @@ void constructHeaderInfo(const std::string& system) {
     headerInfo.push_back(repeats);   // Number of repeats for finding standard error
     headerInfo.push_back(numBins);  // Number of bins for the histogram of positions
     if (system == "QHO") {
-        headerInfo.push_back(omega);  // Frequency for the quantum harmonic oscillator potential
+        headerInfo.push_back(m);        // Mass for the quantum harmonic oscillator potential
+        headerInfo.push_back(omega);    // Frequency for the quantum harmonic oscillator potential
     }
     else if (system == "AHO") {
         headerInfo.push_back(quarticFactor);  // Quartic factor for the anharmonic oscillator potential

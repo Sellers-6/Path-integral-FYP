@@ -7,46 +7,6 @@
   library(rhdf5)
 }
 
-# Variables from the simulation, needed for interpreting the data
-{
-  # QHO variables
-  m <- 1
-  omega <- 1
-
-  # AHO variables
-  quarticFactor <- 1
-
-  # DWP variables
-  a <- 1.5
-  lambda <- 1
-
-  omegaDWP <- sqrt(8 * lambda * a^2)
-
-  S_inst <- (2/3) * omegaDWP * (a^2) 
-
-  alpha <- 1 / 12 # A complicated calculation performed in Zinn-Justin 1993 (or ABCs of Instantons) gives this value
-
-  K <- omegaDWP * sqrt(S_inst / (2 * pi)) * (alpha ^ -0.5) # A prefactor for the splitting energy
-
-  splittingEnergy <- K * exp(-S_inst)
-
-  E0_inst <- 0.5 * omegaDWP - (splittingEnergy / 2)
-  E1_inst <- 0.5 * omegaDWP + (splittingEnergy / 2)
-
-  # Simulation values
-  measures <- 50
-
-  repeats <- 32
-
-  pathLength <- 10000
-  latticeSpacing <- 0.01
-  beta <- pathLength * latticeSpacing
-
-  thermSweeps <- 200000
-  thermInterval <- 100
-  thermMeasures <- thermSweeps / thermInterval
-}
-
 # Boundary conditions and system type
 {
   bc <- "Periodic"
@@ -70,63 +30,105 @@
   antiInstantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/antiInstantons/", bc, "/", sys))))
   GTwoData <- as.numeric(unlist(h5read(dataFile, paste0("/GTwo/", bc, "/", sys))))
   GFourData <- as.numeric(unlist(h5read(dataFile, paste0("/GFour/", bc, "/", sys))))
+  headerData <- as.numeric(unlist(h5read(dataFile, paste0("/headerInfo/", bc, "/", sys))))
 }
 
-##### Thermalisation #####
+# Variables from the simulation
+{
+  pathLength <- headerData[1]
+  latticeSpacing <- headerData[2]
+  epsilon <- headerData[3]
+  accRateInterval <- headerData[4]
+  decorrSweeps <- headerData[5]
+  thermSweeps <- headerData[6]
+  thermInterval <- headerData[7]
+  measures <- headerData[8]
+  repeats <- headerData[9]
+  numBins <- headerData[10]
+  
+  beta <- pathLength * latticeSpacing
+  thermMeasures <- thermSweeps / thermInterval
+
+  if (sys == "QHO") {
+    mQHO <- headerData[11]
+    omegaQHO <- headerData [12]
+  } else if (sys == "AHO") {
+    lambdaAHO <- headerData[11] # Should use more parameters for the AHO
+  } else if (sys == "DWP") {
+    wellCentres <- headerData[11]
+    lambdaDWP <- headerData [12]
+    omegaDWP <- sqrt(8 * lambdaDWP * wellCentres^2)
+    S_inst <- (2/3) * omegaDWP * (wellCentres^2) 
+    alpha <- 1 / 12 # A complicated calculation performed in Zinn-Justin 1993 (or ABCs of Instantons) gives this value
+    K <- omegaDWP * sqrt(S_inst / (2 * pi)) * (alpha ^ -0.5) # A prefactor for the splitting energy
+    splittingEnergy <- K * exp(-S_inst)
+    E0_inst <- 0.5 * omegaDWP - (splittingEnergy / 2)
+    E1_inst <- 0.5 * omegaDWP + (splittingEnergy / 2)
+  }
+}
+
+### Thermalisation ###
 
 # Acceptance rate
-mean(accRateThermData) * 100 # Should be ~ 50 - 80%
+mean(accRateThermData) * 100 # Should be between 50 and 80%
 
 # Getting average thermalisation of the ground state energy
-
 {
-  # Trim data to an integer number of repeats
-  E0TrimmedData <- E0ThermData[1:(repeats * thermMeasures)]
+  # Split into repeats, each column is one repeat
+  E0Mat <- matrix(E0ThermData, nrow = thermMeasures, ncol = repeats, byrow = FALSE)
 
-  # Split into repeats: each column is one repeat
-  E0Mat <- matrix(E0TrimmedData, nrow = thermMeasures, ncol = repeats, byrow = FALSE)
-
-  # Compute average thermalisation curve across repeats
+  # Compute average thermalisation across repeats
   E0ThermAvgs <- rowMeans(E0Mat)
 
-  # Build sweep index for plotting
+  # Sweep index for plotting
   sweepIndex <- seq_len(thermMeasures)
 
-  # Build data frame for plotting
+  # Data frame for plotting
   E0ThermDF <- data.frame(sweep = sweepIndex, E0 = E0ThermAvgs)
 }
 
-# Plot average thermalisation
+# Plot thermalisation
 ggplot(data.frame(sweep = sweepIndex, E0 = E0ThermAvgs), aes(x = sweep * thermInterval, y = E0)) +
   geom_line(color = "blue", size = 1) +
   labs(
-    x = "MC Sweep",
-    y = "Average E0",
-    title = "Average Thermalisation Across Repeats"
+    x = "Measure index",
+    y = "Average Ground state energy",
+    title = "Average Thermalisation Across Measures"
   ) +
   theme_minimal()
+# Expect the ground state energy to taper off for a positive test of whether thermalisation has been accomplished
 
-##### Decorrelated data - Data we can compare against theory #####
+### Ground state energy ###
 
-### Ground state energy
-
+# Decorrelation
 {
-  decorrelationCheckLength <- 200
-  measureIndex <- seq_len(decorrelationCheckLength)
+  if (measures > 50) {
+    decorrCheck <- 50
+  } else {
+    decorrCheck <- measures
+  }
+  measureIndex <- seq_len(decorrCheck)
+  ggplot(data.frame(sweep = measureIndex, E0 = E0Data[1:decorrCheck]), aes(x = sweep, y = E0)) + 
+    geom_line(color = "blue", size = 1) +
+    labs(
+      x = "MC Sweep",
+      y = "Average E0",
+      title = "Average Thermalisation Across Repeats"
+    ) +
+    theme_minimal()
+  # For decorrelated data, look for low correlation between measure index and average ground state energy
 }
 
-ggplot(data.frame(sweep = measureIndex, E0 = E0Data[1:decorrelationCheckLength]), aes(x = sweep, y = E0)) +
-  geom_line(color = "blue", size = 1) +
-  labs(
-    x = "MC Sweep",
-    y = "Average E0",
-    title = "Average Thermalisation Across Repeats"
-  ) +
-  theme_minimal()
+# Further proof of decorrelation
+{
+  acfResult <- acf(E0Data[1:measures], lag.max = measures - 1, plot = TRUE)
+  acfVals <- acfResult$acf
+  mean(abs(as.vector(acfVals)[2:length(acfVals)])) # For decorrelated data, we want low acf values (roughly < 0.1)
+}
 
 # Histogram and shapiro test
 {
-  bins <- 7 
+  bins <- 7   # Can be increased for high number of repeats
 
   E0Split <- split(E0Data, rep(1:repeats, each = measures)) # Split E0 into repeats
   E0RepeatAvg <- sapply(E0Split, mean)  # Take mean per repeat
@@ -166,7 +168,7 @@ grid.arrange(histPlot, qqPlot, ncol = 2)  # Combined plots side by side
 
 histPlot # Show histogram and normal curve
 
-qqPlot # Show QQ plot
+qqPlot # Show QQ plot (We want p > 0.05)
 
 # Calculating E0 and its error
 {
@@ -177,17 +179,14 @@ qqPlot # Show QQ plot
 E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError 
 
 
-### Wave function
+### Wave function ###
 
 # Histogram data frame creation
 {
   numBins <- 100 # Same as in C++
 
   # Histogram range
-  if (sys == "FP") {
-    xMax <- 5.0
-    xMin <- -5.0
-  } else if (sys == "QHO" || sys == "AHO") {
+  if (sys == "QHO" || sys == "AHO") {
     sigmaQHO <- 1 / sqrt(2 * m * omega)
     xMax <- ceiling(4 * sigmaQHO) + 1  # 4 standard deviations of analytic ground state plus padding
     xMin <- -xMax
