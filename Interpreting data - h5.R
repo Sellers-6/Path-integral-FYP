@@ -183,16 +183,18 @@ E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError
 
 # Histogram data frame creation
 {
-  numBins <- 100 # Same as in C++
-
   # Histogram range
-  if (sys == "QHO" || sys == "AHO") {
-    sigmaQHO <- 1 / sqrt(2 * m * omega)
+  if (sys == "QHO") {
+    sigmaQHO <- 1 / sqrt(2 * mQHO * omegaQHO)
     xMax <- ceiling(4 * sigmaQHO) + 1  # 4 standard deviations of analytic ground state plus padding
+    xMin <- -xMax
+  } else if (sys == "AHO") {
+    sigmaAHO <- 1 / sqrt(omegaAHO)
+    xMax <- ceiling(4 * sigmaAHO) + 1
     xMin <- -xMax
   } else if (sys == "DWP") {
     sigmaDWP <- 1 / sqrt(omegaDWP)
-    xMax <- ceiling(a + 4 * sigmaDWP) + 1
+    xMax <- ceiling(wellCentres + 4 * sigmaDWP) + 1
     xMin <- -xMax
   }
 
@@ -236,7 +238,7 @@ psi <- sqrt(prob_density)
   } else if (sys == "AHO") {
     psiAnalytical <- exp(-(x_values^2) / 2)  # Placeholder
   } else if (sys == "DWP") {
-    psiAnalytical <- exp(-(omegaDWP / 2) * (x_values + a)^2) + exp(-(omegaDWP / 2) * (x_values - a)^2) # Approximate by 2 Gaussians
+    psiAnalytical <- exp(-(omegaDWP / 2) * (x_values + wellCentres)^2) + exp(-(omegaDWP / 2) * (x_values - wellCentres)^2) # Approximate by 2 Gaussians
   }
 
   # Normalise the analytical wavefunction 
@@ -362,7 +364,9 @@ E2 - E0
 head(instantonsData)
 head(antiInstantonsData)
 mean(instantonsData)
-beta / mean(instantonsData)
+mean(instantonsData) / beta
+
+exp(- S_inst)
 
 1 / omegaDWP
 
