@@ -12,9 +12,9 @@
   bc <- "Periodic"
   # bc <- "Dirichlet"
 
-  # sys <- "QHO"
+  sys <- "QHO"
   # sys <- "AHO"
-  sys <- "DWP"
+  # sys <- "DWP"
 }
 
 # Read data
@@ -102,11 +102,12 @@ ggplot(data.frame(sweep = sweepIndex, E0 = E0ThermAvgs), aes(x = sweep * thermIn
 
 # Decorrelation
 {
-  if (measures > 50) {
-    decorrCheck <- 50
-  } else {
-    decorrCheck <- measures
-  }
+  # if (measures > 50) {
+  #   decorrCheck <- 50
+  # } else {
+  #   decorrCheck <- measures
+  # }
+  decorrCheck <- measures
   measureIndex <- seq_len(decorrCheck)
   ggplot(data.frame(sweep = measureIndex, E0 = E0Data[1:decorrCheck]), aes(x = sweep, y = E0)) + 
     geom_line(color = "blue", size = 1) +
@@ -177,8 +178,7 @@ qqPlot # Show QQ plot (We want p > 0.05)
   E0StandardError <- sd(E0RepeatAvg) / sqrt(length(E0RepeatAvg))  # Standard error
 }
 E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError 
-
-
+((E0 - 0.5) / 0.5) * 100
 ### Wave function ###
 
 # Histogram data frame creation

@@ -21,21 +21,6 @@ public:
 };
 
 
-/////// Anharmonic Oscillator ///////
-
-
-class AHO
-{
-public:
-    inline static double potential(double x) {
-        return 0.5 * m * omega * omega * x * x + quarticFactor * (x * x * x * x);
-    }
-    inline static double potentialDifferential(double x) {
-        return (m * omega * omega * x) + (4.0 * quarticFactor * x * x * x);
-    }
-};
-
-
 /////// Double-Well Potential ///////
 
 

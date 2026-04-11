@@ -29,10 +29,6 @@ extern const double a;
 extern const int m;
 extern const int omega;
 
-///// AHO specific parameters /////
-
-extern const double quarticFactor;
-
 ///// DWP specific parameters /////
 
 extern const double lambda;

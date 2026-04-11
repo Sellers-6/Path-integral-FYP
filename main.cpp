@@ -14,22 +14,14 @@ int main() {    // Accepts user choice of boundary conditions, system type, and 
         else if (choice == "2") { metropolisRepeat(true, "Periodic", "QHO"); }
         else if (choice == "3") { multThreads = true;  metropolisRepeat(false, "Dirichlet", "QHO"); }
         else if (choice == "4") { metropolisRepeat(true, "Dirichlet", "QHO"); }
-        else if (choice == "5") { multThreads = true;  metropolisRepeat(false, "Periodic", "AHO"); }
-        else if (choice == "6") { metropolisRepeat(true, "Periodic", "AHO"); }
-        else if (choice == "7") { multThreads = true;  metropolisRepeat(false, "Dirichlet", "AHO"); }
-        else if (choice == "8") { metropolisRepeat(true, "Dirichlet", "AHO"); }
-        else if (choice == "9") { multThreads = true;  metropolisRepeat(false, "Periodic", "DWP"); }
-        else if (choice == "10") { metropolisRepeat(true, "Periodic", "DWP"); }
-        else if (choice == "11") { multThreads = true;  metropolisRepeat(false, "Dirichlet", "DWP"); }
-        else if (choice == "12") { metropolisRepeat(true, "Dirichlet", "DWP"); }
-        else if (choice == "13") { // Run multiple systems/BCs in one go, used to produce data for the report
+        else if (choice == "5") { multThreads = true;  metropolisRepeat(false, "Periodic", "DWP"); }
+        else if (choice == "6") { metropolisRepeat(true, "Periodic", "DWP"); }
+        else if (choice == "7") { multThreads = true;  metropolisRepeat(false, "Dirichlet", "DWP"); }
+        else if (choice == "8") { metropolisRepeat(true, "Dirichlet", "DWP"); }
+        else if (choice == "9") { // Run both systems with periodic BCs in one go, used to produce data for the report
             multThreads = true; 
             metropolisRepeat(false, "Periodic", "QHO");
-            metropolisRepeat(false, "Dirichlet", "QHO");
-            metropolisRepeat(false, "Periodic", "AHO");
-            metropolisRepeat(false, "Dirichlet", "AHO");
             metropolisRepeat(false, "Periodic", "DWP");
-            metropolisRepeat(false, "Dirichlet", "DWP");
             std::cout << "Exiting..." << std::endl; break;
 		}
         else if (choice == "0") { std::cout << "Exiting..." << std::endl; break; }
@@ -46,15 +38,11 @@ void chooseSystem() {  // Function to display user choices
         "2: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (with path visualisation)\n"
         "3: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (with multi-threading)\n"
         "4: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (with path visualisation)\n"
-        "5: Perform Metropolis algorithm with periodic boundary conditions on the AHO system (with multi-threading)\n"
-        "6: Perform Metropolis algorithm with periodic boundary conditions on the AHO system (with path visualisation)\n"
-        "7: Perform Metropolis algorithm with Dirichlet boundary conditions on the AHO system (with multi-threading)\n"
-        "8: Perform Metropolis algorithm with Dirichlet boundary conditions on the AHO system (with path visualisation)\n"
-        "9: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (with multi-threading)\n"
-        "10: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (with path visualisation)\n"
-        "11: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with multi-threading)\n"
-        "12: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with path visualisation)\n"
-        "13: Run all systems with periodic boundary conditions in one go without path visualisation (useful for producing data)\n"
+        "5: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (with multi-threading)\n"
+        "6: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (with path visualisation)\n"
+        "7: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with multi-threading)\n"
+        "8: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with path visualisation)\n"
+        "9: Run both systems with periodic boundary conditions and multi-threading, run this to reproduce results from the report\n"
         "0: Exit\n"
         "Warning: Program has a tendancy to crash when ran for long times with visualisation";
 
@@ -76,13 +64,6 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
         xMin = -xMax;
         decorrSweeps = decorrSweepsQHO;
 		thermSweeps = thermSweepsQHO;
-    }
-    else if (system == "AHO") { // Anharmonic oscillator has the same quadratic term as the harmonic oscillator, so we can use that to set the histogram range
-        double sigmaQHO = 1.0 / (std::sqrt(2.0 * m * omega));
-        xMax = ceil(sigmaQHO * 4.0) + 1;  // Set the maximum x value for the histogram to be 4 standard deviations of the analytic ground state wavefunction (plus padding)
-        xMin = -xMax;
-        decorrSweeps = decorrSweepsAHO;
-		thermSweeps = thermSweepsAHO;
     }
     else if (system == "DWP") {
 		double sigmaDWP = 1.0 / (std::sqrt(omegaDWP)); // Use the frequency of the wells to calculate the standard deviation of the wavefunction in each well

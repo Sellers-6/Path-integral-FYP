@@ -10,6 +10,7 @@
 #include "random.h"
 #include "potentials.h"
 //#include "csv.h" // Legacy csv writing functions, replaced by h5 files
+
 #include "h5.h"
 #include "window.h"
 
@@ -29,16 +30,14 @@ const int accRateInterval = 1000;               // Number of sweeps between reco
 ///// Decorrelation settings /////
 
 int decorrSweeps;                               // Set by user input based on the system being simulated
-const int decorrSweepsQHO = 250;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
-const int decorrSweepsAHO = 250;			        
+const int decorrSweepsQHO = 50000;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
 const int decorrSweepsDWP = 2000;			        // Decorrelation takes longer in the DWP system
 const int measures = 50;                       // Number of measures taken after thermalisation
 
 ///// Thermalisation settings /////
 
 int thermSweeps;                                // Set by user input based on the system being simulated
-const int thermSweepsQHO = 1500;       // Number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
-const int thermSweepsAHO = 1500;       
+const int thermSweepsQHO = 250000;       // Number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
 const int thermSweepsDWP = 20000;     // Thermalisation also takes longer in the DWP system
 const int thermInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
 
@@ -56,19 +55,15 @@ bool multThreads = false;                      // Flag to determine whether to r
 
 ///// Lattice parameters /////
 
-const int N = 800;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
+const int N = 50000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Lattice points (represents the "path" of the particle)
-const double a = 0.1;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
+const double a = 0.01;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
 const double aInverse = 1.0 / a;											
 
 ///// QHO specific parameters /////
 
 const int m = 1;                    // Unit mass
 const int omega = 1;                // Unit frequency
-
-///// AHO specific parameters /////
-
-const double quarticFactor = 1;     // Quartic factor for the anharmonic oscillator
 
 ///// DWP specific parameters /////
 
@@ -137,6 +132,7 @@ struct RepeatData {
         GTwoTemp = std::vector<double>(N, 0.0);
         GFourTemp = std::vector<double>(N, 0.0);
         vacuumPiece = 0.0;
+        xMean = 0.0;
         accRateTemp.clear();
         histogramTemp = std::vector<double>(numBins, 0.0);
         instantonsTemp.clear();
@@ -185,9 +181,6 @@ inline double(*findPotential(const std::string& system))(double) {
     if (system == "QHO") { // Quantum harmonic oscillator
         return QHO::potential;
     }
-    else if (system == "AHO") { // Anharmonic oscillator
-        return AHO::potential;
-    }
     else if (system == "DWP") { // Double-well potential
         return DWP::potential;
     }
@@ -196,9 +189,6 @@ inline double(*findPotential(const std::string& system))(double) {
 inline double(*findPotentialDifferential(const std::string& system))(double) {
     if (system == "QHO") { // Quantum harmonic oscillator
         return QHO::potentialDifferential;
-    }
-    else if (system == "AHO") { // Anharmonic oscillator
-        return AHO::potentialDifferential;
     }
     else if (system == "DWP") { // Double-well potential
         return DWP::potentialDifferential;
@@ -322,9 +312,6 @@ void constructHeaderInfo(const std::string& system) {
         headerInfo.push_back(m);        // Mass for the quantum harmonic oscillator potential
         headerInfo.push_back(omega);    // Frequency for the quantum harmonic oscillator potential
     }
-    else if (system == "AHO") {
-        headerInfo.push_back(quarticFactor);  // Quartic factor for the anharmonic oscillator potential
-	}
     else if (system == "DWP") {
         headerInfo.push_back(wellCentres);  // Well centre positions for the double well potential
         headerInfo.push_back(lambda);       // Coupling constant for the double well potential
