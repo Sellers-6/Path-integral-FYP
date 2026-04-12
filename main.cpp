@@ -226,15 +226,27 @@ void metropolis(bool winOn, std::string boundary, std::string system, int repeat
 	// Take measures of the path every "decorrelation" sweeps
     if (takeMeasuresFlag == true) {
         if (bootstrap) {
-            while (data.sweep < thermSweeps + decorrSweeps) {
+            int averageInterval = decorrSweeps / measures; // Average over this many decorrelation steps to get one measure
+            std::vector<std::vector<double>> bootstrappedPositions(measures, std::vector<double>(N, 0.0));
+            std::vector<double> bootstrappedPositionsSum(N, 0.0);
+            for (int i = 0; i < decorrSweeps; i++) {
                 metropolisUpdate(winOn, potential, rng, data);
-				takeMeasures(data.positions, potentialDifferential, potential, data); // Take measures every sweep for bootstrapping
+				int averageIndex = i / (averageInterval); // Integer division to find the index of the average measure to which this decorrelation step contributes
+                for (int j = 0; j < N; j++) {
+					bootstrappedPositionsSum[j] += data.positions[j]; // Add the current path to the sum for the current average measure
+                }
+                if (data.sweep % averageInterval == 0) { // Take a measure every "averageInterval" decorrelation steps
+                    bootstrappedPositions[averageIndex] = bootstrappedPositionsSum; // Store the path at each decorrelation step for bootstrapping
+					std::fill(bootstrappedPositionsSum.begin(), bootstrappedPositionsSum.end(), 0.0); // Reset the sum for the next average measure
+                }
                 data.sweep++;
 			}
             for (int i = 0; i < measures; i++) {
-                // Take average measures over decorrelation sweeps / measures.
-                // Choose "measures" measures randomly from the averaged measures.
-				// Make sure all measures (g2, g4, E0, histogram) are taken from the same sweep.
+                for (int j = 0; j < N; j++) {
+                    bootstrappedPositions[i][j] /= averageInterval;
+                }
+				int randomIndex = uniformInt(0, measures - 1, rng); // Randomly select one of the bootstrapped paths to take measures of, this reduces correlation between successive measures
+				takeMeasures(bootstrappedPositions[randomIndex], potentialDifferential, potential, data); // Take measures randomly
 			}
         }
         else {
