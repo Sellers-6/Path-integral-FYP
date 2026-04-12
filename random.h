@@ -38,3 +38,9 @@ inline double uniformRange(double a, double b, MyRng& rng) {
 inline double uniformMinus1to1(MyRng& rng) {
     return 2.0 * uniform01(rng) - 1.0;
 }
+
+// Integer [a,b]
+inline int uniformInt(int a, int b, MyRng& rng) {
+    std::uniform_int_distribution<int> dist(a, b);
+    return dist(rng);
+}
