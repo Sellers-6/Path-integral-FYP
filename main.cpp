@@ -225,32 +225,46 @@ void metropolis(bool winOn, std::string boundary, std::string system, int repeat
 
 	// Take measures of the path every "decorrelation" sweeps
     if (takeMeasuresFlag == true) {
-        while (data.measureCount < measures) {
-            metropolisUpdate(winOn, potential, rng, data);
-            data.sweep++;
-            if (remainder(data.sweep, decorrSweeps) == 0) {
-                takeMeasures(data.positions, potentialDifferential, potential, data);
+        if (bootstrap) {
+            while (data.sweep < thermSweeps + decorrSweeps) {
+                metropolisUpdate(winOn, potential, rng, data);
+				takeMeasures(data.positions, potentialDifferential, potential, data); // Take measures every sweep for bootstrapping
+                data.sweep++;
+			}
+            for (int i = 0; i < measures; i++) {
+                // Take average measures over decorrelation sweeps / measures.
+                // Choose "measures" measures randomly from the averaged measures.
+				// Make sure all measures (g2, g4, E0, histogram) are taken from the same sweep.
+			}
+        }
+        else {
+            while (data.measureCount < measures) {
+                metropolisUpdate(winOn, potential, rng, data);
+                data.sweep++;
+                if (remainder(data.sweep, decorrSweeps) == 0) {
+                    takeMeasures(data.positions, potentialDifferential, potential, data);
+                }
             }
-        }
-        for (int n = 0; n < N; ++n) {
-            data.GTwoTemp[n] /= measures;
-        }
-        data.vacuumPiece /= measures;  // Average of the vacuum piece
-        for (int n = 0; n < N; ++n) {
-            data.GFourTemp[n] = data.GFourTemp[n] / measures - data.vacuumPiece * data.vacuumPiece;
-        }
-        GTwo.insert(GTwo.end(), data.GTwoTemp.begin(), data.GTwoTemp.end());
-        GFour.insert(GFour.end(), data.GFourTemp.begin(), data.GFourTemp.end());
+            for (int n = 0; n < N; ++n) {
+                data.GTwoTemp[n] /= measures;
+            }
+            data.vacuumPiece /= measures;  // Average of the vacuum piece
+            for (int n = 0; n < N; ++n) {
+                data.GFourTemp[n] = data.GFourTemp[n] / measures - data.vacuumPiece * data.vacuumPiece;
+            }
+            GTwo.insert(GTwo.end(), data.GTwoTemp.begin(), data.GTwoTemp.end());
+            GFour.insert(GFour.end(), data.GFourTemp.begin(), data.GFourTemp.end());
 
-		for (int i = 0; i < numBins; i++) { // Average the histogram over measures and normalise it
-            data.histogramTemp[i] /= (measures * N);
+            for (int i = 0; i < numBins; i++) { // Average the histogram over measures and normalise it
+                data.histogramTemp[i] /= (measures * N);
+            }
+            histogram.insert(histogram.end(), data.histogramTemp.begin(), data.histogramTemp.end());
+
+            instantons.insert(instantons.end(), data.instantonsTemp.begin(), data.instantonsTemp.end());
+            antiInstantons.insert(antiInstantons.end(), data.antiInstantonsTemp.begin(), data.antiInstantonsTemp.end());
+
+            //std::cout << " Completed measurements for iteration " << repeat + 1 << "." << std::endl;
         }
-		histogram.insert(histogram.end(), data.histogramTemp.begin(), data.histogramTemp.end());
-
-		instantons.insert(instantons.end(), data.instantonsTemp.begin(), data.instantonsTemp.end());
-		antiInstantons.insert(antiInstantons.end(), data.antiInstantonsTemp.begin(), data.antiInstantonsTemp.end());
-
-        //std::cout << " Completed measurements for iteration " << repeat + 1 << "." << std::endl;
     }
 }
 

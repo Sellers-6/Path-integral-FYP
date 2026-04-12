@@ -21,6 +21,7 @@ const bool takeMeasuresFlag = true;    // Flag to determine whether to take meas
 const bool takeThermMeasuresFlag = true;
 const int numBins = 100;              // Number of bins for the histogram of positions
 const bool modifyGTwo = false;
+const bool bootstrap = true;
 
 ///// Acceptance rate settings /////
 
