@@ -225,58 +225,32 @@ void metropolis(bool winOn, std::string boundary, std::string system, int repeat
 
 	// Take measures of the path every "decorrelation" sweeps
     if (takeMeasuresFlag == true) {
-        if (bootstrap) {
-            int averageInterval = decorrSweeps / measures; // Average over this many decorrelation steps to get one measure
-            std::vector<std::vector<double>> bootstrappedPositions(measures, std::vector<double>(N, 0.0));
-            std::vector<double> bootstrappedPositionsSum(N, 0.0);
-            for (int i = 0; i < decorrSweeps; i++) {
-                metropolisUpdate(winOn, potential, rng, data);
-				int averageIndex = i / (averageInterval); // Integer division to find the index of the average measure to which this decorrelation step contributes
-                for (int j = 0; j < N; j++) {
-					bootstrappedPositionsSum[j] += data.positions[j]; // Add the current path to the sum for the current average measure
-                }
-                if (data.sweep % averageInterval == 0) { // Take a measure every "averageInterval" decorrelation steps
-                    bootstrappedPositions[averageIndex] = bootstrappedPositionsSum; // Store the path at each decorrelation step for bootstrapping
-					std::fill(bootstrappedPositionsSum.begin(), bootstrappedPositionsSum.end(), 0.0); // Reset the sum for the next average measure
-                }
-                data.sweep++;
-			}
-            for (int i = 0; i < measures; i++) {
-                for (int j = 0; j < N; j++) {
-                    bootstrappedPositions[i][j] /= averageInterval;
-                }
-				int randomIndex = uniformInt(0, measures - 1, rng); // Randomly select one of the bootstrapped paths to take measures of, this reduces correlation between successive measures
-				takeMeasures(bootstrappedPositions[randomIndex], potentialDifferential, potential, data); // Take measures randomly
-			}
+        while (data.measureCount < measures) {
+            metropolisUpdate(winOn, potential, rng, data);
+            data.sweep++;
+            if (remainder(data.sweep, decorrSweeps) == 0) {
+                takeMeasures(data.positions, potentialDifferential, potential, data);
+            }
         }
-        else {
-            while (data.measureCount < measures) {
-                metropolisUpdate(winOn, potential, rng, data);
-                data.sweep++;
-                if (remainder(data.sweep, decorrSweeps) == 0) {
-                    takeMeasures(data.positions, potentialDifferential, potential, data);
-                }
-            }
-            for (int n = 0; n < N; ++n) {
-                data.GTwoTemp[n] /= measures;
-            }
-            data.vacuumPiece /= measures;  // Average of the vacuum piece
-            for (int n = 0; n < N; ++n) {
-                data.GFourTemp[n] = data.GFourTemp[n] / measures - data.vacuumPiece * data.vacuumPiece;
-            }
-            GTwo.insert(GTwo.end(), data.GTwoTemp.begin(), data.GTwoTemp.end());
-            GFour.insert(GFour.end(), data.GFourTemp.begin(), data.GFourTemp.end());
-
-            for (int i = 0; i < numBins; i++) { // Average the histogram over measures and normalise it
-                data.histogramTemp[i] /= (measures * N);
-            }
-            histogram.insert(histogram.end(), data.histogramTemp.begin(), data.histogramTemp.end());
-
-            instantons.insert(instantons.end(), data.instantonsTemp.begin(), data.instantonsTemp.end());
-            antiInstantons.insert(antiInstantons.end(), data.antiInstantonsTemp.begin(), data.antiInstantonsTemp.end());
-
-            //std::cout << " Completed measurements for iteration " << repeat + 1 << "." << std::endl;
+        for (int n = 0; n < N; ++n) {
+            data.GTwoTemp[n] /= measures;
         }
+        data.vacuumPiece /= measures;  // Average of the vacuum piece
+        for (int n = 0; n < N; ++n) {
+            data.GFourTemp[n] = data.GFourTemp[n] / measures - data.vacuumPiece * data.vacuumPiece;
+        }
+        GTwo.insert(GTwo.end(), data.GTwoTemp.begin(), data.GTwoTemp.end());
+        GFour.insert(GFour.end(), data.GFourTemp.begin(), data.GFourTemp.end());
+
+        for (int i = 0; i < numBins; i++) { // Average the histogram over measures and normalise it
+            data.histogramTemp[i] /= (measures * N);
+        }
+        histogram.insert(histogram.end(), data.histogramTemp.begin(), data.histogramTemp.end());
+
+        instantons.insert(instantons.end(), data.instantonsTemp.begin(), data.instantonsTemp.end());
+        antiInstantons.insert(antiInstantons.end(), data.antiInstantonsTemp.begin(), data.antiInstantonsTemp.end());
+
+        //std::cout << " Completed measurements for iteration " << repeat + 1 << "." << std::endl;
     }
 }
 

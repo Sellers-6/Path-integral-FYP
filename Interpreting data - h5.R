@@ -1,6 +1,6 @@
 # nolint start
 
-{
+{{
   library(ggplot2)
   library(gridExtra)  # side by side plots
   library(dplyr)
@@ -12,9 +12,8 @@
   bc <- "Periodic"
   # bc <- "Dirichlet"
 
-  sys <- "QHO"
-  # sys <- "AHO"
-  # sys <- "DWP"
+  # sys <- "QHO"
+  sys <- "DWP"
 }
 
 # Read data
@@ -52,8 +51,6 @@
   if (sys == "QHO") {
     mQHO <- headerData[11]
     omegaQHO <- headerData [12]
-  } else if (sys == "AHO") {
-    lambdaAHO <- headerData[11] # Should use more parameters for the AHO
   } else if (sys == "DWP") {
     wellCentres <- headerData[11]
     lambdaDWP <- headerData [12]
@@ -177,8 +174,11 @@ qqPlot # Show QQ plot (We want p > 0.05)
 
   E0StandardError <- sd(E0RepeatAvg) / sqrt(length(E0RepeatAvg))  # Standard error
 }
+
 E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError 
-((E0 - 0.5) / 0.5) * 100
+
+abs(((E0 - 0.5) / 0.5) * 100) # Percent error (QHO)
+
 ### Wave function ###
 
 # Histogram data frame creation
@@ -257,12 +257,16 @@ ggplot(wave_df, aes(x = x)) +
   theme_minimal(base_size = 14)
 
 ### Two point correlation function
+}
 
-dfCorr <- data.frame(
-  lag = 0:(length(GTwoData) - 1),
-  correlation = GTwoData
-)
-sqrt(min(GTwoData))
+{
+  noiseless_region_2 <- 10 # Adjust to the length of the noiseless region
+  dfCorr <- data.frame(
+    lag = 0:(noiseless_region_2 - 1),
+    correlation = GTwoData[0:noiseless_region_2]
+  )
+}
+
 # GTwoData
 
 ggplot(dfCorr, aes(x = lag, y = correlation)) +
@@ -272,13 +276,15 @@ ggplot(dfCorr, aes(x = lag, y = correlation)) +
     x = "Time (index of the path)",
     y = "G_2(t, 0)"
   )
-
+{
 # Four point correlation function
-
-dfCorr <- data.frame(
-  lag = 0:(length(GFourData) - 1),
-  correlation = GFourData
-)
+{
+  noiseless_region_4 <- 4 # Adjust to the length of the noiseless region
+  dfCorr <- data.frame(
+    lag = 0:(noiseless_region_4 - 1),
+    correlation = GFourData[0:noiseless_region_4]
+  )
+}
 
 ggplot(dfCorr, aes(x = lag, y = correlation)) +
   geom_line(color = "#000000") +
@@ -295,7 +301,7 @@ ggplot(dfCorr, aes(x = lag, y = correlation)) +
 {
   successfulCounts <- 0; E1 <- 0
 
-  LHS <- 1; RHS <- pathLength / 2
+  LHS <- 1; RHS <- noiseless_region_2
 
   correlatorRatios <- numeric(RHS - LHS + 1) # To store the log ratios for each lag
 
@@ -304,7 +310,7 @@ ggplot(dfCorr, aes(x = lag, y = correlation)) +
       message("Correlation function has non-positive values, cannot compute logarithmic ratio.")
     } 
     else {
-      E1 <- E1 + mean(E0RepeatAvg) + log(GTwoData[i] / GTwoData[i + 1]) / latticeSpacing
+      E1 <- E1 + E0 + log(GTwoData[i] / GTwoData[i + 1]) / latticeSpacing
       correlatorRatios[i - LHS + 1] <- log(GTwoData[i] / GTwoData[i + 1]) / latticeSpacing
       successfulCounts <- successfulCounts + 1
     }
@@ -317,28 +323,6 @@ ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios),
   labs(title = "Log Ratio of Two Point Correlation Function",
        x = "Lag", y = "log(G_2(t) / G_2(t+1))")
 
-find_flat_region <- function(x, y, window = 10) {
-  n <- length(x)
-  slopes <- rep(NA, n - window + 1)
-  
-  for (i in 1:(n - window + 1)) {
-    fit <- lm(y[i:(i+window-1)] ~ x[i:(i+window-1)])
-    slopes[i] <- abs(coef(fit)[2])
-  }
-  
-  best_idx <- which.min(slopes)
-  
-  list(
-    start = best_idx,
-    end = best_idx + window - 1,
-    slope = slopes[best_idx]
-  )
-}
-
-find_flat_region(seq(1:length(correlatorRatios)), correlatorRatios)
-
-min(correlatorRatios)
-which.min(correlatorRatios)
 
 E1 - E0
 
@@ -361,30 +345,43 @@ E2 - E0
 
 # Tunnelling data
 
-head(instantonsData)
-head(antiInstantonsData)
 mean(instantonsData)
-mean(instantonsData) / beta
-
-exp(- S_inst)
-
-1 / omegaDWP
 
 # Condition for good instanton sampling
 
 exp(-S_inst) # Must be << 1
 
-S_inst_approximation <- log(pathLength / mean(instantonsData)) # This is an approximation for the instanton action based on the number of tunnelling events observed in the simulation (N is the total number of paths sampled, tunnelingEvents is the number of paths that exhibited tunnelling)
+# This is an approximation for the instanton action based on the number of tunnelling events  
+S_inst_approximation <- log(pathLength / mean(instantonsData)) 
 S_inst_approximation * omegaDWP / pi * sqrt(S_inst_approximation)
 S_inst
 
 # Some extra calculations 
 
+beta * splittingEnergy # Should be greater than 10
+
 E0_inst
 E1_inst
+}
 E0
 E1
 splittingEnergy
 E1 - E0
 
+# QHO optimal options: 
+# pathLength: 10000
+# latticeSpacing: 0.05
+# epsilon: 0.3
+# accRateInterval: 1000
+# decorrSweeps: 1500
+# thermSweeps: 5000
+# thermInterval: 10
+# measures: 500
+# repeats: 32
+# numBins: 100
+# beta: 500
+# thermMeasures: 300
+# mQHO: 1
+# omegaQHO: 1
+latticeSpacing
 # nolint end
