@@ -260,7 +260,7 @@ ggplot(wave_df, aes(x = x)) +
 }
 
 {
-  noiseless_region_2 <- 10 # Adjust to the length of the noiseless region
+  noiseless_region_2 <- 50 # Adjust to the length of the noiseless region
   dfCorr <- data.frame(
     lag = 0:(noiseless_region_2 - 1),
     correlation = GTwoData[0:noiseless_region_2]
@@ -384,4 +384,31 @@ E1 - E0
 # mQHO: 1
 # omegaQHO: 1
 latticeSpacing
+
+##### Discretisation error analysis
+
+EA_data <- read.csv("Discretisation error DWP.csv")
+EA_data <- EA_data %>%
+  filter(!is.na(E0), !is.na(E1))
+EA_data <- EA_data %>%
+  mutate(
+    E0_error = abs(E0 - E0Real),
+    splitting_error = abs((E1 - E0) - (E1Real - E0Real))
+  )
+
+ggplot(EA_data, aes(x = 1/(a * a), y = E0_error, color = factor(Separation))) +
+  geom_point() +
+  geom_line() +
+  labs(title = "E0 Error vs 1/(a * a)")
+
+ggplot(EA_data, aes(x = 1/(a * a), y = E0, color = factor(Separation))) +
+  geom_point() +
+  geom_line() +
+  labs(title = "E0 vs 1/(a * a)")
+
+ggplot(EA_data, aes(x = 1/a, y = splitting_error, color = factor(Separation))) +
+  geom_point() +
+  geom_line() +
+  labs(title = "Splitting energy Error vs 1/a")
+
 # nolint end

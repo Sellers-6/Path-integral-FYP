@@ -9,7 +9,7 @@
 // TLDR: Use the following line of code to produce a random (ish) number between a and b:
 // float randomNumber = rfRange(a, b);
 
-const int seed = 6;
+const int seed = 500;
 
 typedef std::mt19937 MyRng; // certain generator for random numbers
 
