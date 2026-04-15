@@ -43,5 +43,4 @@ obj/
 *.applocal.log
 
 # Ignore data files
-*.csv
 *.h5

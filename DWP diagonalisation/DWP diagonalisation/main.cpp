@@ -265,7 +265,7 @@ int main()
         }
     }
 
-    m = 0.5;
+    m = 1;
     w = w0;
 
     double a = 1.0;

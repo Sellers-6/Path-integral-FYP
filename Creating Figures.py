@@ -1,80 +1,109 @@
-import pandas as pd
-import matplotlib.pyplot as plt
+from scipy.linalg import eigh
 import numpy as np
 
-L = 100
+def solve_double_well(lam=1.0, gamma=1.4, N=4000, L=6.0):
+    x = np.linspace(-L, L, N)
+    dx = x[1] - x[0]
 
-t = np.linspace(0, L, L)
+    # Kinetic matrix: tridiagonal finite difference for -1/2 * d2/dx2
+    diag     =  np.ones(N)   / dx**2          # main diagonal
+    off_diag = -np.ones(N-1) / (2.0 * dx**2)  # one off from main
+    T = np.diag(diag) + np.diag(off_diag, 1) + np.diag(off_diag, -1)
 
-def correlator(t):
-    return 0.5 * np.exp(-t) + 0.5 * np.exp(t - (L - 1)) 
+    # Potential matrix: diagonal
+    V = np.diag(lam * (x**2 - gamma**2)**2)
 
-G = np.zeros(L)
+    # Full Hamiltonian
+    H = T + V
 
-for i in range (0, L):
-    G[i] = correlator(i)
+    # Diagonalise — only ask for the lowest 4 eigenvalues/vectors
+    # eigh is for symmetric/Hermitian matrices (H is real symmetric here)
+    vals, vecs = eigh(H, subset_by_index=[0, 3])
 
-plt.plot(t, G)
-plt.show()
+    return x, vals, vecs
 
-# L = 500
-# lambd = 1
-# a = 0.5
+x, vals, vecs = solve_double_well()
+print(f"E0 = {vals[0]:.8f}")
+print(f"E1 = {vals[1]:.8f}")
+print(f"ΔE = {vals[1]-vals[0]:.8f}")
 
-# x = np.linspace(-1, 1, 2 * L + 1)
 
-# def DPW(x):
-#     return (lambd / 12) * (x**2 - a**2)**2
+# import pandas as pd
+# import matplotlib.pyplot as plt
 
-# V = DPW(x)
+# L = 100
 
-# fig, ax = plt.subplots()
+# t = np.linspace(0, L, L)
 
-# ax.plot(x, V, color="royalblue")
+# def correlator(t):
+#     return 0.5 * np.exp(-t) + 0.5 * np.exp(t - (L - 1)) 
 
-# # Hide top/right spines, move left/bottom to origin
-# for side in ["top", "right"]:
-#     ax.spines[side].set_visible(False)
+# G = np.zeros(L)
 
-# ax.spines["bottom"].set_position("zero")
-# ax.spines["left"].set_position("zero")
-# ax.spines["bottom"].set_color("black")
-# ax.spines["left"].set_color("black")
-# ax.spines["bottom"].set_linewidth(1.2)
-# ax.spines["left"].set_linewidth(1.2)
+# for i in range (0, L):
+#     G[i] = correlator(i)
 
-# # Remove only the y-tick at 0 to avoid label overlap
-# yticks = ax.get_yticks()
-# ax.set_yticks([y for y in yticks if y != 0])
-
-# # Label ±a
-# ax.text(-a, -0.02, r"$-a$", ha="center", va="top", fontsize=12, color="black")
-# ax.text(a, -0.02, r"$a$", ha="center", va="top", fontsize=12, color="black")
-
-# # Manually reposition the x-axis label so it's not under the y-axis
-# ax.set_xlabel("x", labelpad=10)
-# ax.set_ylabel("V(x)", labelpad=10)
-# ax.xaxis.set_label_coords(0.98, 0.23)   # move 'x' label slightly to the right
-
-# # Title
-# ax.set_title("Double-Well Potential", pad=10)
-
+# plt.plot(t, G)
 # plt.show()
 
+# # L = 500
+# # lambd = 1
+# # a = 0.5
+
+# # x = np.linspace(-1, 1, 2 * L + 1)
+
+# # def DPW(x):
+# #     return (lambd / 12) * (x**2 - a**2)**2
+
+# # V = DPW(x)
+
+# # fig, ax = plt.subplots()
+
+# # ax.plot(x, V, color="royalblue")
+
+# # # Hide top/right spines, move left/bottom to origin
+# # for side in ["top", "right"]:
+# #     ax.spines[side].set_visible(False)
+
+# # ax.spines["bottom"].set_position("zero")
+# # ax.spines["left"].set_position("zero")
+# # ax.spines["bottom"].set_color("black")
+# # ax.spines["left"].set_color("black")
+# # ax.spines["bottom"].set_linewidth(1.2)
+# # ax.spines["left"].set_linewidth(1.2)
+
+# # # Remove only the y-tick at 0 to avoid label overlap
+# # yticks = ax.get_yticks()
+# # ax.set_yticks([y for y in yticks if y != 0])
+
+# # # Label ±a
+# # ax.text(-a, -0.02, r"$-a$", ha="center", va="top", fontsize=12, color="black")
+# # ax.text(a, -0.02, r"$a$", ha="center", va="top", fontsize=12, color="black")
+
+# # # Manually reposition the x-axis label so it's not under the y-axis
+# # ax.set_xlabel("x", labelpad=10)
+# # ax.set_ylabel("V(x)", labelpad=10)
+# # ax.xaxis.set_label_coords(0.98, 0.23)   # move 'x' label slightly to the right
+
+# # # Title
+# # ax.set_title("Double-Well Potential", pad=10)
+
+# # plt.show()
 
 
-# filename = "C:\\Users\gs010\Desktop\Bath\Year 4\PH40065 Final Year Project\Code\Path Integral\csv7.csv"  
 
-# # Read the CSV
-# data = pd.read_csv(filename)
+# # filename = "C:\\Users\gs010\Desktop\Bath\Year 4\PH40065 Final Year Project\Code\Path Integral\csv7.csv"  
 
-# # Check that the data loaded correctly
-# print(data.head())
+# # # Read the CSV
+# # data = pd.read_csv(filename)
 
-# # Plot x(t)
-# plt.plot(data["Time"], data["Position"], color="royalblue", linewidth=1.5)
-# plt.xlabel("t")
-# plt.ylabel("x(t)")
-# plt.title("One path x(t) discretized by 50 time slices")
-# plt.grid(True)
-# plt.show()
+# # # Check that the data loaded correctly
+# # print(data.head())
+
+# # # Plot x(t)
+# # plt.plot(data["Time"], data["Position"], color="royalblue", linewidth=1.5)
+# # plt.xlabel("t")
+# # plt.ylabel("x(t)")
+# # plt.title("One path x(t) discretized by 50 time slices")
+# # plt.grid(True)
+# # plt.show()
