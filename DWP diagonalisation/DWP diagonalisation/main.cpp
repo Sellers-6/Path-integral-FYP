@@ -1,3 +1,7 @@
+///*****************************************************************************///
+/// Code adapted from (find source) ///
+///*****************************************************************************///
+
 #include <iostream>
 #include <fstream>
 #include <cmath>
@@ -194,7 +198,7 @@ void hermite(int n, double x, double*& p)
 }
 
 //-------------------------------------------------------------------------------------
-void psi_oscillator(int n, double x, double*& psi, double m, double w)
+static void psi_oscillator(int n, double x, double*& psi, double m, double w)
 {
     //c----------------------------------------------------------------------------c
         //c     harmonic oscillator wave functions psi(i=0,..,n)=psi_i(x)              c
@@ -208,224 +212,267 @@ void psi_oscillator(int n, double x, double*& psi, double m, double w)
         norm = pow((m * w / pif), 0.25) * pow(2.0, (i / 2.0));
         psi[i] = norm * h[i] * exp(-m * w / 2.0 * pow(x, 2));
     }
+    delete[] h;
     return;
 }
 
 //-------------------------------------------------------------------------------------
 int main()
 {
+    ofstream energy_file("energies.csv");
+    ofstream wf_file("wavefunctions.csv");
 
-    int nmax = 1000;
-    double** h = new double* [nmax], * e = new double[nmax];
-    double* psi = new double[nmax];
-    double** v = new double* [nmax];
-    double* rho = new double[nmax], * rho2 = new double[nmax], * rho3 = new double[nmax];
-    double xcor, x2cor, x3cor;
-    double m, w;
+    // headers
+    energy_file << "f,E0,E1,dE\n";
+    wf_file << "f,x,psi0,psi0_sq\n";
 
-    for (int i = 0; i < nmax; i++)
-    {
-        h[i] = new double[nmax];
-        v[i] = new double[nmax];
+    for (int fIncrement = 0; fIncrement <= 7; fIncrement++) {
+        double f = 1.0 + 0.1 * fIncrement;
+        int nmax = 1000;
+        double** h = new double* [nmax], * e = new double[nmax];
+        double* psi = new double[nmax];
+        double** v = new double* [nmax];
+        double* rho = new double[nmax], * rho2 = new double[nmax], * rho3 = new double[nmax];
+        double xcor, x2cor, x3cor;
+        double m, w;
 
-    }
+        for (int i = 0; i < nmax; i++)
+        {
+            h[i] = new double[nmax];
+            v[i] = new double[nmax];
 
-    double f;
-    int ndim;
-    double w0;
+        }
 
-    cout << "parameter (f=1.4): ", cin >> f, cout << endl;
-    cout << "dimension of matrix (ndim=40): ", cin >> ndim, cout << endl;
-    cout << "unperturbed oscillator frequency w0 (4*f=5.6): ", cin >> w0, cout << endl;
+        //double f;
+        int ndim;
+        double w0;
 
-    double taumax = 2.5;
-    double ntau = 100;
-    double dtau = taumax / double(ntau);
+        /*cout << "parameter (f=1.4): ", cin >> f, cout << endl;
+        cout << "dimension of matrix (ndim=40): ", cin >> ndim, cout << endl;
+        cout << "unperturbed oscillator frequency w0 (4*f=5.6): ", cin >> w0, cout << endl;*/
 
-    double xmax = 2.0 * f;
-    double nx = 100;
-    double dx = 2.0 * xmax / double(nx);
+        ndim = 200;
+		w0 = 4.0 * f;
 
-    cout << "exact diagonalization" << endl;
-    cout << "---------------------------" << endl;
-    cout << " f = " << f << " ndim = " << ndim << endl;
-    cout << " taumax = " << taumax << " ntau = " << ntau << endl;
-    cout << " xmax = " << xmax << " nx = " << nx << endl;
-    cout << "---------------------------" << endl;
+        double taumax = 2.5;
+        double ntau = 100;
+        double dtau = taumax / double(ntau);
 
-    //c----------------------------------------------------------------------------c
+        double omega = sqrt(8.0 * f * f);
+        double sigma = 1.0 / sqrt(omega);
+        
+
+        double xmax = ceil(f + 4 * sigma) + 1.0;
+        double nx = 100;
+        double dx = 2.0 * xmax / double(nx);
+
+        /*cout << "exact diagonalization" << endl;
+        cout << "---------------------------" << endl;
+        cout << " f = " << f << " ndim = " << ndim << endl;
+        cout << " taumax = " << taumax << " ntau = " << ntau << endl;
+        cout << " xmax = " << xmax << " nx = " << nx << endl;
+        cout << "---------------------------" << endl;*/
+
+        //c----------------------------------------------------------------------------c
         //c     initialize parameters, clear arrays                                    c
         //c----------------------------------------------------------------------------c
 
-    for (int i = 0; i < nmax; i++)
-    {
-        for (int j = 0; j < nmax; j++)
+        for (int i = 0; i < nmax; i++)
         {
-            h[i][j] = 0.0;
+            for (int j = 0; j < nmax; j++)
+            {
+                h[i][j] = 0.0;
+            }
         }
-    }
 
-    m = 1;
-    w = w0;
+        m = 1;
+        w = w0;
 
-    double a = 1.0;
-    double b = -2.0 * pow(f, 2) - m * pow(w, 2) / 2.0;
-    double c = pow(f, 4);
-    double cw = 1.0 / sqrt(m * w);
+        double a = 1.0;
+        double b = -2.0 * pow(f, 2) - m * pow(w, 2) / 2.0;
+        double c = pow(f, 4);
+        double cw = 1.0 / sqrt(m * w);
 
-    double c22 = pow(cw, 2) / 2.0;
-    double c44 = pow(cw, 4) / 4.0;
-
-    //c----------------------------------------------------------------------------c
-    //c     build up h                                                             c
-    //c----------------------------------------------------------------------------c
-
-    double x4, x2, e0, hh;
-    for (int n = 0; n < ndim; n++)
-    {
-        //c----------------------------------------------------------------------------c
-        //c     <n|h|n>                                                                c
-        //c----------------------------------------------------------------------------c
-        x4 = c44 * 3.0 * (pow((n + 1), 2) + pow(n, 2));
-        x2 = c22 * (2 * n + 1);
-        e0 = w * (n + 0.5) + c;
-
-        h[n][n] = a * x4 + b * x2 + e0;
+        double c22 = pow(cw, 2) / 2.0;
+        double c44 = pow(cw, 4) / 4.0;
 
         //c----------------------------------------------------------------------------c
-        //c     <n|h|n+2>                                                              c
+        //c     build up h                                                             c
         //c----------------------------------------------------------------------------c
 
-        x4 = c44 * sqrt((n + 1.0) * (n + 2)) * (4 * n + 6);
-        x2 = c22 * sqrt((n + 1.0) * (n + 2));
-
-        hh = a * x4 + b * x2;
-        h[n][n + 2] = hh;
-        h[n + 2][n] = hh;
-
-        //c----------------------------------------------------------------------------c
-        //c     <n|h|n+4>                                                              c
-        //c----------------------------------------------------------------------------c
-
-        x4 = c44 * sqrt((n + 1.0) * (n + 2) * (n + 3) * (n + 4));
-
-        hh = a * x4;
-        h[n][n + 4] = hh;
-        h[n + 4][n] = hh;
-    }
-
-    //c----------------------------------------------------------------------------c
-    //c     diagonalize                                                            c
-    //c----------------------------------------------------------------------------c
-
-    jacobi(h, e, v, ndim);
-    eigensort(e, v, ndim);
-
-    //c----------------------------------------------------------------------------c
-    //c     energy eigenvalues and matrix elements <0|x|n>                         c
-    //c----------------------------------------------------------------------------c
-
-    double dn, cn, en;
-    int kmax1, kmax2, kmax3, kmin1, kmin2, kmin3;
-
-    cout << "---------------------------" << endl;
-    cout << fixed << "n" << "\t" << "e[n]" << "\t\t" << "rho[n]" << "\t\t" << "rho2[n]" << "\t\t" << "rho3[n]" << endl;
-    for (int n = 0; n < ndim; n++)
-    {
-        cn = 0.0;
-        dn = 0.0;
-        en = 0.0;
-        for (int k = 0; k < ndim; k++)
+        double x4, x2, e0, hh;
+        for (int n = 0; n < ndim; n++)
         {
-            kmax3 = max(k - 3, 0);
-            kmax2 = max(k - 2, 0);
-            kmax1 = max(k - 1, 0);
-            kmin1 = min(k + 1, ndim - 1);
-            kmin2 = min(k + 2, ndim - 1);
-            kmin3 = min(k + 3, ndim - 1);
-            cn += (sqrt(double(k)) * v[kmax1][0] + sqrt(double(k + 1)) * v[kmin1][0]) * v[k][n];
-            dn += (sqrt(double(k * (k - 1))) * v[kmax2][0] + (2 * k + 1) * v[k][0] + sqrt(double((k + 1) * (k + 2))) * v[kmin2][0]) * v[k][n];
-            en += (sqrt(double(k * (k - 1) * (k - 2))) * v[kmax3][0] + 3 * k * sqrt(double(k)) * v[kmax1][0] + 3 * (k + 1) * sqrt(double(k + 1)) * v[kmin1][0]
-                + sqrt(double((k + 1) * (k + 2) * (k + 3))) * v[kmin3][0]) * v[k][n];
+            //c----------------------------------------------------------------------------c
+            //c     <n|h|n>                                                                c
+            //c----------------------------------------------------------------------------c
+            x4 = c44 * 3.0 * (pow((n + 1), 2) + pow(n, 2));
+            x2 = c22 * (2 * n + 1);
+            e0 = w * (n + 0.5) + c;
+
+            h[n][n] = a * x4 + b * x2 + e0;
+
+            //c----------------------------------------------------------------------------c
+            //c     <n|h|n+2>                                                              c
+            //c----------------------------------------------------------------------------c
+
+            x4 = c44 * sqrt((n + 1.0) * (n + 2)) * (4 * n + 6);
+            x2 = c22 * sqrt((n + 1.0) * (n + 2));
+
+            hh = a * x4 + b * x2;
+            h[n][n + 2] = hh;
+            h[n + 2][n] = hh;
+
+            //c----------------------------------------------------------------------------c
+            //c     <n|h|n+4>                                                              c
+            //c----------------------------------------------------------------------------c
+
+            x4 = c44 * sqrt((n + 1.0) * (n + 2) * (n + 3) * (n + 4));
+
+            hh = a * x4;
+            h[n][n + 4] = hh;
+            h[n + 4][n] = hh;
         }
-        rho[n] = pow(cw, 2) / 2.0 * pow(cn, 2);
-        rho2[n] = pow(cw, 4) / 4.0 * pow(dn, 2);
-        rho3[n] = pow(cw, 6) / 8.0 * pow(en, 2);
-        cout << fixed << n << "\t" << e[n] << "\t" << rho[n] << "\t" << rho2[n] << "\t" << rho3[n] << endl;
-    }
 
-    //c----------------------------------------------------------------------------c
-    //c     groundstate wave function                                              c
-    //c----------------------------------------------------------------------------c
-    double psi0;
-    double x;
+        //c----------------------------------------------------------------------------c
+        //c     diagonalize                                                            c
+        //c----------------------------------------------------------------------------c
 
-    cout << "---------------------------" << endl;
-    cout << fixed << "x" << "\t\t" << "psi(x)" << "\t\t" << "psi^2(x)" << endl;
-    for (int k = 0; k < nx; k++)
-    {
-        x = -xmax + k * dx;
-        psi0 = 0.0;
-        psi_oscillator(ndim, x, psi, m, w);
-        for (int j = 0; j < ndim; j++)
+        jacobi(h, e, v, ndim);
+        eigensort(e, v, ndim);
+
+        //c----------------------------------------------------------------------------c
+        //c     energy eigenvalues and matrix elements <0|x|n>                         c
+        //c----------------------------------------------------------------------------c
+
+        double dn, cn, en;
+        int kmax1, kmax2, kmax3, kmin1, kmin2, kmin3;
+
+        /*cout << "---------------------------" << endl;
+        cout << fixed << "n" << "\t" << "e[n]" << "\t\t" << "rho[n]" << "\t\t" << "rho2[n]" << "\t\t" << "rho3[n]" << endl;*/
+        for (int n = 0; n < ndim; n++)
         {
-            psi0 += v[j][0] * psi[j];
+            cn = 0.0;
+            dn = 0.0;
+            en = 0.0;
+            for (int k = 0; k < ndim; k++)
+            {
+                kmax3 = max(k - 3, 0);
+                kmax2 = max(k - 2, 0);
+                kmax1 = max(k - 1, 0);
+                kmin1 = min(k + 1, ndim - 1);
+                kmin2 = min(k + 2, ndim - 1);
+                kmin3 = min(k + 3, ndim - 1);
+                cn += (sqrt(double(k)) * v[kmax1][0] + sqrt(double(k + 1)) * v[kmin1][0]) * v[k][n];
+                dn += (sqrt(double(k * (k - 1))) * v[kmax2][0] + (2 * k + 1) * v[k][0] + sqrt(double((k + 1) * (k + 2))) * v[kmin2][0]) * v[k][n];
+                en += (sqrt(double(k * (k - 1) * (k - 2))) * v[kmax3][0] + 3 * k * sqrt(double(k)) * v[kmax1][0] + 3 * (k + 1) * sqrt(double(k + 1)) * v[kmin1][0]
+                    + sqrt(double((k + 1) * (k + 2) * (k + 3))) * v[kmin3][0]) * v[k][n];
+            }
+            rho[n] = pow(cw, 2) / 2.0 * pow(cn, 2);
+            rho2[n] = pow(cw, 4) / 4.0 * pow(dn, 2);
+            rho3[n] = pow(cw, 6) / 8.0 * pow(en, 2);
+            /*cout << fixed << n << "\t" << e[n] << "\t" << rho[n] << "\t" << rho2[n] << "\t" << rho3[n] << endl;*/
         }
-        cout << fixed << x << "\t" << psi0 << "\t" << pow(psi0, 2) << endl;
-    }
 
-    //c----------------------------------------------------------------------------c
-    //c     x,x^2,x^3 correlators                                                  c
-    //c----------------------------------------------------------------------------c
-    e0 = e[0];
-    double tau;
-    double ej;
+        //c----------------------------------------------------------------------------c
+        //c     groundstate wave function                                              c
+        //c----------------------------------------------------------------------------c
+        double psi0;
+        double x;
 
-    cout << "---------------------------" << endl;
-    cout << fixed << "tau" << "\t\t" << "<x(0)x(tau)>" << "\t" << "<x^2(0)x^2(tau)>" << "\t" << "<x^3(0)x^3(tau)>" << endl;
-    for (int k = 0; k < ntau; k++)
-    {
-        tau = k * dtau;
-        xcor = 0.0;
-        x2cor = 0.0;
-        x3cor = 0.0;
-        for (int j = 1; j < ndim; j++)
+        /*cout << "---------------------------" << endl;
+        cout << fixed << "x" << "\t\t" << "psi(x)" << "\t\t" << "psi^2(x)" << endl;*/
+        for (int k = 0; k < nx; k++)
         {
-            ej = e[j];
-            x2cor += rho2[j] * exp(-(ej - e0) * tau);
-            x3cor += rho3[j] * exp(-(ej - e0) * tau);
-            xcor += rho[j] * exp(-(ej - e0) * tau);
+            x = -xmax + k * dx;
+            psi0 = 0.0;
+
+            psi_oscillator(ndim, x, psi, m, w);
+
+            for (int j = 0; j < ndim; j++)
+            {
+                psi0 += v[j][0] * psi[j];
+            }
+
+            wf_file << f << "," << x << "," << psi0 << "," << psi0 * psi0 << "\n";
         }
-        cout << fixed << tau << "\t" << xcor << '\t' << x2cor << '\t' << x3cor << endl;
-    }
 
-    //c----------------------------------------------------------------------------c
-    //c     partition function/free energy                                         c
-    //c----------------------------------------------------------------------------c
-    double beta_max = 100.0;
-    double beta_min = 0.1;
-    double beta, log_beta, t, z, free;
-    double dlog = (log(beta_max) - log(beta_min)) / double(50);
+        //c----------------------------------------------------------------------------c
+        //c     x,x^2,x^3 correlators                                                  c
+        //c----------------------------------------------------------------------------c
+        e0 = e[0];
+        double tau;
+        double ej;
 
-    cout << "---------------------------" << endl;
-    cout << fixed << "T" << "\t\t" << "beta" << "\t\t" << "F" << endl;
-    for (int i = 0; i < 50; i++)
-    {
-        log_beta = log(beta_min) + i * dlog;
-        beta = exp(log_beta);
-        t = 1.0 / beta;
-        z = 1.0;
-        for (int j = 0; j < ndim; j++)
+        /*cout << "---------------------------" << endl;
+        cout << fixed << "tau" << "\t\t" << "<x(0)x(tau)>" << "\t" << "<x^2(0)x^2(tau)>" << "\t" << "<x^3(0)x^3(tau)>" << endl;*/
+        for (int k = 0; k < ntau; k++)
         {
-            z += exp(-(e[j] - e[0]) * beta);
-
+            tau = k * dtau;
+            xcor = 0.0;
+            x2cor = 0.0;
+            x3cor = 0.0;
+            for (int j = 1; j < ndim; j++)
+            {
+                ej = e[j];
+                x2cor += rho2[j] * exp(-(ej - e0) * tau);
+                x3cor += rho3[j] * exp(-(ej - e0) * tau);
+                xcor += rho[j] * exp(-(ej - e0) * tau);
+            }
+            /*cout << fixed << tau << "\t" << xcor << '\t' << x2cor << '\t' << x3cor << endl;*/
         }
-        free = t * log(z) - e[0];
-        cout << fixed << t << "\t" << beta << "\t" << free << endl;
+
+        //c----------------------------------------------------------------------------c
+        //c     partition function/free energy                                         c
+        //c----------------------------------------------------------------------------c
+        double beta_max = 100.0;
+        double beta_min = 0.1;
+        double beta, log_beta, t, z, free;
+        double dlog = (log(beta_max) - log(beta_min)) / double(50);
+
+        /*cout << "---------------------------" << endl;
+        cout << fixed << "T" << "\t\t" << "beta" << "\t\t" << "F" << endl;*/
+        for (int i = 0; i < 50; i++)
+        {
+            log_beta = log(beta_min) + i * dlog;
+            beta = exp(log_beta);
+            t = 1.0 / beta;
+            z = 1.0;
+            for (int j = 0; j < ndim; j++)
+            {
+                z += exp(-(e[j] - e[0]) * beta);
+
+            }
+            free = t * log(z) - e[0];
+            /*cout << fixed << t << "\t" << beta << "\t" << free << endl;*/
+        }
+
+        //c----------------------------------------------------------------------------c
+        //c     write energy to csv                                                    c
+        //c----------------------------------------------------------------------------c
+
+        double E0 = e[0];
+        double E1 = e[1];
+        double dE = E1 - E0;
+
+        energy_file << f << "," << E0 << "," << E1 << "," << dE << "\n";
+
+		
+        //c----------------------------------------------------------------------------c
+		//c     free allocated memory                                                  c
+		//c----------------------------------------------------------------------------c
+
+        for (int i = 0; i < nmax; i++) {
+            delete[] h[i];
+            delete[] v[i];
+        }
+        delete[] h;
+        delete[] v;
+
+        delete[] e;
+        delete[] psi;
+        delete[] rho;
+        delete[] rho2;
+        delete[] rho3;
     }
-
-
-
 }
-
-

@@ -24,21 +24,21 @@ const bool modifyGTwo = false;
 
 ///// Acceptance rate settings /////
 
-const double epsilon = 0.25;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
+const double epsilon = 0.4;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
 const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
 
 ///// Decorrelation settings /////
 
 int decorrSweeps;                               // Set by user input based on the system being simulated
 const int decorrSweepsQHO = 50;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
-const int decorrSweepsDWP = 2500;			        // Decorrelation takes longer in the DWP system
-const int measures = 200;                       // Number of measures taken after thermalisation
+const int decorrSweepsDWP = 5000;			        // Decorrelation takes longer in the DWP system
+const int measures = 50;                       // Number of measures taken after thermalisation
 
 ///// Thermalisation settings /////
 
 int thermSweeps;                                // Set by user input based on the system being simulated
 const int thermSweepsQHO = 100;       // Number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
-const int thermSweepsDWP = 5000;     // Thermalisation also takes longer in the DWP system
+const int thermSweepsDWP = 10000;     // Thermalisation also takes longer in the DWP system
 const int thermInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
 
 ///// Initialisation settings /////
@@ -50,14 +50,14 @@ int side = 1;    // For the split wells initialisation, determines which well th
 
 ///// Repeats /////
 
-const int repeats = 12;                          // Number of repeats for finding standard error 
+const int repeats = 32;                          // Number of repeats for finding standard error 
 bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads, changed by user input
 
 ///// Lattice parameters /////
 
-const int N = 1000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
+const int N = 5000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Lattice points (represents the "path" of the particle)
-const double a = 0.05;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
+const double a = 0.1;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
 const double aInverse = 1.0 / a;											
 
 ///// QHO specific parameters /////
@@ -67,7 +67,7 @@ const int omega = 1;                // Unit frequency
 
 ///// DWP specific parameters /////
 
-const double wellCentres = 1.5;     // Well centre positions, increasing this moves the wells further apart
+const double wellCentres = 1.4;     // Well centre positions, increasing this moves the wells further apart
 const double lambda = 1;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
 
 const double omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.

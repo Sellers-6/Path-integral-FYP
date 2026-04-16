@@ -1,10 +1,11 @@
 # nolint start
 
-{{
+{
   library(ggplot2)
   library(gridExtra)  # side by side plots
   library(dplyr)
   library(rhdf5)
+  library(minpack.lm) # better exponential fitting
 }
 
 # Boundary conditions and system type
@@ -30,6 +31,9 @@
   GTwoData <- as.numeric(unlist(h5read(dataFile, paste0("/GTwo/", bc, "/", sys))))
   GFourData <- as.numeric(unlist(h5read(dataFile, paste0("/GFour/", bc, "/", sys))))
   headerData <- as.numeric(unlist(h5read(dataFile, paste0("/headerInfo/", bc, "/", sys))))
+
+  diagEnergiesData <- read.csv("DWP diagonalisation/DWP diagonalisation/energies.csv")
+  diagWFData <- read.csv("DWP diagonalisation/DWP diagonalisation/wavefunctions.csv")
 }
 
 # Variables from the simulation
@@ -50,17 +54,25 @@
 
   if (sys == "QHO") {
     mQHO <- headerData[11]
-    omegaQHO <- headerData [12]
+    omegaQHO <- headerData[12]
   } else if (sys == "DWP") {
     wellCentres <- headerData[11]
-    lambdaDWP <- headerData [12]
+    lambdaDWP <- headerData[12]
+
+    # Diagonalisation Energies
+    energy_row <- as.integer(round((wellCentres - 0.9) * 10))
+    E0_diag <- diagEnergiesData[energy_row, 2]
+    E1_diag <- diagEnergiesData[energy_row, 3]
+    Split_diag <- diagEnergiesData[energy_row, 4]
+
+    # WKB analysis
     omegaDWP <- sqrt(8 * lambdaDWP * wellCentres^2)
     S_inst <- (2/3) * omegaDWP * (wellCentres^2) 
     alpha <- 1 / 12 # A complicated calculation performed in Zinn-Justin 1993 (or ABCs of Instantons) gives this value
     K <- omegaDWP * sqrt(S_inst / (2 * pi)) * (alpha ^ -0.5) # A prefactor for the splitting energy
-    splittingEnergy <- K * exp(-S_inst)
-    E0_inst <- 0.5 * omegaDWP - (splittingEnergy / 2)
-    E1_inst <- 0.5 * omegaDWP + (splittingEnergy / 2)
+    Split_WKB <- K * exp(-S_inst)
+    E0_WKB <- 0.5 * omegaDWP - (Split_WKB / 2)
+    E1_WKB <- 0.5 * omegaDWP + (Split_WKB / 2)
   }
 }
 
@@ -176,8 +188,17 @@ qqPlot # Show QQ plot (We want p > 0.05)
 }
 
 E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError 
-
-abs(((E0 - 0.5) / 0.5) * 100) # Percent error (QHO)
+E0_diag
+# Percent error in E0
+{
+  if (sys == "QHO") {
+    E0_error <- abs(((E0 - 0.5) / 0.5) * 100) 
+  }
+  else if (sys == "DWP") {
+    E0_error <- abs(((E0 - E0_diag) / E0_diag) * 100) # Approximate error in E0 by the most accurate method known
+  }
+  E0_error
+}
 
 ### Wave function ###
 
@@ -188,11 +209,8 @@ abs(((E0 - 0.5) / 0.5) * 100) # Percent error (QHO)
     sigmaQHO <- 1 / sqrt(2 * mQHO * omegaQHO)
     xMax <- ceiling(4 * sigmaQHO) + 1  # 4 standard deviations of analytic ground state plus padding
     xMin <- -xMax
-  } else if (sys == "AHO") {
-    sigmaAHO <- 1 / sqrt(omegaAHO)
-    xMax <- ceiling(4 * sigmaAHO) + 1
-    xMin <- -xMax
-  } else if (sys == "DWP") {
+  }
+  else if (sys == "DWP") {
     sigmaDWP <- 1 / sqrt(omegaDWP)
     xMax <- ceiling(wellCentres + 4 * sigmaDWP) + 1
     xMin <- -xMax
@@ -223,63 +241,103 @@ ggplot(hist_df, aes(x = x, y = probability)) +
        y = "Probability density") +
   theme_minimal(base_size = 14)
 
-psi <- sqrt(prob_density)
-
-# Finding the wavefunction from the histogram
+# Finding the wave function from the histogram
 {
+  psi <- sqrt(prob_density)
+
   wave_df <- data.frame(
     x = x_values,
     psi = psi
   )
 
-  # Overlay analytical wavefunction 
+  # Overlay analytical wave function 
   if (sys == "QHO") {
     psiAnalytical <- exp(-(x_values^2) / 2)
-  } else if (sys == "AHO") {
-    psiAnalytical <- exp(-(x_values^2) / 2)  # Placeholder
   } else if (sys == "DWP") {
     psiAnalytical <- exp(-(omegaDWP / 2) * (x_values + wellCentres)^2) + exp(-(omegaDWP / 2) * (x_values - wellCentres)^2) # Approximate by 2 Gaussians
   }
 
-  # Normalise the analytical wavefunction 
+  # Normalise the analytical wave function 
   psiAnalytical <- psiAnalytical / sqrt(sum(psiAnalytical ^ 2) * binWidth) 
 
   wave_df$psiAnalytical <- psiAnalytical
+
+  ## Diagonalisation wave function
+  f_target <- wellCentres
+
+  diagWFData <- diagWFData %>%
+    filter(abs(f - f_target) < 1e-6)
+
 }
 
-# Plot the wavefunction
-ggplot(wave_df, aes(x = x)) +
-  geom_line(aes(y = psi), color = "blue") +
-  geom_point(aes(y = psi), color = "darkblue", size = 1.5) +
-  geom_line(aes(y = psiAnalytical), color = "red", linetype = "dashed") +
-  labs(title = paste(sys, "Wave Function"),
-       x = "Position", y = "Psi") +
-  theme_minimal(base_size = 14)
+# Plot the wave function
+{
+  if (sys == "QHO") {
+    ggplot(wave_df, aes(x = x)) +
+      geom_line(aes(y = psi), color = "blue") +
+      geom_point(aes(y = psi), color = "darkblue", size = 1.5) +
+
+      geom_line(aes(y = psiAnalytical), color = "red", linetype = "dashed") +
+      labs(title = paste(sys, "Wave Function"),
+          x = "Position", y = "Psi") +
+      theme_minimal(base_size = 14)
+  } else if (sys == "DWP") {
+    ggplot(wave_df, aes(x = x)) +
+      geom_line(aes(y = psi), color = "blue") +
+      geom_point(aes(y = psi), color = "darkblue", size = 1.5) +
+
+      geom_line(data = diagWFData,  # Diagonalisation
+                aes(x = x, y = psi0),
+                color = "black",
+                linewidth = 0.8) +
+
+      geom_line(aes(y = psiAnalytical), color = "red", linetype = "dashed") +
+      labs(title = paste(sys, "Wave Function"),
+          x = "Position", y = "Psi") +
+      theme_minimal(base_size = 14)
+  }
+}
 
 ### Two point correlation function
-}
+
+# Exponential fit
 
 {
   noiseless_region_2 <- 50 # Adjust to the length of the noiseless region
   dfCorr <- data.frame(
     lag = 0:(noiseless_region_2 - 1),
-    correlation = GTwoData[0:noiseless_region_2]
+    correlation = GTwoData[1:noiseless_region_2]
   )
+  model_func <- function(t, A, c, DeltaE) {
+    A * exp(-DeltaE * t) + c
+  }
+  fit_data <- subset(dfCorr, lag >= 0 & lag <= noiseless_region_2)
+  DeltaE_guess <- Split_diag
+  A_guess <- 0.098
+  c_guess <- 1.43
+
+  fit <- nlsLM(
+    correlation ~ A * exp(-DeltaE * lag) + B * exp(-omega * lag) + c,
+    data = fit_data,
+    start = list(A = A_guess, B = B_guess, c= c_guess, omega = omega_guess, DeltaE = DeltaE_guess),
+    control = nls.lm.control(maxiter = 1024)
+  )
+  dfCorr$fit <- predict(fit, newdata = dfCorr)
+  coef(fit)
 }
 
-# GTwoData
-
-ggplot(dfCorr, aes(x = lag, y = correlation)) +
-  geom_line(color = "#000000") +
+ggplot(dfCorr, aes(x = lag)) +
+  geom_line(aes(y = correlation), color = "black") +
+  geom_line(aes(y = fit), color = "red") +
   labs(
-    title = paste("Two point decorrelation function for", bc, sys),
-    x = "Time (index of the path)",
-    y = "G_2(t, 0)"
+    title = "Two-point correlator with exponential fit",
+    y = "G(t)",
+    x = "t"
   )
-{
+
 # Four point correlation function
 {
-  noiseless_region_4 <- 4 # Adjust to the length of the noiseless region
+  noiseless_region_4 <- 10 # Adjust to the length of the noiseless region
   dfCorr <- data.frame(
     lag = 0:(noiseless_region_4 - 1),
     correlation = GFourData[0:noiseless_region_4]
@@ -307,7 +365,7 @@ ggplot(dfCorr, aes(x = lag, y = correlation)) +
 
   for (i in LHS:RHS) {
     if (GTwoData[i] <= 0 || GTwoData[i + 1] <= 0) {
-      message("Correlation function has non-positive values, cannot compute logarithmic ratio.")
+      message("Correlation function has non-positive values, cannot compute log ratio.")
     } 
     else {
       E1 <- E1 + E0 + log(GTwoData[i] / GTwoData[i + 1]) / latticeSpacing
@@ -323,15 +381,15 @@ ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios),
   labs(title = "Log Ratio of Two Point Correlation Function",
        x = "Lag", y = "log(G_2(t) / G_2(t+1))")
 
-
+E0
 E1 - E0
-
+Split_diag
 {
   successfulCounts <- 0; E2 <- 0
 
   for (i in 1:10) {
     if (GFourData[i] <= 0 || GFourData[i + 1] <= 0) {
-      message("Correlation function has non-positive values, cannot compute E2.")
+      message("Correlation function has non-positive values, cannot compute log ratio.")
     } 
     else {
       E2 <- E2 + mean(E0RepeatAvg) + log(GFourData[i] / GFourData[i + 1]) / latticeSpacing
@@ -347,68 +405,99 @@ E2 - E0
 
 mean(instantonsData)
 
-# Condition for good instanton sampling
+# Conditions for good instanton sampling
 
 exp(-S_inst) # Must be << 1
+beta * Split_diag # Should be > 10
 
-# This is an approximation for the instanton action based on the number of tunnelling events  
-S_inst_approximation <- log(pathLength / mean(instantonsData)) 
-S_inst_approximation * omegaDWP / pi * sqrt(S_inst_approximation)
-S_inst
+# An approximation for the instanton action based on the number of tunnelling events  
+{
+  S_inst_approximation <- log(pathLength / mean(instantonsData)) 
+  S_inst_approximation <- S_inst_approximation * omegaDWP / pi * sqrt(S_inst_approximation)
+} 
 
-# Some extra calculations 
+S_inst; S_inst_approximation
 
-beta * splittingEnergy # Should be greater than 10
+# Comparing energies against diagonalisation method and WKB
 
-E0_inst
-E1_inst
+E0; E0_diag; E0_WKB
+
+E1; E1_diag; E1_WKB
+
+E1 - E0; Split_diag; Split_WKB 
+
+##### Discretisation error analysis (DWP)
+
+{
+  EA_data <- read.csv("Discretisation error DWP.csv")
+  EA_data <- EA_data %>%
+    filter(!is.na(E0MCMC), !is.na(E1MCMC))
+
+  theory_df <- EA_data %>%
+    distinct(Separation, E0Diag, E0WKB, E1Diag, E1WKB, SplitDiag, SplitWKB) # CamelCase for vals in csv
 }
-E0
-E1
-splittingEnergy
-E1 - E0
 
-# QHO optimal options: 
-# pathLength: 10000
-# latticeSpacing: 0.05
-# epsilon: 0.3
-# accRateInterval: 1000
-# decorrSweeps: 1500
-# thermSweeps: 5000
-# thermInterval: 10
-# measures: 500
-# repeats: 32
-# numBins: 100
-# beta: 500
-# thermMeasures: 300
-# mQHO: 1
-# omegaQHO: 1
-latticeSpacing
+ggplot(EA_data, aes(x = 1/(a * a))) +
 
-##### Discretisation error analysis
+  # MCMC
+  geom_point(aes(y = E0MCMC, color = factor(Separation))) +
+  geom_line(aes(y = E0MCMC, color = factor(Separation))) +
 
-EA_data <- read.csv("Discretisation error DWP.csv")
-EA_data <- EA_data %>%
-  filter(!is.na(E0), !is.na(E1))
-EA_data <- EA_data %>%
-  mutate(
-    E0_error = abs(E0 - E0Real),
-    splitting_error = abs((E1 - E0) - (E1Real - E0Real))
+  # Diagonalisation horizontal lines
+  geom_hline(data = theory_df,
+             aes(yintercept = E0Diag, linetype = "Diagonalisation"),
+             color = "red") +
+
+  # WKB horizontal lines
+  # geom_hline(data = theory_df,
+  #            aes(yintercept = E0WKB, linetype = "WKB"),
+  #            color = "black") +
+
+  scale_linetype_manual(values = c(
+    "Diagonalisation" = "dashed",
+    "WKB" = "dotted"
+  )) +
+
+  labs(
+    title = "E0 vs 1/(a^2)",
+    linetype = "Theory"
   )
 
-ggplot(EA_data, aes(x = 1/(a * a), y = E0_error, color = factor(Separation))) +
-  geom_point() +
-  geom_line() +
-  labs(title = "E0 Error vs 1/(a * a)")
+ggplot(EA_data, aes(x = 1/(a * a))) +
 
-ggplot(EA_data, aes(x = 1/(a * a), y = E0, color = factor(Separation))) +
+  # MCMC
+  geom_point(aes(y = SplitMCMC, color = factor(Separation))) +
+  geom_line(aes(y = SplitMCMC, color = factor(Separation))) +
+
+  # Diagonalisation horizontal lines
+  geom_hline(data = theory_df,
+             aes(yintercept = SplitDiag, linetype = "Diagonalisation"),
+             color = "red") +
+
+  # WKB horizontal lines
+  geom_hline(data = theory_df,
+             aes(yintercept = SplitWKB, linetype = "WKB"),
+             color = "black") +
+
+  scale_linetype_manual(values = c(
+    "Diagonalisation" = "dashed",
+    "WKB" = "dotted"
+  )) +
+
+  labs(
+    title = "Splitting Energy vs 1/(a^2)",
+    linetype = "Theory"
+  )
+
+ggplot(EA_data, aes(x = 1/(a * a), y = E0MCMC, color = factor(Separation))) +
   geom_point() +
   geom_line() +
   labs(title = "E0 vs 1/(a * a)")
 
-ggplot(EA_data, aes(x = 1/a, y = splitting_error, color = factor(Separation))) +
-  geom_point() +
-  geom_line() +
-  labs(title = "Splitting energy Error vs 1/a")
+# EA_data <- EA_data %>%
+#   mutate(
+#     E0_error = abs(E0MCMC - E0Real),
+#     splitting_error = abs((E1 - E0) - (E1Real - E0Real))
+#   )
 
 # nolint end

@@ -18,4 +18,20 @@
 
 \- Don't oversell the use of the PI. It is useful but is just one approach to solving non-perturbative systems.
 
+### QHO optimal options: 
+# pathLength: 10000
+# latticeSpacing: 0.05
+# epsilon: 0.3
+# accRateInterval: 1000
+# decorrSweeps: 1500
+# thermSweeps: 5000
+# thermInterval: 10
+# measures: 500
+# repeats: 32
+# numBins: 100
+# beta: 500
+# thermMeasures: 300
+# mQHO: 1
+# omegaQHO: 1
+
 HAND IN BY 7th May
