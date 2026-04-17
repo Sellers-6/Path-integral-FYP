@@ -24,21 +24,21 @@ const bool modifyGTwo = false;
 
 ///// Acceptance rate settings /////
 
-const double epsilon = 0.4;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
+const double epsilon = 0.3;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
 const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
 
 ///// Decorrelation settings /////
 
 int decorrSweeps;                               // Set by user input based on the system being simulated
-const int decorrSweepsQHO = 50;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
-const int decorrSweepsDWP = 5000;			        // Decorrelation takes longer in the DWP system
-const int measures = 50;                       // Number of measures taken after thermalisation
+const int decorrSweepsQHO = 2500;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
+const int decorrSweepsDWP = 2500;			        // Decorrelation takes longer in the DWP system
+const int measures = 500;                       // Number of measures taken after thermalisation
 
 ///// Thermalisation settings /////
 
 int thermSweeps;                                // Set by user input based on the system being simulated
-const int thermSweepsQHO = 100;       // Number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
-const int thermSweepsDWP = 10000;     // Thermalisation also takes longer in the DWP system
+const int thermSweepsQHO = 10000;       // Number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
+const int thermSweepsDWP = 5000;     // Thermalisation also takes longer in the DWP system
 const int thermInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
 
 ///// Initialisation settings /////
@@ -55,9 +55,9 @@ bool multThreads = false;                      // Flag to determine whether to r
 
 ///// Lattice parameters /////
 
-const int N = 5000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
+const int N = 10000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Lattice points (represents the "path" of the particle)
-const double a = 0.1;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
+const double a = 0.05;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
 const double aInverse = 1.0 / a;											
 
 ///// QHO specific parameters /////

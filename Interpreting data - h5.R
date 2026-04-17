@@ -97,43 +97,83 @@ mean(accRateThermData) * 100 # Should be between 50 and 80%
 }
 
 # Plot thermalisation
-ggplot(data.frame(sweep = sweepIndex, E0 = E0ThermAvgs), aes(x = sweep * thermInterval, y = E0)) +
-  geom_line(color = "blue", size = 1) +
-  labs(
-    x = "Measure index",
-    y = "Average Ground state energy",
-    title = "Average Thermalisation Across Measures"
-  ) +
-  theme_minimal()
-# Expect the ground state energy to taper off for a positive test of whether thermalisation has been accomplished
+{
+  if (sys == "QHO") {
+    ggplot(data.frame(sweep = sweepIndex, E0 = E0ThermAvgs), aes(x = sweep * thermInterval, y = E0)) +
+      geom_line(color = "blue", linewidth = 0.6) +
+      labs(x = "Sweep", y = expression("Ground State Energy" ~ E[0]),
+        title = "Average Thermalisation of the QHO") +
+      theme_minimal(base_size = 14)
+    ggsave("Figures/QHO_thermalisation.png", width = 6, height = 4, dpi = 1200)
+  } else if (sys == "DWP") {
+    ggplot(data.frame(sweep = sweepIndex, E0 = E0ThermAvgs), aes(x = sweep * thermInterval, y = E0)) +
+      geom_line(color = "blue", linewidth = 0.6) +
+      labs(x = "Sweep", y = expression("Ground State Energy" ~ E[0]),
+        title = "Average Thermalisation of the DWP") +
+      theme_minimal(base_size = 14)
+    ggsave("Figures/DWP_thermalisation.png", width = 6, height = 4, dpi = 1200)
+  }
+}
 
 ### Ground state energy ###
 
 # Decorrelation
 {
-  # if (measures > 50) {
-  #   decorrCheck <- 50
-  # } else {
-  #   decorrCheck <- measures
-  # }
-  decorrCheck <- measures
+  if (measures > 50) {
+    decorrCheck <- 50
+  } else {
+    decorrCheck <- measures
+  }
   measureIndex <- seq_len(decorrCheck)
-  ggplot(data.frame(sweep = measureIndex, E0 = E0Data[1:decorrCheck]), aes(x = sweep, y = E0)) + 
-    geom_line(color = "blue", size = 1) +
-    labs(
-      x = "MC Sweep",
-      y = "Average E0",
-      title = "Average Thermalisation Across Repeats"
-    ) +
-    theme_minimal()
-  # For decorrelated data, look for low correlation between measure index and average ground state energy
+  if (sys == "QHO") {
+    ggplot(data.frame(sweep = measureIndex, E0 = E0Data[1:decorrCheck]), aes(x = sweep, y = E0)) + 
+      geom_line(color = "blue", size = 0.6) +
+      labs(x = "Measure", y = expression("Ground State Energy" ~ E[0]), 
+        title = "Average Decorrelation of the QHO") +
+      theme_minimal(base_size = 14)
+    ggsave("Figures/QHO_decorrelation.png", width = 6, height = 4, dpi = 1200)  
+  } else if (sys == "DWP") {
+    ggplot(data.frame(sweep = measureIndex, E0 = E0Data[1:decorrCheck]), aes(x = sweep, y = E0)) + 
+      geom_line(color = "blue", size = 0.6) +
+      labs(x = "Measure", y = expression("Ground State Energy" ~ E[0]), 
+        title = "Average Decorrelation of the QHO") +
+      theme_minimal(base_size = 14)
+    ggsave("Figures/DWP_decorrelation.png", width = 6, height = 4, dpi = 1200)  
+  }
 }
 
-# Further proof of decorrelation
+# Further proof of decorrelation - auto correlation function
 {
   acfResult <- acf(E0Data[1:measures], lag.max = measures - 1, plot = TRUE)
   acfVals <- acfResult$acf
   mean(abs(as.vector(acfVals)[2:length(acfVals)])) # For decorrelated data, we want low acf values (roughly < 0.1)
+}
+
+# Save acf plot
+{
+  if (sys == "QHO")  {
+    png("Figures/acf_plot_QHO.png", width = 800, height = 600)
+
+    acfResult <- acf(E0Data[1:measures], lag.max = measures - 1, plot = FALSE)
+
+    plot(acfResult,
+        main = "Autocorrelation of Ground State Energy for the QHO",
+        xlab = "Lag (sweeps)",
+        ylab = "Autocorrelation")
+
+    dev.off()
+    } else if (sys == "DWP") {
+      png("Figures/acf_plot_DWP.png", width = 800, height = 600)
+
+      acfResult <- acf(E0Data[1:measures], lag.max = measures - 1, plot = FALSE)
+
+      plot(acfResult,
+          main = "Autocorrelation of Ground State Energy for the DWP",
+          xlab = "Lag (sweeps)",
+          ylab = "Autocorrelation")
+
+      dev.off()
+    }
 }
 
 # Histogram and shapiro test
@@ -153,32 +193,51 @@ ggplot(data.frame(sweep = sweepIndex, E0 = E0ThermAvgs), aes(x = sweep * thermIn
   dx <- diff(continuousE0)[1]
   normDist <- normDist / sum(normDist * dx)  # Normalisation
 
-  histPlot <- ggplot() +
-    geom_histogram(aes(x = E0RepeatAvg, y = after_stat(density)), # after_stat(density) normalises the histogram to a density
-                  bins = bins, fill = "skyblue", color = "black") +
-    geom_line(aes(x = continuousE0, y = normDist),
-              color = "red", linewidth = 1) +
-    labs(title = "Ground State Energy Histogram",
-        x = "Energy", y = "Probability Density") 
+  if (sys == "QHO") {
+    histPlot <- ggplot() +
+      geom_histogram(aes(x = E0RepeatAvg, y = after_stat(density)), # after_stat(density) normalises the histogram to a density
+                    bins = bins, fill = "skyblue", color = "black") +
+      geom_line(aes(x = continuousE0, y = normDist),
+                color = "red", linewidth = 1) +
+      labs(title = "Ground State Energy Histogram for the QHO",
+          x = expression("Ground State Energy " ~ E[0]), y = "Probability Density") 
 
-  # QQ plot - this is a plot of the quantiles of our data against the quantiles of a normal distribution. 
-  # If the points lie approximately on a straight line, then our data is approximately normally distributed.
-  # Furthermore, we can perform a Shapiro-Wilk test for normality, which gives us a p-value. 
-  # If the p-value is above a certain threshold (usually 0.05), we fail to reject the null hypothesis that our
-  # data is normally distributed. (i.e. we can treat it as normally distributed for the purposes of our analysis).
-  shapiroTest <- shapiro.test(E0RepeatAvg)
-  qqPlot <- ggplot(data.frame(E0RepeatAvg), aes(sample = E0RepeatAvg)) +
-    stat_qq() +
-    stat_qq_line(color = "red") +
-    labs(title = paste0("QQ Plot (Shapiro-Wilk p = ", round(shapiroTest$p.value, 4), ")"),
-        x = "Theoretical Quantiles", y = "Sample Quantiles") 
+    shapiroTest <- shapiro.test(E0RepeatAvg)
+    qqPlot <- ggplot(data.frame(E0RepeatAvg), aes(sample = E0RepeatAvg)) +
+      stat_qq() +
+      stat_qq_line(color = "red") +
+      labs(title = paste0("QQ Plot (Shapiro-Wilk p = ", round(shapiroTest$p.value, 4), ")"),
+          x = "Theoretical Quantiles", y = "Sample Quantiles")
+    png("Figures/QHO_Histogram_qq.png", width = 1200, height = 800)
+    grid.arrange(histPlot, qqPlot, ncol = 2)
+    dev.off()
+  }
+  else if (sys == "DWP") {
+    histPlot <- ggplot() +
+      geom_histogram(aes(x = E0RepeatAvg, y = after_stat(density)), # after_stat(density) normalises the histogram to a density
+                    bins = bins, fill = "skyblue", color = "black") +
+      geom_line(aes(x = continuousE0, y = normDist),
+                color = "red", linewidth = 1) +
+      labs(title = "Ground State Energy Histogram for the DWP",
+          x = expression("Ground State Energy " ~ E[0]), y = "Probability Density") 
+
+    shapiroTest <- shapiro.test(E0RepeatAvg)
+    qqPlot <- ggplot(data.frame(E0RepeatAvg), aes(sample = E0RepeatAvg)) +
+      stat_qq() +
+      stat_qq_line(color = "red") +
+      labs(title = paste0("QQ Plot (Shapiro-Wilk p = ", round(shapiroTest$p.value, 4), ")"),
+          x = "Theoretical Quantiles", y = "Sample Quantiles")
+    png("Figures/DWP_Histogram_qq.png", width = 1200, height = 800)
+    grid.arrange(histPlot, qqPlot, ncol = 2)
+    dev.off()
+  }
 }
 
-grid.arrange(histPlot, qqPlot, ncol = 2)  # Combined plots side by side
+# grid.arrange(histPlot, qqPlot, ncol = 2)  # Combined plots side by side
 
-histPlot # Show histogram and normal curve
+# histPlot # Show histogram and normal curve
 
-qqPlot # Show QQ plot (We want p > 0.05)
+# qqPlot # Show QQ plot
 
 # Calculating E0 and its error
 {
@@ -188,7 +247,7 @@ qqPlot # Show QQ plot (We want p > 0.05)
 }
 
 E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError 
-E0_diag
+
 # Percent error in E0
 {
   if (sys == "QHO") {
@@ -261,40 +320,63 @@ ggplot(hist_df, aes(x = x, y = probability)) +
   psiAnalytical <- psiAnalytical / sqrt(sum(psiAnalytical ^ 2) * binWidth) 
 
   wave_df$psiAnalytical <- psiAnalytical
-
+  
   ## Diagonalisation wave function
-  f_target <- wellCentres
-
-  diagWFData <- diagWFData %>%
-    filter(abs(f - f_target) < 1e-6)
-
+  if (sys == "DWP")  { 
+    f_target <- wellCentres
+    diagWFData <- diagWFData %>%
+      filter(abs(f - f_target) < 1e-6)
+  }
 }
 
-# Plot the wave function
+# Comparing wave functions
+
 {
   if (sys == "QHO") {
     ggplot(wave_df, aes(x = x)) +
-      geom_line(aes(y = psi), color = "blue") +
-      geom_point(aes(y = psi), color = "darkblue", size = 1.5) +
+      # MCMC wave function
+      geom_point(aes(y = psi, color = "MCMC"), size = 1) +
 
-      geom_line(aes(y = psiAnalytical), color = "red", linetype = "dashed") +
-      labs(title = paste(sys, "Wave Function"),
-          x = "Position", y = "Psi") +
+      # Exact wave function
+      geom_line(aes(y = psiAnalytical, color = "Exact")) +
+
+      labs(title = paste(sys, "Quantum Harmonic Oscillator Ground State Wave Function"), x = "Position", y = "Psi") +
+
+      scale_y_continuous(
+        name = expression("Wavefunction " ~ psi[0](x))) +
+
+      scale_color_manual(
+        name = "",
+        values = c("MCMC" = "red", "Exact" = "black")) + 
+
       theme_minimal(base_size = 14)
+    ggsave("Figures/QHO_wave_functions.png", width = 8, height = 4, dpi = 1200)  
   } else if (sys == "DWP") {
     ggplot(wave_df, aes(x = x)) +
-      geom_line(aes(y = psi), color = "blue") +
-      geom_point(aes(y = psi), color = "darkblue", size = 1.5) +
+      # MCMC wave function
+      geom_point(aes(y = psi, color = "MCMC"), size = 1) +
 
-      geom_line(data = diagWFData,  # Diagonalisation
-                aes(x = x, y = psi0),
-                color = "black",
-                linewidth = 0.8) +
+      # Diagonalisation wave function
+      geom_line(data = diagWFData,
+                aes(x = x, y = psi0, color = "Diagonalised"),
+                linewidth = 0.7) +
 
-      geom_line(aes(y = psiAnalytical), color = "red", linetype = "dashed") +
-      labs(title = paste(sys, "Wave Function"),
-          x = "Position", y = "Psi") +
+      # WKB approximation
+      geom_line(aes(y = psiAnalytical, color = "WKB"), linetype = "dashed") +
+      
+      labs(title = "Double-Well Potential Ground State Wave Function", x = "Position x") +
+
+      # coord_cartesian(xlim = c(-2.5, 2.5), ylim = c(0, 0.8)) + 
+
+      scale_y_continuous(
+        name = expression("Wavefunction " ~ psi[0](x))) +
+
+      scale_color_manual(
+        name = "",
+        values = c("MCMC" = "red", "Diagonalised" = "black", "WKB" = "blue")) + 
+  
       theme_minimal(base_size = 14)
+    ggsave("Figures/DWP_wave_functions.png", width = 8, height = 4, dpi = 1200)
   }
 }
 
@@ -303,41 +385,55 @@ ggplot(hist_df, aes(x = x, y = probability)) +
 # Exponential fit
 
 {
-  noiseless_region_2 <- 50 # Adjust to the length of the noiseless region
+  noiseless_region_2 <- 200 # Adjust to the length of the noiseless region
   dfCorr <- data.frame(
     lag = 0:(noiseless_region_2 - 1),
     correlation = GTwoData[1:noiseless_region_2]
   )
-  model_func <- function(t, A, c, DeltaE) {
-    A * exp(-DeltaE * t) + c
-  }
   fit_data <- subset(dfCorr, lag >= 0 & lag <= noiseless_region_2)
-  DeltaE_guess <- Split_diag
+  if (sys == "QHO") {
+    DeltaE_guess <- 1.0 # Hard coded energy splitting for QHO with m = omega = 1
+  } else if (sys == "DWP") {
+    DeltaE_guess <- Split_diag
+  }
   A_guess <- 0.098
-  c_guess <- 1.43
-
+  c_guess <- min(fit_data$correlation)
+  
   fit <- nlsLM(
-    correlation ~ A * exp(-DeltaE * lag) + B * exp(-omega * lag) + c,
+    correlation ~ A * exp(-DeltaE * lag * latticeSpacing) + c,
     data = fit_data,
-    start = list(A = A_guess, B = B_guess, c= c_guess, omega = omega_guess, DeltaE = DeltaE_guess),
+    start = list(A = A_guess, c= c_guess, DeltaE = DeltaE_guess),
     control = nls.lm.control(maxiter = 1024)
   )
   dfCorr$fit <- predict(fit, newdata = dfCorr)
   coef(fit)
 }
 
-ggplot(dfCorr, aes(x = lag)) +
-  geom_line(aes(y = correlation), color = "black") +
-  geom_line(aes(y = fit), color = "red") +
-  labs(
-    title = "Two-point correlator with exponential fit",
-    y = "G(t)",
-    x = "t"
-  )
+{
+  if (sys == "QHO") {
+    ggplot(dfCorr, aes(x = lag * latticeSpacing)) +
+      geom_point(aes(y = correlation, color = "MCMC Correlator"), size = 0.5) +
+      geom_line(aes(y = fit, color = "Exponential fit")) +
+      labs(title = "QHO Two-Point Correlator with Exponential fit", y = "Two-Point Correlator G(t)", x = "Lag t") +
+      scale_color_manual(
+        name = "",
+        values = c("MCMC Correlator" = "black", "Exponential fit" = "red"))
+    ggsave("Figures/QHO_two_point_correlator.png", width = 7, height = 4, dpi = 1200)
+  } else if (sys == "DWP") {
+    ggplot(dfCorr, aes(x = lag * latticeSpacing)) +
+      geom_point(aes(y = correlation, color = "MCMC Correlator"), size = 0.5) +
+      geom_line(aes(y = fit, color = "Exponential fit")) +
+      labs(title = "DQP Two-Point Correlator with Exponential fit", y = "Two-Point Correlator G(t)", x = "Lag t") +
+      scale_color_manual(
+        name = "",
+        values = c("MCMC Correlator" = "black", "Exponential fit" = "red"))
+    ggsave("Figures/DWP_two_point_correlator.png", width = 7, height = 4, dpi = 1200)
+  }
+}
 
 # Four point correlation function
 {
-  noiseless_region_4 <- 10 # Adjust to the length of the noiseless region
+  noiseless_region_4 <- 40 # Adjust to the length of the noiseless region
   dfCorr <- data.frame(
     lag = 0:(noiseless_region_4 - 1),
     correlation = GFourData[0:noiseless_region_4]
@@ -376,14 +472,30 @@ ggplot(dfCorr, aes(x = lag, y = correlation)) +
   E1 <- E1 / successfulCounts; E1
 }
 
-ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag * latticeSpacing, y = ratio)) +
-  geom_line(color = "blue") +
-  labs(title = "Log Ratio of Two Point Correlation Function",
-       x = "Lag", y = "log(G_2(t) / G_2(t+1))")
+{
+  if (sys == "QHO") {   
+    ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag * latticeSpacing, y = ratio)) +
+      geom_line(aes(color = "Log Ratio")) +
+      geom_hline(data = data.frame(y = E1 - E0), aes(yintercept = y, color = "Splitting Energy"), linetype = "dashed") +
+      labs(title = "Finding the splitting energy for the QHO",
+          x = "Lag t", y = expression("Log(" ~ G[2](t) ~ ") / Log(" ~ G[2](t+a) ~ ")")) +
+      scale_color_manual(name = "", values = c("Log Ratio" = "blue", "Splitting Energy" = "red"))
+    ggsave("Figures/QHO_log_ratio.png", width = 6, height = 4, dpi = 1200)
 
-E0
+  } else if (sys == "DWP") {
+    ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag * latticeSpacing, y = ratio)) +
+      geom_line(aes(color = "Log Ratio")) +
+      geom_hline(data = data.frame(y = E1 - E0), aes(yintercept = y, color = "Splitting Energy"), linetype = "dashed") +
+      labs(title = "Finding the splitting energy for the DWP",
+          x = "Lag t", y = expression("Log(" ~ G[2](t) ~ ") / Log(" ~ G[2](t+a) ~ ")")) +
+      scale_color_manual(name = "", values = c("Log Ratio" = "blue", "Splitting Energy" = "red"))
+    ggsave("Figures/DWP_log_ratio.png", width = 6, height = 4, dpi = 1200)
+  } 
+}
+
 E1 - E0
 Split_diag
+
 {
   successfulCounts <- 0; E2 <- 0
 
@@ -499,5 +611,55 @@ ggplot(EA_data, aes(x = 1/(a * a), y = E0MCMC, color = factor(Separation))) +
 #     E0_error = abs(E0MCMC - E0Real),
 #     splitting_error = abs((E1 - E0) - (E1Real - E0Real))
 #   )
+
+### Most exact wave function vs Potential - Run after running the rest of the code for DWP, then QHO
+
+# Potentials
+
+{
+  potential_scale <- 5
+
+  V_QHO <- function(x) { omegaQHO * omegaQHO * mQHO * 0.5 * x * x }
+    
+  QHO_potential_df <- data.frame(
+  x = x_values,
+  V_QHO = V_QHO(x_values))
+
+  V_DWP <- function(x) { lambdaDWP * (x * x - wellCentres * wellCentres) * (x * x - wellCentres * wellCentres) }
+  
+  DWP_potential_df <- data.frame(
+  x = x_values,
+  V_DWP = V_DWP(x_values))
+}
+
+{
+  ggplot(wave_df, aes(x = x)) +
+    # Exact QHO wave function
+    geom_line(aes(y = psiAnalytical, color = "QHO Wave function"), linetype = "dashed") +
+
+    # Diagonalisation DWP wave function
+    geom_line(data = diagWFData, aes(x = x, y = psi0, color = "DWP Wave function"), linetype = "dashed") +
+
+    # QHO Potential
+    geom_line(data = QHO_potential_df, aes(x = x_values, y = V_QHO / potential_scale, color = "QHO Potential")) +
+
+    # Double Well Potential
+    geom_line(data = DWP_potential_df, aes(x = x_values, y = V_DWP / potential_scale, color = "DWP Potential")) +
+
+    labs(title = "QHO and DWP Wave Functions and Potentials", x = "Position x", y = "Psi") +
+
+    coord_cartesian(xlim = c(-2.5, 2.5), ylim = c(0, 0.8)) + 
+
+    scale_y_continuous(
+      name = expression("Wavefunction " ~ psi[0](x)),
+      sec.axis = sec_axis(~ . * potential_scale,  name = "Potential V(x)")) +
+
+    scale_color_manual(
+      name = "",
+      values = c("DWP Potential" = "black", "DWP Wave function" = "black", "QHO Potential" = "red", "QHO Wave function" = "red")) + 
+
+    theme_minimal(base_size = 14)
+  ggsave("Figures/Wave_functions_and_potentials.png", width = 8, height = 4, dpi = 600)
+}
 
 # nolint end
