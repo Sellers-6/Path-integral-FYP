@@ -25,15 +25,16 @@ int main() {    // Accepts user choice of system type and window visualisation
             multThreads = true;
             sixFlag = true;
             std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0 }; // Varying the separation of the wells.
-            std::vector<double> latticeSpacingsVec = { 0.05, 0.0625, 0.1, 0.125, 0.2, 0.25, 0.4, 0.5, 0.8, 1.0 }; // Varying the lattice spacing to see how it affects the error in the energy.
-            std::vector<double> esplinonVec = { 0.2, 0.3, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2};
+            std::vector<double> latticeSpacingsVec = { 0.1 }; // Varying the lattice spacing to see how it affects the error in the energy.
+            std::vector<double> esplinonVec = { 0.4 };
 			int epsilonIndex = 0; // Index to keep track of which epsilon value we are using.
             for (double latticeSpacing : latticeSpacingsVec) {
                 a = latticeSpacing; // Update the lattice spacing.
 				epsilon = esplinonVec[epsilonIndex]; // Update epsilon based on the lattice spacing, to keep the acceptance rate at ~ 60%. This was found through trial and error, and is not an exact relationship.
                 for (double wellCentresElement : wellCentresVec) {
-                    wellCentres = wellCentresElement / 2.0; // Update the well centres based on the separation.
-                    setParameters(1000, a, wellCentres); // Use beta = 1000 so that tunneling is captured in the all regimes of well separation.
+					std::cout << "\n Running DWP system with lattice spacing a = " << latticeSpacing << " and well centres = " << wellCentresElement << std::endl;
+                    wellCentres = wellCentresElement; // Update the well centres based on the separation.
+                    setParameters(10000, a, wellCentres); // Use beta = 10000 so that tunneling is captured in the all regimes of well separation.
                     metropolisRepeat(false, "DWP");
                 }
 				epsilonIndex++;
@@ -99,7 +100,7 @@ void metropolisRepeat(bool winOn, std::string system) { // Loop over repeats
         for (int r = 0; r < repeats; ++r) {
             std::mt19937 rng(seed + r);
 
-            RepeatData data(N, numBins);
+            RepeatData data(N, numBins, measures);
 
             metropolis(winOn, system, r, rng, data, potential, potentialDifferential);
 
@@ -119,7 +120,11 @@ void metropolisRepeat(bool winOn, std::string system) { // Loop over repeats
         accRateTherm.clear(); 
         E0.clear();
         Gx1x1.clear();
+        Gx1x2.clear();
+        Gx1x3.clear();
         Gx2x2.clear();
+        Gx2x3.clear();
+        Gx3x3.clear();
         positions.clear();
 		histogram.clear();
 		instantons.clear();
@@ -151,12 +156,44 @@ void metropolisRepeat(bool winOn, std::string system) { // Loop over repeats
                     Gx1x1[i] += data.Gx1x1Temp[i];
             }
 
+            if (Gx1x2.empty()) {
+                Gx1x2 = data.Gx1x2Temp;
+            }
+            else {
+                for (size_t i = 0; i < Gx1x2.size(); ++i)
+                    Gx1x2[i] += data.Gx1x2Temp[i];
+            }
+
+            if (Gx1x3.empty()) {
+                Gx1x3 = data.Gx1x3Temp;
+            }
+            else {
+                for (size_t i = 0; i < Gx1x3.size(); ++i)
+                    Gx1x3[i] += data.Gx1x3Temp[i];
+            }
+
             if (Gx2x2.empty()) {
                 Gx2x2 = data.Gx2x2Temp;
             }
             else {
                 for (size_t i = 0; i < Gx2x2.size(); ++i)
                     Gx2x2[i] += data.Gx2x2Temp[i];
+            }
+
+            if (Gx2x3.empty()) {
+                Gx2x3 = data.Gx2x3Temp;
+            }
+            else {
+                for (size_t i = 0; i < Gx2x3.size(); ++i)
+                    Gx2x3[i] += data.Gx2x3Temp[i];
+            }
+
+            if (Gx3x3.empty()) {
+                Gx3x3 = data.Gx3x3Temp;
+            }
+            else {
+                for (size_t i = 0; i < Gx3x3.size(); ++i)
+                    Gx3x3[i] += data.Gx3x3Temp[i];
             }
 
             // Histogram for the wavefunction
@@ -179,29 +216,18 @@ void metropolisRepeat(bool winOn, std::string system) { // Loop over repeats
         for (size_t i = 0; i < Gx2x2.size(); ++i)
             Gx2x2[i] /= repeats;
     }
-    else { // Single-threaded version. Slower but allows visualisation.
+    else { // Visualisation.
         std::cout << "Providing a visualisation of the evolution of the path. Running " << repeats << " repeats and taking " << measures << " measures." << std::endl;
 
         RepeatData data(N, numBins);    // Still use this for the single threaded version, though it's not necessary it is convenient
         
         // Window thread setup
-        winRunning = winOn;
-        std::thread windowThread(window, std::ref(data.positions), std::ref(winRunning)); 
-        for (int repeat = 0; repeat < repeats; repeat++) {
-            std::mt19937 rng(seed + repeat);
+        std::thread windowThread(window, std::ref(data.positions), std::ref(winOn)); 
+        std::mt19937 rng(seed);
 
-            metropolis(winOn, system, repeat, rng, data, potential, potentialDifferential);
-
-            E0.insert(E0.end(), data.E0Temp.begin(), data.E0Temp.end());
-            Gx1x1.insert(Gx1x1.end(), data.Gx1x1Temp.begin(), data.Gx1x1Temp.end());
-            Gx2x2.insert(Gx2x2.end(), data.Gx2x2Temp.begin(), data.Gx2x2Temp.end());
-			histogram.insert(histogram.end(), data.histogramTemp.begin(), data.histogramTemp.end());
-			instantons.insert(instantons.end(), data.instantonsTemp.begin(), data.instantonsTemp.end());
-			antiInstantons.insert(antiInstantons.end(), data.antiInstantonsTemp.begin(), data.antiInstantonsTemp.end());
-            std::cout << "Finished collecting data for iteration " << repeat + 1 << std::endl;
+        while (true) {
+            metropolisUpdate(winOn, potential, rng, data);
         }
-        winRunning = false;
-        windowThread.join();
     }
 
     constructHeaderInfo(system);
@@ -218,7 +244,11 @@ void metropolisRepeat(bool winOn, std::string system) { // Loop over repeats
     accRate.clear();
     positions.clear();
     Gx1x1.clear();
+    Gx1x2.clear();
+    Gx1x3.clear();
     Gx2x2.clear();
+    Gx2x3.clear();
+    Gx3x3.clear();
 	histogram.clear();
 	instantons.clear();
 	antiInstantons.clear();
@@ -233,7 +263,7 @@ void metropolis(bool winOn, std::string system, int repeat, std::mt19937& rng, R
     // Thermalise the system
     thermalise(winOn, potentialDifferential, potential, rng, data);
 
-    if (takeMeasuresFlag == true) { takeMeasures(data.positions, potentialDifferential, potential, data); } // First measurement after thermalisation
+    if (takeMeasuresFlag == true) { takeMeasures(data.positions, data); } // First measurement after thermalisation
 
 	// Take measures of the path every "decorrelation" sweeps
     if (takeMeasuresFlag == true) {
@@ -241,32 +271,14 @@ void metropolis(bool winOn, std::string system, int repeat, std::mt19937& rng, R
             metropolisUpdate(winOn, potential, rng, data);
             data.sweep++;
             if (remainder(data.sweep, decorrSweeps) == 0) {
-                takeMeasures(data.positions, potentialDifferential, potential, data);
+                takeMeasures(data.positions, data);
             }
         }
-        for (int n = 0; n < N; ++n) {
-            data.Gx1x1Temp[n] /= measures;
-        }
-        data.vacuumPiece /= measures;  // Average of the vacuum piece
-        for (int n = 0; n < N; ++n) {
-            data.Gx2x2Temp[n] = data.Gx2x2Temp[n] / measures - data.vacuumPiece * data.vacuumPiece;
-        }
-        Gx1x1.insert(Gx1x1.end(), data.Gx1x1Temp.begin(), data.Gx1x1Temp.end());
-        Gx2x2.insert(Gx2x2.end(), data.Gx2x2Temp.begin(), data.Gx2x2Temp.end());
-
-        for (int i = 0; i < numBins; i++) { // Average the histogram over measures and normalise it
-            data.histogramTemp[i] /= (measures * N);
-        }
-        histogram.insert(histogram.end(), data.histogramTemp.begin(), data.histogramTemp.end());
-
-        instantons.insert(instantons.end(), data.instantonsTemp.begin(), data.instantonsTemp.end());
-        antiInstantons.insert(antiInstantons.end(), data.antiInstantonsTemp.begin(), data.antiInstantonsTemp.end());
-
-        //std::cout << " Completed measurements for iteration " << repeat + 1 << "." << std::endl;
+		computeObservables(data.positionsVector, potentialDifferential, potential, data); // Compute the observables based on the measured paths
     }
 }
 
-void metropolisUpdate(bool winOn, double (*potential)(double), std::mt19937& rng, RepeatData& data) {    // The heart of the simulation, the metropolis algorithm function
+void metropolisUpdate(bool winOn, double (*potential)(double), std::mt19937& rng, RepeatData& data) {    // The core of the simulation, the metropolis algorithm function
     double newPosition;
     for (int i = 0; i < N; i++) {
         double y = uniformMinus1to1(rng);  // Sets a random number between -1 and 1
@@ -311,7 +323,6 @@ void initialise(std::string system, std::mt19937& rng, RepeatData& data) {   // 
     data.sweep = 0;
     data.measureCount = 0;
     data.acceptedMoves = 0;
-    data.vacuumPiece = 0.0;
 
     if (hot_start) {
         for (int i = 0; i < N; i++)
@@ -350,82 +361,152 @@ void takeThermMeasures(std::vector<double>& positions, double (*potentialDiffere
     data.E0ThermTemp.push_back(E0Calc(positions, potentialDifferential, potential));
 }
 
-void takeMeasures(std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double), RepeatData& data) {    // Takes all measurements at current path state in one function
+void takeMeasures(std::vector<double>& positions, RepeatData& data) {    // Takes all measurements at current path state in one function
     // Record acceptance rate between decorrelations
     data.accRateTemp.push_back((double)(data.acceptedMoves) / (N * (double)decorrSweeps));
     data.acceptedMoves = 0;
 
-    // Record ground state energy
-    double E0 = E0Calc(positions, potentialDifferential, potential);
-    data.E0Temp.push_back(E0);
-
-    // Compute the correlators once
-    std::vector<double> tempCorrx1x1 = x1x1Correlator(positions);
-    std::vector<double> tempCorrx2x2 = x2x2Correlator(positions, data.vacuumPiece);
-
-    // Write the correlators
-    if (data.measureCount == 0) {
-        data.Gx1x1Temp = tempCorrx1x1;
+	// Record positions for observable calculations later.
+    for (int i = 0; i < N; i++) {
+        data.positionsVector[data.measureCount][i] = positions[i];
     }
-    else {
-        for (int n = 0; n < N; ++n)
-            data.Gx1x1Temp[n] += tempCorrx1x1[n];
-    }
-
-    if (data.measureCount == 0) {
-        data.Gx2x2Temp = tempCorrx2x2;
-    }
-    else {
-        for (int n = 0; n < N; ++n)
-            data.Gx2x2Temp[n] += tempCorrx2x2[n];
-    }
-
-    for (int t = 0; t < N; t++) {
-        double x = positions[t];
-
-        int bin = int((x - xMin) / binWidth);
-
-        if (bin >= 0 && bin < numBins) {
-            data.histogramTemp[bin] += 1.0;
-        }
-    }
-
-    int prev = whichWell(positions[0], tunnellingThreshold);
-
-	int instantons = 0;
-	int antiInstantons = 0;
-
-    for (int i = 1; i < N; i++)
-    {
-        int curr = whichWell(positions[i], tunnellingThreshold);
-
-        if (curr == 0) continue;   // Ignore barrier
-
-        if (prev == -1 && curr == 1)
-            instantons++;
-
-        if (prev == 1 && curr == -1)
-            antiInstantons++;
-
-        prev = curr;
-    }
-
-	// Check for tunnelling in the first position to account for the periodic boundary conditions
-
-    int curr = whichWell(positions[0], tunnellingThreshold);
-
-    if (curr != 0)  // Ignore barrier
-    {
-        if (prev == -1 && curr == 1)
-            instantons++;
-
-        if (prev == 1 && curr == -1)
-            antiInstantons++;
-    }
-
-	data.instantonsTemp.push_back(instantons);
-	data.antiInstantonsTemp.push_back(antiInstantons);
 
     // Increment measure count
     data.measureCount++;
+}
+
+void computeObservables(std::vector<std::vector<double>>& positionsVector, double (*potentialDifferential)(double), double (*potential)(double), RepeatData& data) {
+
+    std::vector<std::vector<double>> O1(measures, std::vector<double>(N));
+    std::vector<std::vector<double>> O2(measures, std::vector<double>(N));
+    std::vector<std::vector<double>> O3(measures, std::vector<double>(N));
+
+    for (int cfg = 0; cfg < measures; cfg++)
+    {
+        for (int t = 0; t < N; t++)
+        {
+            double x = positionsVector[cfg][t];
+
+            O1[cfg][t] = x;
+            O2[cfg][t] = x * x;
+            O3[cfg][t] = x * x * x;
+        }
+    }
+
+    double x1Vacuum = 0.0;
+    double x2Vacuum = 0.0;
+	double x3Vacuum = 0.0;
+
+    for (int cfg = 0; cfg < measures; cfg++)
+    {
+        for (int t = 0; t < N; t++)
+        {
+            x1Vacuum += O1[cfg][t];
+			x2Vacuum += O2[cfg][t];
+            x3Vacuum += O3[cfg][t];
+        }
+	}
+
+	x1Vacuum /= (measures * N);
+	x2Vacuum /= (measures * N);
+	x3Vacuum /= (measures * N);
+
+    for (int cfg = 0; cfg < measures; cfg++)
+    {
+        std::vector<double> correlation11Temp;
+        std::vector<double> correlation12Temp;
+        std::vector<double> correlation13Temp;
+        std::vector<double> correlation22Temp;
+        std::vector<double> correlation23Temp;
+        std::vector<double> correlation33Temp;
+        correlation11Temp = correlator(O1[cfg], O1[cfg]);
+        correlation12Temp = correlator(O1[cfg], O2[cfg]);
+        correlation13Temp = correlator(O1[cfg], O3[cfg]);
+        correlation22Temp = correlator(O2[cfg], O2[cfg]);
+        correlation23Temp = correlator(O2[cfg], O3[cfg]);
+        correlation33Temp = correlator(O3[cfg], O3[cfg]);
+            
+        for (int i = 0; i < N; i++) {
+            data.Gx1x1Temp[i] += correlation11Temp[i];
+            data.Gx1x2Temp[i] += correlation12Temp[i];
+            data.Gx1x3Temp[i] += correlation13Temp[i];
+            data.Gx2x2Temp[i] += correlation22Temp[i];
+            data.Gx2x3Temp[i] += correlation23Temp[i];
+            data.Gx3x3Temp[i] += correlation33Temp[i];
+        }
+    }
+
+    // Average correlators
+    for (int n = 0; n < N; ++n) {
+        data.Gx1x1Temp[n] /= measures;
+		data.Gx1x1Temp[n] -= x1Vacuum * x1Vacuum; 
+        data.Gx1x2Temp[n] /= measures;
+		data.Gx1x2Temp[n] -= x1Vacuum * x2Vacuum;
+        data.Gx1x3Temp[n] /= measures;
+		data.Gx1x3Temp[n] -= x1Vacuum * x3Vacuum;
+        data.Gx2x2Temp[n] /= measures;
+		data.Gx2x2Temp[n] -= x2Vacuum * x2Vacuum;
+        data.Gx2x3Temp[n] /= measures;
+		data.Gx2x3Temp[n] -= x2Vacuum * x3Vacuum;
+        data.Gx3x3Temp[n] /= measures;
+		data.Gx3x3Temp[n] -= x3Vacuum * x3Vacuum;
+    }
+
+    for (int i = 0; i < measures; i++)
+    {
+        // Record ground state energy
+        double E0 = E0Calc(positionsVector[i], potentialDifferential, potential);
+        data.E0Temp.push_back(E0); // Save every measure of the ground state energy to calculate the error later
+
+
+        // Record histogram data for the wavefunction
+        for (int t = 0; t < N; t++) {
+            double x = positionsVector[i][t];
+
+            int bin = int((x - xMin) / binWidth);
+
+            if (bin >= 0 && bin < numBins) {
+                data.histogramTemp[bin] += 1.0;
+            }
+        }
+        // Find instantons and anti instantons
+        int prev = whichWell(positionsVector[i][0], tunnellingThreshold);
+
+        int instantons = 0;
+        int antiInstantons = 0;
+
+        for (int j = 1; j < N; j++)
+        {
+            int curr = whichWell(positionsVector[i][j], tunnellingThreshold);
+
+            if (curr == 0) continue;   // Ignore barrier
+
+            if (prev == -1 && curr == 1)
+                instantons++;
+
+            if (prev == 1 && curr == -1)
+                antiInstantons++;
+
+            prev = curr;
+        }
+
+        // Check for tunnelling in the first position to account for the periodic boundary conditions
+        int curr = whichWell(positionsVector[i][0], tunnellingThreshold);
+
+        if (curr != 0)  // Ignore barrier
+        {
+            if (prev == -1 && curr == 1)
+                instantons++;
+
+            if (prev == 1 && curr == -1)
+                antiInstantons++;
+        }
+
+        data.instantonsTemp.push_back(instantons);
+        data.antiInstantonsTemp.push_back(antiInstantons);
+    }
+
+    for (int i = 0; i < numBins; i++) { // Average the histogram over measures and normalise it
+        data.histogramTemp[i] /= (measures * N);
+    }
 }

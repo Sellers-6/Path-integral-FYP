@@ -18,7 +18,11 @@ static std::vector<Observable> getObservables()
         {"accRate", &accRate},
         {"histogram", &histogram},
         {"Gx1x1", &Gx1x1},
+        {"Gx1x2", &Gx1x2},
+        {"Gx1x3", &Gx1x3},
         {"Gx2x2", &Gx2x2},
+        {"Gx2x3", &Gx2x3},
+        {"Gx3x3", &Gx3x3},
         {"instantons", &instantons},
         {"antiInstantons", &antiInstantons},
         {"headerInfo", &headerInfo}
@@ -178,7 +182,7 @@ void writeData2(
     for (const auto& obs : observables)
     {
         std::string path =
-            system + "/" + wellCentres + "/" + latticeSpacing + obs.name;
+            system + "/" + wellCentres + "/" + latticeSpacing + "/" + obs.name;
 
         hid_t group = createOrReplaceGroup(file, path);
         if (group < 0)

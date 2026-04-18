@@ -6,6 +6,7 @@
   library(dplyr)
   library(rhdf5)
   library(minpack.lm) # better exponential fitting
+  library(expm) # eigenvalue solving
 }
 
 #  System
@@ -29,7 +30,11 @@ save_png <- FALSE
   instantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/instantons"))))
   antiInstantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/antiInstantons"))))
   Gx1x1Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx1x1"))))
+  Gx1x2Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx1x2"))))
+  Gx1x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx1x3"))))
   Gx2x2Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx2x2"))))
+  Gx2x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx2x3"))))
+  Gx3x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx3x3"))))
   headerData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/headerInfo"))))
 
   diagEnergiesData <- read.csv("DWP diagonalisation/DWP diagonalisation/energies.csv")
@@ -459,10 +464,17 @@ ggplot(hist_df, aes(x = x, y = probability)) +
     }
   }
 }
+ggplot(dfCorr, aes(x = lag * latticeSpacing)) +
+      geom_point(aes(y = correlation, color = "MCMC Correlator"), size = 0.5) +
+      geom_line(aes(y = fit, color = "Exponential fit")) +
+      labs(title = "DWP x1 x1 Correlator with Exponential fit", y = "Two-Point Correlator G(t)", x = "Lag t") +
+      scale_color_manual(
+        name = "",
+        values = c("MCMC Correlator" = "black", "Exponential fit" = "red"))
 
 # x2 x2 correlation function
 {
-  noiseless_region_x2x2 <- 40 # Adjust to the length of the noiseless region
+  noiseless_region_x2x2 <- 50 # Adjust to the length of the noiseless region
   dfCorr <- data.frame(
     lag = 0:(noiseless_region_x2x2 - 1),
     correlation = Gx2x2Data[0:noiseless_region_x2x2]
@@ -526,6 +538,13 @@ ggplot(dfCorr, aes(x = lag, y = correlation)) +
   } 
 }
 
+ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag * latticeSpacing, y = ratio)) +
+      geom_line(aes(color = "Log Ratio")) +
+      geom_hline(data = data.frame(y = E1 - E0), aes(yintercept = y, color = "Splitting Energy"), linetype = "dashed") +
+      labs(title = "Finding the splitting energy for the QHO",
+          x = "Lag t", y = expression("Log(" ~ G[2](t) ~ ") / Log(" ~ G[2](t+a) ~ ")")) +
+      scale_color_manual(name = "", values = c("Log Ratio" = "blue", "Splitting Energy" = "red"))
+
 E1
 E1 - E0
 Split_diag
@@ -546,6 +565,184 @@ Split_diag
 }
 
 E2 - E0
+
+### GEVP - Alternative method of extracting excited energy state.division
+
+{
+  # Matrix of correlators with vector entries "pathLength" long
+  C <- array(0, dim = c(3, 3, pathLength)) 
+
+  C[1,1,] <- Gx1x1Data
+  C[1,2,] <- Gx1x2Data
+  C[1,3,] <- Gx1x3Data
+
+  C[2,1,] <- Gx1x2Data
+  C[2,2,] <- Gx2x2Data
+  C[2,3,] <- Gx2x3Data
+
+  C[3,1,] <- Gx1x3Data
+  C[3,2,] <- Gx2x3Data
+  C[3,3,] <- Gx3x3Data
+
+  t0 <- 1
+
+  eigvals <- matrix(0, nrow = pathLength, ncol = 3)
+
+  C0 <- C[,,t0]
+  C0 <- (C0 + t(C0)) / 2
+
+  C0_inv_sqrt <- solve(sqrtm(C0))
+
+  for (t in 1:pathLength) {
+    Ct <- C[,,t]
+    Ct <- (Ct + t(Ct)) / 2
+    
+    M <- C0_inv_sqrt %*% Ct %*% C0_inv_sqrt
+    gevp <- eigen(M)
+    
+    eigvals[t, ] <- Re(gevp$values)
+  }
+
+  eigvals <- t(apply(eigvals, 1, sort, decreasing = TRUE))
+
+  # ---- Effective energies from GEVP eigenvalues ----
+  E <- matrix(NA, nrow = pathLength - 1, ncol = 3)
+
+  for (t in 1:(pathLength - 1)) {
+
+    ratio <- eigvals[t, ] / eigvals[t + 1, ]
+
+    # avoid invalid values
+    ratio[ratio <= 0] <- NA
+
+    E[t, ] <- -log(ratio) / latticeSpacing
+  }
+}
+
+{
+  # Matrix of correlators with vector entries "pathLength" long
+  C <- array(0, dim = c(2, 2, pathLength)) 
+
+  C[1,1,] <- Gx1x1Data
+  C[1,2,] <- Gx1x2Data
+
+  C[2,1,] <- Gx1x2Data
+  C[2,2,] <- Gx2x2Data
+
+  t0 <- 2
+
+  eigvals <- matrix(0, nrow = pathLength, ncol = 2)
+
+  C0 <- C[,,t0]
+  C0 <- (C0 + t(C0)) / 2
+
+  C0_inv_sqrt <- solve(sqrtm(C0))
+
+  for (t in 1:pathLength) {
+    Ct <- C[,,t]
+    Ct <- (Ct + t(Ct)) / 2
+    
+    M <- C0_inv_sqrt %*% Ct %*% C0_inv_sqrt
+    gevp <- eigen(M)
+    
+    eigvals[t, ] <- Re(gevp$values)
+  }
+
+  eigvals <- t(apply(eigvals, 1, sort, decreasing = TRUE))
+
+  # ---- Effective energies from GEVP eigenvalues ----
+  E <- matrix(NA, nrow = pathLength - 1, ncol = 2)
+
+  for (t in 1:(pathLength - 1)) {
+
+    ratio <- eigvals[t, ] / eigvals[t + 1, ]
+
+    # avoid invalid values
+    ratio[ratio <= 0] <- NA
+
+    E[t, ] <- -log(ratio) / latticeSpacing
+  }
+}
+
+find_flat_region <- function(x, window = 10) {
+  
+  n <- length(x)
+  
+  if (window > n) stop("window is larger than data length")
+  
+  best_var <- Inf
+  best_start <- 1
+  
+  # slide window across data
+  for (i in 1:(n - window + 1)) {
+    
+    segment <- x[i:(i + window - 1)]
+    
+    # ignore NA values safely
+    segment <- segment[!is.na(segment)]
+    
+    if (length(segment) < 2) next
+    
+    v <- var(segment)
+    
+    if (v < best_var) {
+      best_var <- v
+      best_start <- i
+    }
+  }
+  
+  best_region <- x[best_start:(best_start + window - 1)]
+  
+  list(
+    mean = mean(best_region, na.rm = TRUE),
+    start_index = best_start,
+    end_index = best_start + window - 1,
+    variance = best_var,
+    region = best_region
+  )
+}
+
+cut_off <- 50
+
+df <- data.frame(
+  t = 1:cut_off,
+  E0 = E[,1][1:cut_off]
+)
+
+plateau_E0 <- find_flat_region(E[,1], window = 10)
+plateau_E0$mean
+
+ggplot(df, aes(x = t, y = E0)) +
+  geom_line() +
+  labs(x = "t", y = "E0(t)", title = "Effective Energy (Ground state)")
+
+df <- data.frame(
+  t = 1:cut_off,
+  E1 = E[,2][1:cut_off]
+)
+
+plateau_E1 <- find_flat_region(E[,2], window = 10)
+plateau_E1$mean
+
+ggplot(df, aes(x = t, y = E1)) +
+  geom_line() +
+  labs(x = "t", y = "E1(t)", title = "Effective Energy (1st excited state)")
+
+df <- data.frame(
+  t = 1:cut_off,
+  E2 = E[,3][1:cut_off]
+)
+
+plateau_E2 <- find_flat_region(E[,3], window = 10)
+plateau_E2$mean
+
+ggplot(df, aes(x = t, y = E2)) +
+  geom_line() +
+  labs(x = "t", y = "E2(t)", title = "Effective Energy (2nd excited state)")
+
+
+
+Split_diag
 
 # Tunnelling data
 

@@ -18,13 +18,12 @@
 ///// Simulation settings /////
 
 const bool takeMeasuresFlag = true;    // Flag to determine whether to take measures 
-const bool takeThermMeasuresFlag = true;
 const int numBins = 100;              // Number of bins for the histogram of positions
 bool sixFlag = false;    // Flag to determine whether user selected option six or not 
 
 ///// Acceptance rate settings /////
 
-double epsilon = 0.3;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
+double epsilon = 0.4;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
 const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
 
 ///// Decorrelation settings /////
@@ -55,9 +54,9 @@ bool multThreads = false;                      // Flag to determine whether to r
 
 ///// Lattice parameters /////
 
-int N = 16000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
+int N = 100;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Lattice points (represents the "path" of the particle)
-double a = 0.03125;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
+double a = 0.1;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
 double aInverse = 1.0 / a;											
 
 ///// QHO specific parameters /////
@@ -81,7 +80,11 @@ std::vector<double> E0;       //
 std::vector<double> accRateTherm;   //
 std::vector<double> accRate;	//
 std::vector<double> Gx1x1;     //
+std::vector<double> Gx1x2;
+std::vector<double> Gx1x3;
 std::vector<double> Gx2x2;    //
+std::vector<double> Gx2x3;
+std::vector<double> Gx3x3;
 std::vector<double> histogram;
 std::vector<double> instantons;
 std::vector<double> antiInstantons;
@@ -98,12 +101,16 @@ double binWidth;                   // Bin width for the histogram, set based on 
 struct RepeatData {
     // Path positions
     std::vector<double> positions;          // All particle positions recorded for decorrelated measurements
+    std::vector<std::vector<double>> positionsVector; // Vector of all positions measured
 
     // Measurement vectors (and vacuum piece)
     std::vector<double> E0Temp;     // Ground-state energy measurements during this repeat
-    std::vector<double> Gx1x1Temp;   // x1 x1 correlator accumulator for this repeat
-    std::vector<double> Gx2x2Temp;  // x2 x2 correlator accumulator for this repeat
-    double vacuumPiece;             // For x2 x2 correlator subtraction (per-thread)
+	std::vector<double> Gx1x1Temp;   // Correlators during this repeat
+    std::vector<double> Gx1x2Temp;  
+    std::vector<double> Gx1x3Temp;
+    std::vector<double> Gx2x2Temp;
+    std::vector<double> Gx2x3Temp;
+    std::vector<double> Gx3x3Temp;
     std::vector<double> accRateTemp;    // Acceptance rate per repeat (decorrelation steps)
     std::vector<double> histogramTemp;
     std::vector<double> instantonsTemp;
@@ -119,13 +126,17 @@ struct RepeatData {
     int acceptedMoves;   // Count of accepted moves since last measurement
 
     // Constructor to initialise vectors
-    RepeatData(int N = 0, int numBins = 0) {
+    RepeatData(int N = 0, int numBins = 0, int measures = 0) {
         positions = std::vector<double>(N, 0.0);
+        positionsVector = std::vector<std::vector<double>>(measures, std::vector<double>(N, 0.0));
 
         E0Temp.clear();
         Gx1x1Temp = std::vector<double>(N, 0.0);
+        Gx1x2Temp = std::vector<double>(N, 0.0);
+        Gx1x3Temp = std::vector<double>(N, 0.0);
         Gx2x2Temp = std::vector<double>(N, 0.0);
-        vacuumPiece = 0.0;
+        Gx2x3Temp = std::vector<double>(N, 0.0);
+        Gx3x3Temp = std::vector<double>(N, 0.0);
         accRateTemp.clear();
         histogramTemp = std::vector<double>(numBins, 0.0);
         instantonsTemp.clear();
@@ -157,7 +168,9 @@ void thermalise(bool winOn, double (*potentialDifferential)(double), double (*po
 
 void takeThermMeasures(std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double), RepeatData& data);
 
-void takeMeasures(std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double), RepeatData& data);
+void takeMeasures(std::vector<double>& positions, RepeatData& data);
+
+void computeObservables(std::vector<std::vector<double>>& positionsVector, double (*potentialDifferential)(double), double (*potential)(double), RepeatData& data);
 
 ///// Helper functions /////
 
@@ -168,6 +181,9 @@ double(*findPotential(const std::string& system))(double) {
     else if (system == "DWP") { // Double-well potential
         return DWP::potential;
     }
+    else {
+		return QHO::potential; // Default to QHO potential
+    }
 }
 
 double(*findPotentialDifferential(const std::string& system))(double) {
@@ -176,6 +192,9 @@ double(*findPotentialDifferential(const std::string& system))(double) {
     }
     else if (system == "DWP") { // Double-well potential
         return DWP::potentialDifferential;
+    }
+    else {
+        return QHO::potentialDifferential; // Default to QHO potential
     }
 }
 
@@ -187,7 +206,7 @@ static double E0Calc(const std::vector<double>& positions, double (*potentialDif
 	return E0Count / N;
 }
 
-static std::vector<double> x1x1Correlator(const std::vector<double>& positions) {
+static std::vector<double> correlator(const std::vector<double>& positionsLeft, const std::vector<double>& positionsRight) {
 
     std::vector<double> correlationTemp(N, 0.0);
 
@@ -195,17 +214,17 @@ static std::vector<double> x1x1Correlator(const std::vector<double>& positions) 
 
     for (int t = 0; t < N; t++) {
 
-        double position_t = positions[t];
+        double position_t = positionsRight[t];
 
         // Case 1: no wrap
         int maxNoWrap = std::min(halfTime, N - t - 1);
         for (int n = 0; n <= maxNoWrap; n++) {
-            correlationTemp[n] += positions[t + n] * position_t;
+            correlationTemp[n] += positionsLeft[t + n] * position_t;
         }
 
         // Case 2: wrap
         for (int n = maxNoWrap + 1; n <= halfTime; n++) {
-            correlationTemp[n] += positions[t + n - N] * position_t;
+            correlationTemp[n] += positionsLeft[t + n - N] * position_t;
         }
     }
 
@@ -218,92 +237,6 @@ static std::vector<double> x1x1Correlator(const std::vector<double>& positions) 
     for (int n = 0; n < N; n++) {
         correlationTemp[n] /= N;
     }
-
-    return correlationTemp;
-}
-
-static std::vector<double> x1xSmearedCorrelator(const std::vector<double>& positions, const std::vector<double>& positionsSmeared) {
-
-    std::vector<double> correlationTemp(N, 0.0);
-
-    int halfTime = N / 2;
-
-    for (int t = 0; t < N; t++) {
-
-        double position_t = positionsSmeared[t];
-
-        // Case 1: no wrap
-        int maxNoWrap = std::min(halfTime, N - t - 1);
-        for (int n = 0; n <= maxNoWrap; n++) {
-            correlationTemp[n] += positions[t + n] * position_t;
-        }
-
-        // Case 2: wrap
-        for (int n = maxNoWrap + 1; n <= halfTime; n++) {
-            correlationTemp[n] += positions[t + n - N] * position_t;
-        }
-    }
-
-    // Mirror the symmetric half
-    for (int n = 1; n < halfTime; n++) {
-        correlationTemp[N - n] = correlationTemp[n];
-    }
-
-    // Normalise
-    for (int n = 0; n < N; n++) {
-        correlationTemp[n] /= N;
-    }
-
-    return correlationTemp;
-}
-
-static double x2Mean(const double* x, size_t N)
-{
-    double sum = 0.0;
-
-    for (size_t i = 0; i < N; ++i)
-        sum += x[i] * x[i];
-
-    return sum / N;
-}
-
-static std::vector<double> x2x2Correlator(const std::vector<double>& positions, double& vacuumPiece) {
-    std::vector<double> correlationTemp(N, 0.0);
-
-    vacuumPiece += x2Mean(positions.data(), positions.size());
-
-    int halfTime = N / 2;
-
-	// Precompute x(t)^2 for all t to avoid redundant calculations in the inner loop
-    std::vector<double> x2(N);
-    for (int i = 0; i < N; i++)
-        x2[i] = positions[i] * positions[i];
-
-    for (int t = 0; t < N; t++) {
-
-        double positionSquared = x2[t];
-
-        // Case 1: no wrap
-        int maxNoWrap = std::min(halfTime, N - t - 1);
-        for (int n = 0; n <= maxNoWrap; n++) {
-            correlationTemp[n] += x2[t + n] * positionSquared;
-        }
-
-        // Case 2: wrap
-        for (int n = maxNoWrap + 1; n <= halfTime; n++) {
-            correlationTemp[n] += x2[t + n - N] * positionSquared;
-        }
-    }
-
-    // Mirror the symmetric half
-    for (int n = 1; n < halfTime; n++) {
-        correlationTemp[N - n] = correlationTemp[n];
-    }
-
-	// Normalise
-    for (int n = 0; n < N; n++) {
-        correlationTemp[n] /= N;
-	}
 
     return correlationTemp;
 }

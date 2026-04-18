@@ -25,4 +25,6 @@ def solve_double_well(lam=1.0, gamma=1.4, N=4000, L=6.0):
 x, vals, vecs = solve_double_well()
 print(f"E0 = {vals[0]:.8f}")
 print(f"E1 = {vals[1]:.8f}")
+print(f"E2 = {vals[2]:.8f}")
 print(f"ΔE = {vals[1]-vals[0]:.8f}")
+print(f"ΔE2 = {vals[2]-vals[0]:.8f}")
