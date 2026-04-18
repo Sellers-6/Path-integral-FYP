@@ -17,8 +17,8 @@ static std::vector<Observable> getObservables()
         {"accRateTherm", &accRateTherm},
         {"accRate", &accRate},
         {"histogram", &histogram},
-        {"GTwo", &GTwo},
-        {"GFour", &GFour},
+        {"Gx1x1", &Gx1x1},
+        {"Gx2x2", &Gx2x2},
         {"instantons", &instantons},
         {"antiInstantons", &antiInstantons},
         {"headerInfo", &headerInfo}
@@ -133,9 +133,7 @@ static void writeVector(hid_t group, const std::vector<double>& data) {
     H5Sclose(space);
 }
 
-void writeData(
-    const std::string& boundary,
-    const std::string& system)
+void writeData(const std::string& system)
 {
     hid_t file = openOrCreateFile();
     if (file < 0)
@@ -149,7 +147,38 @@ void writeData(
     for (const auto& obs : observables)
     {
         std::string path =
-            obs.name + "/" + boundary + "/" + system;
+            system + "/" + obs.name;
+
+        hid_t group = createOrReplaceGroup(file, path);
+        if (group < 0)
+            continue;
+
+        writeVector(group, *obs.vec);
+
+        H5Gclose(group);
+    }
+
+    H5Fclose(file);
+}
+
+void writeData2(
+    const std::string& system,
+    const std::string& wellCentres,
+    const std::string& latticeSpacing)
+{
+    hid_t file = openOrCreateFile();
+    if (file < 0)
+    {
+        std::cerr << "Failed to open HDF5 file\n";
+        return;
+    }
+
+    auto observables = getObservables();
+
+    for (const auto& obs : observables)
+    {
+        std::string path =
+            system + "/" + wellCentres + "/" + latticeSpacing + obs.name;
 
         hid_t group = createOrReplaceGroup(file, path);
         if (group < 0)

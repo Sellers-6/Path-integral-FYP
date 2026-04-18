@@ -17,28 +17,28 @@
 
 ///// Simulation settings /////
 
-const bool takeMeasuresFlag = true;    // Flag to determine whether to take measures (If this is turned off, thermalisation will only complete after thermalisationMaximum!)
+const bool takeMeasuresFlag = true;    // Flag to determine whether to take measures 
 const bool takeThermMeasuresFlag = true;
 const int numBins = 100;              // Number of bins for the histogram of positions
-const bool modifyGTwo = false;
+bool sixFlag = false;    // Flag to determine whether user selected option six or not 
 
 ///// Acceptance rate settings /////
 
-const double epsilon = 0.3;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
+double epsilon = 0.3;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
 const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
 
 ///// Decorrelation settings /////
 
 int decorrSweeps;                               // Set by user input based on the system being simulated
 const int decorrSweepsQHO = 2500;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
-const int decorrSweepsDWP = 2500;			        // Decorrelation takes longer in the DWP system
-const int measures = 500;                       // Number of measures taken after thermalisation
+const int decorrSweepsDWP = 5000;			        // Decorrelation takes longer in the DWP system
+const int measures = 50;                       // Number of measures taken after thermalisation
 
 ///// Thermalisation settings /////
 
 int thermSweeps;                                // Set by user input based on the system being simulated
-const int thermSweepsQHO = 10000;       // Number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
-const int thermSweepsDWP = 5000;     // Thermalisation also takes longer in the DWP system
+const int thermSweepsQHO = 5000;       // Number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
+const int thermSweepsDWP = 10000;     // Thermalisation also takes longer in the DWP system
 const int thermInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
 
 ///// Initialisation settings /////
@@ -55,10 +55,10 @@ bool multThreads = false;                      // Flag to determine whether to r
 
 ///// Lattice parameters /////
 
-const int N = 10000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
+int N = 16000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Lattice points (represents the "path" of the particle)
-const double a = 0.05;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
-const double aInverse = 1.0 / a;											
+double a = 0.03125;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
+double aInverse = 1.0 / a;											
 
 ///// QHO specific parameters /////
 
@@ -67,12 +67,12 @@ const int omega = 1;                // Unit frequency
 
 ///// DWP specific parameters /////
 
-const double wellCentres = 1.4;     // Well centre positions, increasing this moves the wells further apart
+double wellCentres = 1.4;     // Well centre positions, increasing this moves the wells further apart
 const double lambda = 1;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
 
-const double omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.
+double omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.
 // To use that the ground and first excited states are centred around 0.5, we require that omegaDWP = 1, which gives the relation lambda = 1 / (8 * wellCentres^2). 
-const double tunnellingThreshold = 0.2 * wellCentres;     // Threshold for determining whether the particle is in the left or right well
+double tunnellingThreshold = 0.2 * wellCentres;     // Threshold for determining whether the particle is in the left or right well
 
 ///// Vectors to store data /////
 
@@ -80,17 +80,12 @@ std::vector<double> E0Therm;        //
 std::vector<double> E0;       //
 std::vector<double> accRateTherm;   //
 std::vector<double> accRate;	//
-std::vector<double> GTwo;     //
-std::vector<double> GFour;    //
+std::vector<double> Gx1x1;     //
+std::vector<double> Gx2x2;    //
 std::vector<double> histogram;
 std::vector<double> instantons;
 std::vector<double> antiInstantons;
 std::vector<double> headerInfo;
-
-///// Boundary conditions ///// 
-
-int start;                          // Determines the left most point in the lattice which the Metropolis algorithm will loop through, useful for switching between periodic and Dirichlet boundary conditions (0 for periodic, 1 for Dirichlet)
-int end;                            // Like the start variable, determines which point in the lattice the Metropolis algorithm will loop to (N for periodic, N-1 for Dirichlet)
 
 ///// Boudaries of the histogram /////
 
@@ -106,10 +101,9 @@ struct RepeatData {
 
     // Measurement vectors (and vacuum piece)
     std::vector<double> E0Temp;     // Ground-state energy measurements during this repeat
-    std::vector<double> GTwoTemp;   // Two-point correlator accumulator for this repeat
-    std::vector<double> GFourTemp;  // Four-point correlator accumulator for this repeat
-    double vacuumPiece;             // For four-point correlator subtraction (per-thread)
-    double xMean;                   // For two-point connected correlator subtraction (per-thread)
+    std::vector<double> Gx1x1Temp;   // x1 x1 correlator accumulator for this repeat
+    std::vector<double> Gx2x2Temp;  // x2 x2 correlator accumulator for this repeat
+    double vacuumPiece;             // For x2 x2 correlator subtraction (per-thread)
     std::vector<double> accRateTemp;    // Acceptance rate per repeat (decorrelation steps)
     std::vector<double> histogramTemp;
     std::vector<double> instantonsTemp;
@@ -129,10 +123,9 @@ struct RepeatData {
         positions = std::vector<double>(N, 0.0);
 
         E0Temp.clear();
-        GTwoTemp = std::vector<double>(N, 0.0);
-        GFourTemp = std::vector<double>(N, 0.0);
+        Gx1x1Temp = std::vector<double>(N, 0.0);
+        Gx2x2Temp = std::vector<double>(N, 0.0);
         vacuumPiece = 0.0;
-        xMean = 0.0;
         accRateTemp.clear();
         histogramTemp = std::vector<double>(numBins, 0.0);
         instantonsTemp.clear();
@@ -151,14 +144,14 @@ struct RepeatData {
 
 void chooseSystem();                                      // Allows user to choose which system to perform metropolis algorithm on
 
-void metropolisRepeat(bool winOn, std::string boundary, std::string system);      // Repeats the metropolis function "repeats" times
+void metropolisRepeat(bool winOn, std::string system);      // Repeats the metropolis function "repeats" times
 
-void metropolis(bool winOn, std::string boundary, std::string system, int repeat, std::mt19937& rng, RepeatData& data,
+void metropolis(bool winOn, std::string system, int repeat, std::mt19937& rng, RepeatData& data,
     double (*potential)(double), double (*potentialDifferential)(double));            // Parent function for metropolisUpdate, runs loops to execute sufficient updates to the path
 
 void metropolisUpdate(bool winOn, double (*potential)(double), std::mt19937& rng, RepeatData& data);  // Mechanics of the Metropolis algorithm such as checking whether a proposed update is accepted
 
-void initialise(std::string boundary, std::string system, std::mt19937& rng, RepeatData& data);
+void initialise(std::string system, std::mt19937& rng, RepeatData& data);
 
 void thermalise(bool winOn, double (*potentialDifferential)(double), double (*potential)(double), std::mt19937& rng, RepeatData& data);
 
@@ -168,16 +161,7 @@ void takeMeasures(std::vector<double>& positions, double (*potentialDifferential
 
 ///// Helper functions /////
 
-static void setBoundary(std::string boundary) {
-    if (boundary == "Periodic") {         // Periodic boundary conditions
-        start = 0, end = N;
-    }
-    else if (boundary == "Dirichlet") {    // Dirichlet boundary conditions
-        start = 1, end = N - 1;        // Effectively fixes the endpoints to 0, as they are never updated. This way we can apply Dirichlet boundary conditions to the double well potential. We effectively set one of the wells to be the "zero point" of the potential, so the endpoints are fixed at the minimum of one of the wells
-    }
-}
-
-inline double(*findPotential(const std::string& system))(double) {
+double(*findPotential(const std::string& system))(double) {
     if (system == "QHO") { // Quantum harmonic oscillator
         return QHO::potential;
     }
@@ -186,7 +170,7 @@ inline double(*findPotential(const std::string& system))(double) {
     }
 }
 
-inline double(*findPotentialDifferential(const std::string& system))(double) {
+double(*findPotentialDifferential(const std::string& system))(double) {
     if (system == "QHO") { // Quantum harmonic oscillator
         return QHO::potentialDifferential;
     }
@@ -203,7 +187,7 @@ static double E0Calc(const std::vector<double>& positions, double (*potentialDif
 	return E0Count / N;
 }
 
-static std::vector<double> twoPointCorrelator(const std::vector<double>& positions) {
+static std::vector<double> x1x1Correlator(const std::vector<double>& positions) {
 
     std::vector<double> correlationTemp(N, 0.0);
 
@@ -212,6 +196,41 @@ static std::vector<double> twoPointCorrelator(const std::vector<double>& positio
     for (int t = 0; t < N; t++) {
 
         double position_t = positions[t];
+
+        // Case 1: no wrap
+        int maxNoWrap = std::min(halfTime, N - t - 1);
+        for (int n = 0; n <= maxNoWrap; n++) {
+            correlationTemp[n] += positions[t + n] * position_t;
+        }
+
+        // Case 2: wrap
+        for (int n = maxNoWrap + 1; n <= halfTime; n++) {
+            correlationTemp[n] += positions[t + n - N] * position_t;
+        }
+    }
+
+    // Mirror the symmetric half
+    for (int n = 1; n < halfTime; n++) {
+        correlationTemp[N - n] = correlationTemp[n];
+    }
+
+    // Normalise
+    for (int n = 0; n < N; n++) {
+        correlationTemp[n] /= N;
+    }
+
+    return correlationTemp;
+}
+
+static std::vector<double> x1xSmearedCorrelator(const std::vector<double>& positions, const std::vector<double>& positionsSmeared) {
+
+    std::vector<double> correlationTemp(N, 0.0);
+
+    int halfTime = N / 2;
+
+    for (int t = 0; t < N; t++) {
+
+        double position_t = positionsSmeared[t];
 
         // Case 1: no wrap
         int maxNoWrap = std::min(halfTime, N - t - 1);
@@ -248,7 +267,7 @@ static double x2Mean(const double* x, size_t N)
     return sum / N;
 }
 
-static std::vector<double> fourPointCorrelator(const std::vector<double>& positions, double& vacuumPiece) {
+static std::vector<double> x2x2Correlator(const std::vector<double>& positions, double& vacuumPiece) {
     std::vector<double> correlationTemp(N, 0.0);
 
     vacuumPiece += x2Mean(positions.data(), positions.size());
@@ -316,4 +335,18 @@ void constructHeaderInfo(const std::string& system) {
         headerInfo.push_back(wellCentres);  // Well centre positions for the double well potential
         headerInfo.push_back(lambda);       // Coupling constant for the double well potential
 	}
+}
+
+void setParameters(int beta, double a, double wellCentres) {
+	
+    // Use thermalisation/decorrelation sweeps for the system with smallest a, as this will be the slowest to thermalise and decorrelatese.
+	// This is inefficient for systems that are fast to thermalise/decorrelate, but ensures that all systems are sufficiently thermalised and decorrelated.
+    
+    // Set the other lattice paramters
+    N = beta / a;
+	aInverse = 1.0 / a;
+    
+    // Set the potential parameters for the DWP
+    omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.
+    tunnellingThreshold = 0.2 * wellCentres;
 }

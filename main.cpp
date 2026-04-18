@@ -3,27 +3,42 @@
 
 #include "main.h"
 
-int main() {    // Accepts user choice of boundary conditions, system type, and window visualisation
+int main() {    // Accepts user choice of system type and window visualisation
     std::cout << "Simulating quantum systems with different potentials using the Feynman path integral and Metropolis algorithm";
     std::string choice;
 	chooseSystem(); // Print the options to the user
 	while (true) {
 		std::cout << "Enter choice: ";
         std::cin >> choice;
-        if (choice == "1")      { multThreads = true;  metropolisRepeat(false, "Periodic", "QHO"); }
-        else if (choice == "2") { metropolisRepeat(true, "Periodic", "QHO"); }
-        else if (choice == "3") { multThreads = true;  metropolisRepeat(false, "Dirichlet", "QHO"); }
-        else if (choice == "4") { metropolisRepeat(true, "Dirichlet", "QHO"); }
-        else if (choice == "5") { multThreads = true;  metropolisRepeat(false, "Periodic", "DWP"); }
-        else if (choice == "6") { metropolisRepeat(true, "Periodic", "DWP"); }
-        else if (choice == "7") { multThreads = true;  metropolisRepeat(false, "Dirichlet", "DWP"); }
-        else if (choice == "8") { metropolisRepeat(true, "Dirichlet", "DWP"); }
-        else if (choice == "9") { // Run both systems with periodic BCs in one go, used to produce data for the report
+        if (choice == "1")      { multThreads = true;  metropolisRepeat(false, "QHO"); }
+        else if (choice == "2") { metropolisRepeat(true, "QHO"); }
+        else if (choice == "3") { multThreads = true;  metropolisRepeat(false, "DWP"); }
+        else if (choice == "4") { metropolisRepeat(true, "DWP"); }
+        else if (choice == "5") { // Run both systems in one go, used to produce data for the report
             multThreads = true; 
-            metropolisRepeat(false, "Periodic", "QHO");
-            metropolisRepeat(false, "Periodic", "DWP");
+            metropolisRepeat(false, "QHO");
+            metropolisRepeat(false, "DWP");
             std::cout << "Exiting..." << std::endl; break;
 		}
+        else if (choice == "6") {  // Run DWP system with multi-threading with varying lattice spacing and well separation.
+            // This is used to find the error in the energy as a function of the lattice spacing, and to find how the tunnelling rate changes with well separation.
+            multThreads = true;
+            sixFlag = true;
+            std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0 }; // Varying the separation of the wells.
+            std::vector<double> latticeSpacingsVec = { 0.05, 0.0625, 0.1, 0.125, 0.2, 0.25, 0.4, 0.5, 0.8, 1.0 }; // Varying the lattice spacing to see how it affects the error in the energy.
+            std::vector<double> esplinonVec = { 0.2, 0.3, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2};
+			int epsilonIndex = 0; // Index to keep track of which epsilon value we are using.
+            for (double latticeSpacing : latticeSpacingsVec) {
+                a = latticeSpacing; // Update the lattice spacing.
+				epsilon = esplinonVec[epsilonIndex]; // Update epsilon based on the lattice spacing, to keep the acceptance rate at ~ 60%. This was found through trial and error, and is not an exact relationship.
+                for (double wellCentresElement : wellCentresVec) {
+                    wellCentres = wellCentresElement / 2.0; // Update the well centres based on the separation.
+                    setParameters(1000, a, wellCentres); // Use beta = 1000 so that tunneling is captured in the all regimes of well separation.
+                    metropolisRepeat(false, "DWP");
+                }
+				epsilonIndex++;
+            }
+        }
         else if (choice == "0") { std::cout << "Exiting..." << std::endl; break; }
         else { std::cerr << "Invalid choice." << std::endl; }
 
@@ -34,26 +49,23 @@ int main() {    // Accepts user choice of boundary conditions, system type, and 
 }
 
 void chooseSystem() {  // Function to display user choices
-    std::string chooseSystemString = "\n1: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (with multi-threading) \n"
-        "2: Perform Metropolis algorithm with periodic boundary conditions on the QHO system (with path visualisation)\n"
-        "3: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (with multi-threading)\n"
-        "4: Perform Metropolis algorithm with Dirichlet boundary conditions on the QHO system (with path visualisation)\n"
-        "5: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (with multi-threading)\n"
-        "6: Perform Metropolis algorithm with Periodic boundary conditions on the DWP system (with path visualisation)\n"
-        "7: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with multi-threading)\n"
-        "8: Perform Metropolis algorithm with Dirichlet boundary conditions on the DWP system (with path visualisation)\n"
-        "9: Run both systems with periodic boundary conditions and multi-threading, run this to reproduce results from the report\n"
+    std::string chooseSystemString = "\n1: Perform Metropolis algorithm on the QHO system (with multi-threading) \n"
+        "2: Perform Metropolis algorithm on the QHO system (with path visualisation)\n"
+        "3: Perform Metropolis algorithm on the DWP system (with multi-threading)\n"
+        "4: Perform Metropolis algorithm on the DWP system (with path visualisation)\n"
+        "5: Run both systems with multi-threading, run this to reproduce results from the report\n"
+		"6: Run DWP system with multi-threading with varying lattice spacing and well separation,\n"
+        "   this is used to produce data for the error analysis and tunnelling rate plots in the report\n"
         "0: Exit\n"
         "Warning: Program has a tendancy to crash when ran for long times with visualisation";
 
     std::cout << chooseSystemString << std::endl;
 }
 
-void metropolisRepeat(bool winOn, std::string boundary, std::string system) { // Loop over repeats
-    std::cout << "Performing MCMC algorithm for the " << system << " with " << boundary << " boundary conditions." << std::endl;
+void metropolisRepeat(bool winOn, std::string system) { // Loop over repeats
+    std::cout << "Performing MCMC algorithm for the " << system << "." << std::endl;
 
-	// Set up the potentials and boundary conditions for the simulation based on user choice
-    setBoundary(boundary);
+	// Set up the potentials for the simulation based on user choice
 	potential = findPotential(system);
 	potentialDifferential = findPotentialDifferential(system);
 
@@ -89,7 +101,7 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
 
             RepeatData data(N, numBins);
 
-            metropolis(winOn, boundary, system, r, rng, data, potential, potentialDifferential);
+            metropolis(winOn, system, r, rng, data, potential, potentialDifferential);
 
             repeatResults[r] = data;
 
@@ -106,8 +118,8 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
         E0Therm.clear();
         accRateTherm.clear(); 
         E0.clear();
-        GTwo.clear();
-        GFour.clear();
+        Gx1x1.clear();
+        Gx2x2.clear();
         positions.clear();
 		histogram.clear();
 		instantons.clear();
@@ -131,20 +143,20 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
 
 
             // Correlators — sum them up for later averaging
-            if (GTwo.empty()) {
-                GTwo = data.GTwoTemp;
+            if (Gx1x1.empty()) {
+                Gx1x1 = data.Gx1x1Temp;
             }
             else {
-                for (size_t i = 0; i < GTwo.size(); ++i)
-                    GTwo[i] += data.GTwoTemp[i];
+                for (size_t i = 0; i < Gx1x1.size(); ++i)
+                    Gx1x1[i] += data.Gx1x1Temp[i];
             }
 
-            if (GFour.empty()) {
-                GFour = data.GFourTemp;
+            if (Gx2x2.empty()) {
+                Gx2x2 = data.Gx2x2Temp;
             }
             else {
-                for (size_t i = 0; i < GFour.size(); ++i)
-                    GFour[i] += data.GFourTemp[i];
+                for (size_t i = 0; i < Gx2x2.size(); ++i)
+                    Gx2x2[i] += data.Gx2x2Temp[i];
             }
 
             // Histogram for the wavefunction
@@ -161,11 +173,11 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
         }
 
         // Average correlators over repeats
-        for (size_t i = 0; i < GTwo.size(); ++i)
-            GTwo[i] /= repeats;
+        for (size_t i = 0; i < Gx1x1.size(); ++i)
+            Gx1x1[i] /= repeats;
 
-        for (size_t i = 0; i < GFour.size(); ++i)
-            GFour[i] /= repeats;
+        for (size_t i = 0; i < Gx2x2.size(); ++i)
+            Gx2x2[i] /= repeats;
     }
     else { // Single-threaded version. Slower but allows visualisation.
         std::cout << "Providing a visualisation of the evolution of the path. Running " << repeats << " repeats and taking " << measures << " measures." << std::endl;
@@ -178,11 +190,11 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
         for (int repeat = 0; repeat < repeats; repeat++) {
             std::mt19937 rng(seed + repeat);
 
-            metropolis(winOn, boundary, system, repeat, rng, data, potential, potentialDifferential);
+            metropolis(winOn, system, repeat, rng, data, potential, potentialDifferential);
 
             E0.insert(E0.end(), data.E0Temp.begin(), data.E0Temp.end());
-            GTwo.insert(GTwo.end(), data.GTwoTemp.begin(), data.GTwoTemp.end());
-            GFour.insert(GFour.end(), data.GFourTemp.begin(), data.GFourTemp.end());
+            Gx1x1.insert(Gx1x1.end(), data.Gx1x1Temp.begin(), data.Gx1x1Temp.end());
+            Gx2x2.insert(Gx2x2.end(), data.Gx2x2Temp.begin(), data.Gx2x2Temp.end());
 			histogram.insert(histogram.end(), data.histogramTemp.begin(), data.histogramTemp.end());
 			instantons.insert(instantons.end(), data.instantonsTemp.begin(), data.instantonsTemp.end());
 			antiInstantons.insert(antiInstantons.end(), data.antiInstantonsTemp.begin(), data.antiInstantonsTemp.end());
@@ -193,30 +205,30 @@ void metropolisRepeat(bool winOn, std::string boundary, std::string system) { //
     }
 
     constructHeaderInfo(system);
-    headerInfo.push_back(epsilon);
     
 	// Write data to files
-    //csvWriteData(boundary, system);       // Legacy csv writing functions, replaced by h5 files
-    writeData(boundary, system);            // Writes all data to a single h5 file, separated into groups
-
-	// Clear all vectors for the next run
+    //csvWriteData(system);       // Legacy csv writing functions, replaced by h5 files
+    if (!sixFlag) { writeData(system); }            // Writes all data to a single h5 file, separated into groups
+	else if (sixFlag) { writeData2(system, std::to_string(wellCentres), std::to_string(a)); } // Writes data for option 10
+	
+    // Clear all vectors for the next run
     E0Therm.clear();
     accRateTherm.clear();
     E0.clear();
     accRate.clear();
     positions.clear();
-    GTwo.clear();
-    GFour.clear();
+    Gx1x1.clear();
+    Gx2x2.clear();
 	histogram.clear();
 	instantons.clear();
 	antiInstantons.clear();
 	headerInfo.clear();
 }
 
-void metropolis(bool winOn, std::string boundary, std::string system, int repeat, std::mt19937& rng, RepeatData& data,
+void metropolis(bool winOn, std::string system, int repeat, std::mt19937& rng, RepeatData& data,
     double (*potential)(double), double (*potentialDifferential)(double)) { // Metropolis function which gets called initially, then calls other functions to perform the algorithm
     // Set initial path and counters to 0
-    initialise(boundary, system, rng, data);
+    initialise(system, rng, data);
 
     // Thermalise the system
     thermalise(winOn, potentialDifferential, potential, rng, data);
@@ -233,14 +245,14 @@ void metropolis(bool winOn, std::string boundary, std::string system, int repeat
             }
         }
         for (int n = 0; n < N; ++n) {
-            data.GTwoTemp[n] /= measures;
+            data.Gx1x1Temp[n] /= measures;
         }
         data.vacuumPiece /= measures;  // Average of the vacuum piece
         for (int n = 0; n < N; ++n) {
-            data.GFourTemp[n] = data.GFourTemp[n] / measures - data.vacuumPiece * data.vacuumPiece;
+            data.Gx2x2Temp[n] = data.Gx2x2Temp[n] / measures - data.vacuumPiece * data.vacuumPiece;
         }
-        GTwo.insert(GTwo.end(), data.GTwoTemp.begin(), data.GTwoTemp.end());
-        GFour.insert(GFour.end(), data.GFourTemp.begin(), data.GFourTemp.end());
+        Gx1x1.insert(Gx1x1.end(), data.Gx1x1Temp.begin(), data.Gx1x1Temp.end());
+        Gx2x2.insert(Gx2x2.end(), data.Gx2x2Temp.begin(), data.Gx2x2Temp.end());
 
         for (int i = 0; i < numBins; i++) { // Average the histogram over measures and normalise it
             data.histogramTemp[i] /= (measures * N);
@@ -256,7 +268,7 @@ void metropolis(bool winOn, std::string boundary, std::string system, int repeat
 
 void metropolisUpdate(bool winOn, double (*potential)(double), std::mt19937& rng, RepeatData& data) {    // The heart of the simulation, the metropolis algorithm function
     double newPosition;
-    for (int i = start; i < end; i++) {
+    for (int i = 0; i < N; i++) {
         double y = uniformMinus1to1(rng);  // Sets a random number between -1 and 1
         newPosition = data.positions[i] + epsilon * y; // Incrementing one position by float between -epsilon and +epsilon
 		double oldPosition = data.positions[i];
@@ -283,7 +295,7 @@ void metropolisUpdate(bool winOn, double (*potential)(double), std::mt19937& rng
     }
 }
 
-void initialise(std::string boundary, std::string system, std::mt19937& rng, RepeatData& data) {   // Initialises variables and path
+void initialise(std::string system, std::mt19937& rng, RepeatData& data) {   // Initialises variables and path
     // Reset the path
     data.positions = std::vector<double>(N, 0.0); // Reset the path
     if (system == "DWP") // DWP requires a different initial (cold) path since the potential wells are not centered around 0
@@ -292,8 +304,8 @@ void initialise(std::string boundary, std::string system, std::mt19937& rng, Rep
 		side *= -1; // Start the next run in the opposite well to encourage tunnelling and faster thermalisation
     }
     
-    data.GTwoTemp = std::vector<double>(N, 0.0);
-    data.GFourTemp = std::vector<double>(N, 0.0);
+    data.Gx1x1Temp = std::vector<double>(N, 0.0);
+    data.Gx2x2Temp = std::vector<double>(N, 0.0);
     data.E0Temp.clear();
 
     data.sweep = 0;
@@ -348,33 +360,24 @@ void takeMeasures(std::vector<double>& positions, double (*potentialDifferential
     data.E0Temp.push_back(E0);
 
     // Compute the correlators once
-    std::vector<double> tempCorrTwo = twoPointCorrelator(positions);
-    std::vector<double> tempCorrFour = fourPointCorrelator(positions, data.vacuumPiece);
-
-    if (modifyGTwo) {
-        // Remove the vacuum point from the two-point correlator
-        data.xMean = std::accumulate(positions.begin(), positions.end(), 0.0) / N;
-
-        for (int n = 0; n < N; n++) {
-            tempCorrTwo[n] -= data.xMean * data.xMean;
-        }
-    }
+    std::vector<double> tempCorrx1x1 = x1x1Correlator(positions);
+    std::vector<double> tempCorrx2x2 = x2x2Correlator(positions, data.vacuumPiece);
 
     // Write the correlators
     if (data.measureCount == 0) {
-        data.GTwoTemp = tempCorrTwo;
+        data.Gx1x1Temp = tempCorrx1x1;
     }
     else {
         for (int n = 0; n < N; ++n)
-            data.GTwoTemp[n] += tempCorrTwo[n];
+            data.Gx1x1Temp[n] += tempCorrx1x1[n];
     }
 
     if (data.measureCount == 0) {
-        data.GFourTemp = tempCorrFour;
+        data.Gx2x2Temp = tempCorrx2x2;
     }
     else {
         for (int n = 0; n < N; ++n)
-            data.GFourTemp[n] += tempCorrFour[n];
+            data.Gx2x2Temp[n] += tempCorrx2x2[n];
     }
 
     for (int t = 0; t < N; t++) {

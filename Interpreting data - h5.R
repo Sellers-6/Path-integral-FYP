@@ -8,29 +8,29 @@
   library(minpack.lm) # better exponential fitting
 }
 
-# Boundary conditions and system type
+#  System
 {
-  bc <- "Periodic"
-  # bc <- "Dirichlet"
-
   # sys <- "QHO"
   sys <- "DWP"
 }
+
+# Overwrite figures?
+save_png <- FALSE
 
 # Read data
 {
   dataFile <- "data.h5"
   
-  E0ThermData <- as.numeric(unlist(h5read(dataFile, paste0("/E0Therm/", bc, "/", sys))))
-  accRateThermData <- as.numeric(unlist(h5read(dataFile, paste0("/accRateTherm/", bc, "/", sys))))
-  E0Data <- as.numeric(unlist(h5read(dataFile, paste0("/E0/", bc, "/", sys))))
-  accRateData <- as.numeric(unlist(h5read(dataFile, paste0("/accRate/", bc, "/", sys))))
-  histogramData <- as.numeric(unlist(h5read(dataFile, paste0("/histogram/", bc, "/", sys))))
-  instantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/instantons/", bc, "/", sys))))
-  antiInstantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/antiInstantons/", bc, "/", sys))))
-  GTwoData <- as.numeric(unlist(h5read(dataFile, paste0("/GTwo/", bc, "/", sys))))
-  GFourData <- as.numeric(unlist(h5read(dataFile, paste0("/GFour/", bc, "/", sys))))
-  headerData <- as.numeric(unlist(h5read(dataFile, paste0("/headerInfo/", bc, "/", sys))))
+  E0ThermData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/E0Therm"))))
+  accRateThermData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/accRateTherm"))))
+  E0Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/E0"))))
+  accRateData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/accRate"))))
+  histogramData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/histogram"))))
+  instantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/instantons"))))
+  antiInstantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/antiInstantons"))))
+  Gx1x1Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx1x1"))))
+  Gx2x2Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx2x2"))))
+  headerData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/headerInfo"))))
 
   diagEnergiesData <- read.csv("DWP diagonalisation/DWP diagonalisation/energies.csv")
   diagWFData <- read.csv("DWP diagonalisation/DWP diagonalisation/wavefunctions.csv")
@@ -104,14 +104,18 @@ mean(accRateThermData) * 100 # Should be between 50 and 80%
       labs(x = "Sweep", y = expression("Ground State Energy" ~ E[0]),
         title = "Average Thermalisation of the QHO") +
       theme_minimal(base_size = 14)
-    ggsave("Figures/QHO_thermalisation.png", width = 6, height = 4, dpi = 1200)
+    if (save_png) {
+      ggsave("Figures/QHO_thermalisation.png", width = 6, height = 4, dpi = 1200)
+    }
   } else if (sys == "DWP") {
     ggplot(data.frame(sweep = sweepIndex, E0 = E0ThermAvgs), aes(x = sweep * thermInterval, y = E0)) +
       geom_line(color = "blue", linewidth = 0.6) +
       labs(x = "Sweep", y = expression("Ground State Energy" ~ E[0]),
         title = "Average Thermalisation of the DWP") +
       theme_minimal(base_size = 14)
-    ggsave("Figures/DWP_thermalisation.png", width = 6, height = 4, dpi = 1200)
+    if (save_png) {
+      ggsave("Figures/DWP_thermalisation.png", width = 6, height = 4, dpi = 1200)
+    }
   }
 }
 
@@ -127,18 +131,22 @@ mean(accRateThermData) * 100 # Should be between 50 and 80%
   measureIndex <- seq_len(decorrCheck)
   if (sys == "QHO") {
     ggplot(data.frame(sweep = measureIndex, E0 = E0Data[1:decorrCheck]), aes(x = sweep, y = E0)) + 
-      geom_line(color = "blue", size = 0.6) +
+      geom_line(color = "blue", linewidth = 0.6) +
       labs(x = "Measure", y = expression("Ground State Energy" ~ E[0]), 
         title = "Average Decorrelation of the QHO") +
       theme_minimal(base_size = 14)
-    ggsave("Figures/QHO_decorrelation.png", width = 6, height = 4, dpi = 1200)  
+    if (save_png) {
+      ggsave("Figures/QHO_decorrelation.png", width = 6, height = 4, dpi = 1200)  
+    }
   } else if (sys == "DWP") {
     ggplot(data.frame(sweep = measureIndex, E0 = E0Data[1:decorrCheck]), aes(x = sweep, y = E0)) + 
-      geom_line(color = "blue", size = 0.6) +
+      geom_line(color = "blue", linewidth = 0.6) +
       labs(x = "Measure", y = expression("Ground State Energy" ~ E[0]), 
         title = "Average Decorrelation of the QHO") +
       theme_minimal(base_size = 14)
-    ggsave("Figures/DWP_decorrelation.png", width = 6, height = 4, dpi = 1200)  
+    if (save_png) {
+      ggsave("Figures/DWP_decorrelation.png", width = 6, height = 4, dpi = 1200)  
+    }
   }
 }
 
@@ -151,17 +159,18 @@ mean(accRateThermData) * 100 # Should be between 50 and 80%
 
 # Save acf plot
 {
-  if (sys == "QHO")  {
-    png("Figures/acf_plot_QHO.png", width = 800, height = 600)
+  if (save_png) {
+    if (sys == "QHO")  {
+        png("Figures/acf_plot_QHO.png", width = 800, height = 600)
 
-    acfResult <- acf(E0Data[1:measures], lag.max = measures - 1, plot = FALSE)
+        acfResult <- acf(E0Data[1:measures], lag.max = measures - 1, plot = FALSE)
 
-    plot(acfResult,
-        main = "Autocorrelation of Ground State Energy for the QHO",
-        xlab = "Lag (sweeps)",
-        ylab = "Autocorrelation")
+        plot(acfResult,
+            main = "Autocorrelation of Ground State Energy for the QHO",
+            xlab = "Lag (sweeps)",
+            ylab = "Autocorrelation")
 
-    dev.off()
+        dev.off()
     } else if (sys == "DWP") {
       png("Figures/acf_plot_DWP.png", width = 800, height = 600)
 
@@ -174,6 +183,10 @@ mean(accRateThermData) * 100 # Should be between 50 and 80%
 
       dev.off()
     }
+  }
+  else {
+    acfResult <- acf(E0Data[1:measures], lag.max = measures - 1)
+  }
 }
 
 # Histogram and shapiro test
@@ -208,9 +221,14 @@ mean(accRateThermData) * 100 # Should be between 50 and 80%
       stat_qq_line(color = "red") +
       labs(title = paste0("QQ Plot (Shapiro-Wilk p = ", round(shapiroTest$p.value, 4), ")"),
           x = "Theoretical Quantiles", y = "Sample Quantiles")
-    png("Figures/QHO_Histogram_qq.png", width = 1200, height = 800)
-    grid.arrange(histPlot, qqPlot, ncol = 2)
-    dev.off()
+    if (save_png) {
+      png("Figures/QHO_Histogram_qq.png", width = 1200, height = 800)
+          grid.arrange(histPlot, qqPlot, ncol = 2)
+          dev.off()
+    }
+    else {
+      grid.arrange(histPlot, qqPlot, ncol = 2)
+    }
   }
   else if (sys == "DWP") {
     histPlot <- ggplot() +
@@ -227,15 +245,18 @@ mean(accRateThermData) * 100 # Should be between 50 and 80%
       stat_qq_line(color = "red") +
       labs(title = paste0("QQ Plot (Shapiro-Wilk p = ", round(shapiroTest$p.value, 4), ")"),
           x = "Theoretical Quantiles", y = "Sample Quantiles")
-    png("Figures/DWP_Histogram_qq.png", width = 1200, height = 800)
-    grid.arrange(histPlot, qqPlot, ncol = 2)
-    dev.off()
+    if (save_png) {
+      png("Figures/DWP_Histogram_qq.png", width = 1200, height = 800)
+          grid.arrange(histPlot, qqPlot, ncol = 2)
+          dev.off()
+    }
+    else {
+      grid.arrange(histPlot, qqPlot, ncol = 2)
+    }
   }
 }
 
-# grid.arrange(histPlot, qqPlot, ncol = 2)  # Combined plots side by side
-
-# histPlot # Show histogram and normal curve
+# histPlot # Show histogram
 
 # qqPlot # Show QQ plot
 
@@ -350,7 +371,9 @@ ggplot(hist_df, aes(x = x, y = probability)) +
         values = c("MCMC" = "red", "Exact" = "black")) + 
 
       theme_minimal(base_size = 14)
-    ggsave("Figures/QHO_wave_functions.png", width = 8, height = 4, dpi = 1200)  
+    if (save_png) {
+      ggsave("Figures/QHO_wave_functions.png", width = 8, height = 4, dpi = 1200)  
+    }
   } else if (sys == "DWP") {
     ggplot(wave_df, aes(x = x)) +
       # MCMC wave function
@@ -376,21 +399,23 @@ ggplot(hist_df, aes(x = x, y = probability)) +
         values = c("MCMC" = "red", "Diagonalised" = "black", "WKB" = "blue")) + 
   
       theme_minimal(base_size = 14)
-    ggsave("Figures/DWP_wave_functions.png", width = 8, height = 4, dpi = 1200)
+    if (save_png) {
+      ggsave("Figures/DWP_wave_functions.png", width = 8, height = 4, dpi = 1200)
+    }
   }
 }
 
-### Two point correlation function
+### x1 x1 correlation function
 
 # Exponential fit
 
 {
-  noiseless_region_2 <- 200 # Adjust to the length of the noiseless region
+  noiseless_region_x1x1 <- 50 # Adjust to the length of the noiseless region
   dfCorr <- data.frame(
-    lag = 0:(noiseless_region_2 - 1),
-    correlation = GTwoData[1:noiseless_region_2]
+    lag = 0:(noiseless_region_x1x1 - 1),
+    correlation = Gx1x1Data[1:noiseless_region_x1x1]
   )
-  fit_data <- subset(dfCorr, lag >= 0 & lag <= noiseless_region_2)
+  fit_data <- subset(dfCorr, lag >= 0 & lag <= noiseless_region_x1x1)
   if (sys == "QHO") {
     DeltaE_guess <- 1.0 # Hard coded energy splitting for QHO with m = omega = 1
   } else if (sys == "DWP") {
@@ -414,36 +439,40 @@ ggplot(hist_df, aes(x = x, y = probability)) +
     ggplot(dfCorr, aes(x = lag * latticeSpacing)) +
       geom_point(aes(y = correlation, color = "MCMC Correlator"), size = 0.5) +
       geom_line(aes(y = fit, color = "Exponential fit")) +
-      labs(title = "QHO Two-Point Correlator with Exponential fit", y = "Two-Point Correlator G(t)", x = "Lag t") +
+      labs(title = "QHO x1 x1 Correlator with Exponential fit", y = "Two-Point Correlator G(t)", x = "Lag t") +
       scale_color_manual(
         name = "",
         values = c("MCMC Correlator" = "black", "Exponential fit" = "red"))
-    ggsave("Figures/QHO_two_point_correlator.png", width = 7, height = 4, dpi = 1200)
+    if (save_png) {
+      ggsave("Figures/QHO_x1x1_correlator.png", width = 7, height = 4, dpi = 1200)
+    }
   } else if (sys == "DWP") {
     ggplot(dfCorr, aes(x = lag * latticeSpacing)) +
       geom_point(aes(y = correlation, color = "MCMC Correlator"), size = 0.5) +
       geom_line(aes(y = fit, color = "Exponential fit")) +
-      labs(title = "DQP Two-Point Correlator with Exponential fit", y = "Two-Point Correlator G(t)", x = "Lag t") +
+      labs(title = "DWP x1 x1 Correlator with Exponential fit", y = "Two-Point Correlator G(t)", x = "Lag t") +
       scale_color_manual(
         name = "",
         values = c("MCMC Correlator" = "black", "Exponential fit" = "red"))
-    ggsave("Figures/DWP_two_point_correlator.png", width = 7, height = 4, dpi = 1200)
+    if (save_png) {
+      ggsave("Figures/DWP_x1x1_correlator.png", width = 7, height = 4, dpi = 1200)
+    }
   }
 }
 
-# Four point correlation function
+# x2 x2 correlation function
 {
-  noiseless_region_4 <- 40 # Adjust to the length of the noiseless region
+  noiseless_region_x2x2 <- 40 # Adjust to the length of the noiseless region
   dfCorr <- data.frame(
-    lag = 0:(noiseless_region_4 - 1),
-    correlation = GFourData[0:noiseless_region_4]
+    lag = 0:(noiseless_region_x2x2 - 1),
+    correlation = Gx2x2Data[0:noiseless_region_x2x2]
   )
 }
 
 ggplot(dfCorr, aes(x = lag, y = correlation)) +
   geom_line(color = "#000000") +
   labs(
-    title = paste("Four point decorrelation function for", bc, sys),
+    title = paste("x2 x2 correlation function for", sys),
     x = "Time (index of the path)",
     y = "G_4(t, 0)"
   )
@@ -455,17 +484,17 @@ ggplot(dfCorr, aes(x = lag, y = correlation)) +
 {
   successfulCounts <- 0; E1 <- 0
 
-  LHS <- 1; RHS <- noiseless_region_2
+  LHS <- 1; RHS <- noiseless_region_x1x1
 
   correlatorRatios <- numeric(RHS - LHS + 1) # To store the log ratios for each lag
 
   for (i in LHS:RHS) {
-    if (GTwoData[i] <= 0 || GTwoData[i + 1] <= 0) {
+    if (Gx1x1Data[i] <= 0 || Gx1x1Data[i + 1] <= 0) {
       message("Correlation function has non-positive values, cannot compute log ratio.")
     } 
     else {
-      E1 <- E1 + E0 + log(GTwoData[i] / GTwoData[i + 1]) / latticeSpacing
-      correlatorRatios[i - LHS + 1] <- log(GTwoData[i] / GTwoData[i + 1]) / latticeSpacing
+      E1 <- E1 + E0 + log(Gx1x1Data[i] / Gx1x1Data[i + 1]) / latticeSpacing
+      correlatorRatios[i - LHS + 1] <- log(Gx1x1Data[i] / Gx1x1Data[i + 1]) / latticeSpacing
       successfulCounts <- successfulCounts + 1
     }
   }
@@ -480,7 +509,9 @@ ggplot(dfCorr, aes(x = lag, y = correlation)) +
       labs(title = "Finding the splitting energy for the QHO",
           x = "Lag t", y = expression("Log(" ~ G[2](t) ~ ") / Log(" ~ G[2](t+a) ~ ")")) +
       scale_color_manual(name = "", values = c("Log Ratio" = "blue", "Splitting Energy" = "red"))
-    ggsave("Figures/QHO_log_ratio.png", width = 6, height = 4, dpi = 1200)
+    if (save_png) {
+      ggsave("Figures/QHO_log_ratio.png", width = 6, height = 4, dpi = 1200)
+    }
 
   } else if (sys == "DWP") {
     ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag * latticeSpacing, y = ratio)) +
@@ -489,10 +520,13 @@ ggplot(dfCorr, aes(x = lag, y = correlation)) +
       labs(title = "Finding the splitting energy for the DWP",
           x = "Lag t", y = expression("Log(" ~ G[2](t) ~ ") / Log(" ~ G[2](t+a) ~ ")")) +
       scale_color_manual(name = "", values = c("Log Ratio" = "blue", "Splitting Energy" = "red"))
-    ggsave("Figures/DWP_log_ratio.png", width = 6, height = 4, dpi = 1200)
+    if (save_png) {
+      ggsave("Figures/DWP_log_ratio.png", width = 6, height = 4, dpi = 1200)
+    }
   } 
 }
 
+E1
 E1 - E0
 Split_diag
 
@@ -500,11 +534,11 @@ Split_diag
   successfulCounts <- 0; E2 <- 0
 
   for (i in 1:10) {
-    if (GFourData[i] <= 0 || GFourData[i + 1] <= 0) {
+    if (Gx2x2Data[i] <= 0 || Gx2x2Data[i + 1] <= 0) {
       message("Correlation function has non-positive values, cannot compute log ratio.")
     } 
     else {
-      E2 <- E2 + mean(E0RepeatAvg) + log(GFourData[i] / GFourData[i + 1]) / latticeSpacing
+      E2 <- E2 + mean(E0RepeatAvg) + log(Gx2x2Data[i] / Gx2x2Data[i + 1]) / latticeSpacing
       successfulCounts <- successfulCounts + 1
     }
   }
@@ -561,9 +595,9 @@ ggplot(EA_data, aes(x = 1/(a * a))) +
              color = "red") +
 
   # WKB horizontal lines
-  # geom_hline(data = theory_df,
-  #            aes(yintercept = E0WKB, linetype = "WKB"),
-  #            color = "black") +
+  geom_hline(data = theory_df,
+             aes(yintercept = E0WKB, linetype = "WKB"),
+             color = "black") +
 
   scale_linetype_manual(values = c(
     "Diagonalisation" = "dashed",

@@ -14,10 +14,6 @@
 
 \- Find errors in discretisation.
 
-\- Go into a lot of detail, don't state too much fact.
-
-\- Don't oversell the use of the PI. It is useful but is just one approach to solving non-perturbative systems.
-
 \- Re read and edit the DWP subsection in theoretical framework
 
 \- Create figures for the discretisation error, splitting energy vs eta, and insanton pathing
@@ -27,8 +23,8 @@
 # latticeSpacing: 0.05
 # epsilon: 0.3
 # accRateInterval: 1000
-# decorrSweeps: 2500
-# thermSweeps: 5000
+# decorrSweeps: 5000
+# thermSweeps: 10000
 # thermInterval: 10
 # measures: 500
 # repeats: 32
@@ -36,5 +32,6 @@
 # beta: 500
 # mQHO: 1
 # omegaQHO: 1
+# noiseless_region ~ 50
 
 HAND IN BY 7th May

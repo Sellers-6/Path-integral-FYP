@@ -6,5 +6,6 @@
 #include <iostream>
 #include "global.h"
 
-// Writes all simulation observables to simulations.h5 into /Observable/Boundary/System groups
-void writeData(const std::string& boundary, const std::string& system);
+// Writes all simulation observables to simulations.h5 into groups
+void writeData(const std::string& system);
+void writeData2(const std::string& system, const std::string& wellCentres, const std::string& latticeSpacing);
