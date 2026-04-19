@@ -246,14 +246,13 @@ ggplot(wave_df, aes(x = x)) +
 
     theme_minimal(base_size = 14)
    
- if (save_png) {
-      ggsave("Figures/QHO_wave_functions.png", width = 8, height = 4, dpi = 1200)  
-    }
+ if (save_png) { ggsave("Figures/QHO_wave_functions.png", width = 8, height = 4, dpi = 1200) }
 
-### x1 x1 correlation function
+###~~~~~~~~~~~~~~~~~~~~~~~###
+### Excited energy states ###
+###~~~~~~~~~~~~~~~~~~~~~~~###
 
 # Exponential fit
-
 fit_correlator_exp <- function(corr, noiseless_region, A_guess, DeltaE_guess) {
   
   lag <- 0:(noiseless_region - 1)
@@ -300,143 +299,122 @@ fit_correlator_exp <- function(corr, noiseless_region, A_guess, DeltaE_guess) {
   )
 }
 
-res <- fit_correlator_exp(
-  corr = Gx1x1Data,
-  noiseless_region = 50,
-  A_guess = 0.5,
-  DeltaE_guess = 1.0
-)
+{
+  Gx1x1Fit <- fit_correlator_exp( corr = Gx1x1Data, noiseless_region = 50, A_guess = 0.5, DeltaE_guess = 1.0)
+  Gx2x2Fit <- fit_correlator_exp( corr = Gx2x2Data, noiseless_region = 30, A_guess = 0.5, DeltaE_guess = 2.0)
+  Gx3x3Fit <- fit_correlator_exp( corr = Gx3x3Data, noiseless_region = 10, A_guess = 0.5, DeltaE_guess = 3.0)
+}
 
-res$coefficients
-print(res$plot) # fix
+Gx1x1Fit$coefficients
+print(Gx1x1Fit$plot) 
 
-# {
-#     noiseless_region_x1x1 <- 50 # Adjust to the length of the noiseless region
-#     dfCorr <- data.frame(
-#         lag = 0:(noiseless_region_x1x1 - 1),
-#         correlation = Gx1x1Data[1:noiseless_region_x1x1]
-#     )
-#     fit_data <- subset(dfCorr, lag >= 0 & lag <= noiseless_region_x1x1)
-    
-#     A_guess <- 0.5
-#     c_guess <- min(fit_data$correlation)
-#     DeltaE_guess <- 1.0 # Energy splitting for QHO with m = omega = 1
-  
-#     fit <- nlsLM(
-#         correlation ~ A * exp(-DeltaE * lag * latticeSpacing) + c,
-#         data = fit_data,
-#         start = list(A = A_guess, c= c_guess, DeltaE = DeltaE_guess),
-#         control = nls.lm.control(maxiter = 1024)
-#     )
-#     dfCorr$fit <- predict(fit, newdata = dfCorr)
-#     coef(fit)
-# }
-
-# ggplot(dfCorr, aes(x = lag * latticeSpacing)) +
-#     geom_point(aes(y = correlation, color = "MCMC Correlator"), size = 0.5) +
-#     geom_line(aes(y = fit, color = "Exponential fit")) +
-#     labs(title = "QHO x1 x1 Correlator with Exponential fit", y = "Two-Point Correlator G(t)", x = "Lag t") +
-#     scale_color_manual(
-#         name = "",
-#         values = c("MCMC Correlator" = "black", "Exponential fit" = "red"))
-    
 if (save_png) { ggsave("Figures/QHO_x1x1_correlator.png", width = 7, height = 4, dpi = 1200) }
 
-# x2 x2 correlation function
-{
-  noiseless_region_x2x2 <- 50 # Adjust to the length of the noiseless region
-  dfCorr <- data.frame(
-    lag = 0:(noiseless_region_x2x2 - 1),
-    correlation = Gx2x2Data[0:noiseless_region_x2x2]
-  )
-}
+Gx2x2Fit$coefficients
+print(Gx2x2Fit$plot) 
+ 
+if (save_png) { ggsave("Figures/QHO_x2x2_correlator.png", width = 7, height = 4, dpi = 1200) }
 
-ggplot(dfCorr, aes(x = lag, y = correlation)) +
-  geom_line(color = "#000000") +
-  labs(
-    title = paste("x2 x2 correlation function for", sys),
-    x = "Time (index of the path)",
-    y = "G_4(t, 0)"
-  )
+Gx3x3Fit$coefficients
+print(Gx3x3Fit$plot)
 
-### Excited energy states
+if (save_png) { ggsave("Figures/QHO_x3x3_correlator.png", width = 7, height = 4, dpi = 1200) }
 
-# E1
+# Log ratio method
 
-{
-  successfulCounts <- 0; E1 <- 0
-
-  LHS <- 1; RHS <- noiseless_region_x1x1
-
-  correlatorRatios <- numeric(RHS - LHS + 1) # To store the log ratios for each lag
-
+log_ratio_energy <- function(corr, latticeSpacing, noiseless_region = 50, E0 = 0) {
+  
+  if (length(corr) < noiseless_region + 1) {
+    stop("Correlator too short for chosen noiseless_region")
+  }
+  
+  RHS <- noiseless_region
+  LHS <- 1
+  
+  ratios <- numeric(RHS - LHS + 1)
+  valid_count <- 0
+  
+  # Compute log ratios
   for (i in LHS:RHS) {
-    if (Gx1x1Data[i] <= 0 || Gx1x1Data[i + 1] <= 0) {
-      message("Correlation function has non-positive values, cannot compute log ratio.")
-    } 
-    else {
-      E1 <- E1 + E0 + log(Gx1x1Data[i] / Gx1x1Data[i + 1]) / latticeSpacing
-      correlatorRatios[i - LHS + 1] <- log(Gx1x1Data[i] / Gx1x1Data[i + 1]) / latticeSpacing
-      successfulCounts <- successfulCounts + 1
+    
+    if (corr[i] > 0 && corr[i + 1] > 0) {
+      
+      r <- log(corr[i] / corr[i + 1]) / latticeSpacing
+      
+      ratios[i - LHS + 1] <- r
+      valid_count <- valid_count + 1
+      
+    } else {
+      ratios[i - LHS + 1] <- NA
     }
   }
-  E1 <- E1 / successfulCounts; E1
-}
-
-{
-  if (sys == "QHO") {   
-    ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag * latticeSpacing, y = ratio)) +
-      geom_line(aes(color = "Log Ratio")) +
-      geom_hline(data = data.frame(y = E1 - E0), aes(yintercept = y, color = "Splitting Energy"), linetype = "dashed") +
-      labs(title = "Finding the splitting energy for the QHO",
-          x = "Lag t", y = expression("Log(" ~ G[2](t) ~ ") / Log(" ~ G[2](t+a) ~ ")")) +
-      scale_color_manual(name = "", values = c("Log Ratio" = "blue", "Splitting Energy" = "red"))
-    if (save_png) {
-      ggsave("Figures/QHO_log_ratio.png", width = 6, height = 4, dpi = 1200)
-    }
-
-  } else if (sys == "DWP") {
-    ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag * latticeSpacing, y = ratio)) +
-      geom_line(aes(color = "Log Ratio")) +
-      geom_hline(data = data.frame(y = E1 - E0), aes(yintercept = y, color = "Splitting Energy"), linetype = "dashed") +
-      labs(title = "Finding the splitting energy for the DWP",
-          x = "Lag t", y = expression("Log(" ~ G[2](t) ~ ") / Log(" ~ G[2](t+a) ~ ")")) +
-      scale_color_manual(name = "", values = c("Log Ratio" = "blue", "Splitting Energy" = "red"))
-    if (save_png) {
-      ggsave("Figures/DWP_log_ratio.png", width = 6, height = 4, dpi = 1200)
-    }
-  } 
-}
-
-ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag * latticeSpacing, y = ratio)) +
-      geom_line(aes(color = "Log Ratio")) +
-      geom_hline(data = data.frame(y = E1 - E0), aes(yintercept = y, color = "Splitting Energy"), linetype = "dashed") +
-      labs(title = "Finding the splitting energy for the QHO",
-          x = "Lag t", y = expression("Log(" ~ G[2](t) ~ ") / Log(" ~ G[2](t+a) ~ ")")) +
-      scale_color_manual(name = "", values = c("Log Ratio" = "blue", "Splitting Energy" = "red"))
-
-E1
-E1 - E0
-Split_diag
-
-{
-  successfulCounts <- 0; E2 <- 0
-
-  for (i in 1:noiseless_region_x2x2) {
-    if (Gx2x2Data[i] <= 0 || Gx2x2Data[i + 1] <= 0) {
-      message("Correlation function has non-positive values, cannot compute log ratio.")
-    } 
-    else {
-      E2 <- E2 + mean(E0RepeatAvg) + log(Gx2x2Data[i] / Gx2x2Data[i + 1]) / latticeSpacing
-      successfulCounts <- successfulCounts + 1
-    }
+  
+  # Average over valid log ratios to get DeltaE
+  valid_ratios <- ratios[!is.na(ratios)]
+  
+  if (length(valid_ratios) == 0) {
+    stop("No valid log-ratio points found")
   }
-  E2 <- E2 / successfulCounts; E2
+  
+  DeltaE <- mean(valid_ratios)
+  E1 <- E0 + DeltaE
+  
+  df <- data.frame(
+    lag = LHS:RHS,
+    ratio = ratios
+  )
+  
+  p <- ggplot(df, aes(x = lag * latticeSpacing, y = ratio)) +
+    geom_line(color = "blue") +
+    geom_hline(
+      yintercept = DeltaE,
+      linetype = "dashed",
+      color = "red"
+    ) +
+    labs(
+      title = "Log-Ratio Energy Estimate",
+      x = "τ",
+      y = "ΔE(t)"
+    )
+  
+  list(
+    E1 = E1,
+    DeltaE = DeltaE,
+    ratios = ratios,
+    mean_ratios = valid_ratios,
+    plot = p
+  )
 }
 
-E2 - E0
+res <- log_ratio_energy(
+  corr = Gx1x1Data,
+  latticeSpacing = latticeSpacing,
+  noiseless_region = 25,
+  E0 = E0
+)
 
-### GEVP - Alternative method of extracting excited energy state.division
+res$E1
+print(res$plot)
+
+# GEVP method 
+Glist <- list(
+  Gx1x1Data,
+  Gx1x2Data,
+  Gx1x3Data,
+  Gx2x2Data,
+  Gx2x3Data,
+  Gx3x3Data
+)
+
+pathLength <- length(Gx1x1Data)
+
+# Create graph of splitting energy vs well separation with error bars
+
+diagEnergiesData <- read.csv("DWP diagonalisation/DWP diagonalisation/energies.csv")
+diagWFData <- read.csv("DWP diagonalisation/DWP diagonalisation/wavefunctions.csv")
+
+
+
 
 {
   # Matrix of correlators with vector entries "pathLength" long

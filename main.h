@@ -49,7 +49,7 @@ int side = 1;    // For the split wells initialisation, determines which well th
 
 ///// Repeats /////
 
-const int repeats = 32;                          // Number of repeats for finding standard error 
+const int repeats = 12;                          // Number of repeats for finding standard error 
 bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads, changed by user input
 
 ///// Lattice parameters /////
