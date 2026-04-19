@@ -1,7 +1,7 @@
 #include "h5.h"
 
-const char* fileName = "data";
-const char* fullFileName = "data.h5";
+const char* fileName = "data2";
+const char* fullFileName = "data2.h5";
 
 struct Observable
 {
@@ -168,6 +168,36 @@ void writeData(const std::string& system)
 void writeData2(
     const std::string& system,
     const std::string& wellCentres,
+    const std::string& beta)
+{
+    hid_t file = openOrCreateFile();
+    if (file < 0)
+    {
+        std::cerr << "Failed to open HDF5 file\n";
+        return;
+    }
+
+    auto observables = getObservables();
+
+    for (const auto& obs : observables)
+    {
+        std::string path =
+            system + "/" + wellCentres + "/" + beta + "/" + obs.name;
+
+        hid_t group = createOrReplaceGroup(file, path);
+        if (group < 0)
+            continue;
+
+        writeVector(group, *obs.vec);
+
+        H5Gclose(group);
+    }
+
+    H5Fclose(file);
+}
+
+void writeData3(
+    const std::string& system,
     const std::string& latticeSpacing)
 {
     hid_t file = openOrCreateFile();
@@ -182,7 +212,7 @@ void writeData2(
     for (const auto& obs : observables)
     {
         std::string path =
-            system + "/" + wellCentres + "/" + latticeSpacing + "/" + obs.name;
+            system + "/" + latticeSpacing + "/" + obs.name;
 
         hid_t group = createOrReplaceGroup(file, path);
         if (group < 0)

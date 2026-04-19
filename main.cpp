@@ -21,23 +21,33 @@ int main() {    // Accepts user choice of system type and window visualisation
             std::cout << "Exiting..." << std::endl; break;
 		}
         else if (choice == "6") {  // Run DWP system with multi-threading with varying lattice spacing and well separation.
-            // This is used to find the error in the energy as a function of the lattice spacing, and to find how the tunnelling rate changes with well separation.
             multThreads = true;
             sixFlag = true;
-            std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0 }; // Varying the separation of the wells.
-            std::vector<double> latticeSpacingsVec = { 0.1 }; // Varying the lattice spacing to see how it affects the error in the energy.
-            std::vector<double> esplinonVec = { 0.4 };
-			int epsilonIndex = 0; // Index to keep track of which epsilon value we are using.
-            for (double latticeSpacing : latticeSpacingsVec) {
-                a = latticeSpacing; // Update the lattice spacing.
-				epsilon = esplinonVec[epsilonIndex]; // Update epsilon based on the lattice spacing, to keep the acceptance rate at ~ 60%. This was found through trial and error, and is not an exact relationship.
+            std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.325, 1.35, 1.375, 1.4, 1.425, 1.45, 1.475, 1.5, 1.6, 1.7 }; // Varying the separation of the wells.
+            std::vector<double> betaVec = { 1000, 750, 500, 250, 100, 75, 50, 25, 10 }; // Varying beta to see how it affects the error in the splitting energy.
+            for (double betaElement : betaVec) {
+                a = 0.1; epsilon = 0.4; // Fix lattice spacing and epsilon.
                 for (double wellCentresElement : wellCentresVec) {
-					std::cout << "\n Running DWP system with lattice spacing a = " << latticeSpacing << " and well centres = " << wellCentresElement << std::endl;
+					std::cout << "\n Running DWP system with beta = " << betaElement << " and well centres = " << wellCentresElement << std::endl;
                     wellCentres = wellCentresElement; // Update the well centres based on the separation.
-                    setParameters(10000, a, wellCentres); // Use beta = 10000 so that tunneling is captured in the all regimes of well separation.
+                    setParameters(betaElement, a, wellCentres);
                     metropolisRepeat(false, "DWP");
                 }
-				epsilonIndex++;
+            }
+        }
+        else if (choice == "7") { // Run QHO system with multi-threading with varying lattice spacings.
+            multThreads = true;
+            sevenFlag = true;
+			std::vector<double> latticeSpacingsVec = { 0.5, 0.4, 0.3, 0.25, 0.2, 0.175, 0.15, 0.125, 0.1, 0.075, 0.05 };
+            std::vector<double> esplinonVec = { 0.7, 0.65, 0.6, 0.55, 0.53, 0.5, 0.47, 0.45, 0.43, 0.4, 0.3 };
+            int epsilonIndex = 0; // Index to keep track of which epsilon value we are using.
+            for (double latticeSpacingsElement : latticeSpacingsVec) {
+                a = latticeSpacingsElement; // Update the lattice spacing.
+                epsilon = esplinonVec[epsilonIndex]; // Update epsilon based on the lattice spacing, smaller lattice spacings require smaller epsilon for good acceptance rates.
+                std::cout << "\n Running QHO system with lattice spacing = " << latticeSpacingsElement << " and epsilon = " << epsilon << std::endl;
+				setParameters(100, a, wellCentres); // Keep beta fixed at 100, which is large enough to capture the ground state properties well for the QHO.
+                metropolisRepeat(false, "QHO");
+                epsilonIndex++;
             }
         }
         else if (choice == "0") { std::cout << "Exiting..." << std::endl; break; }
@@ -55,8 +65,10 @@ void chooseSystem() {  // Function to display user choices
         "3: Perform Metropolis algorithm on the DWP system (with multi-threading)\n"
         "4: Perform Metropolis algorithm on the DWP system (with path visualisation)\n"
         "5: Run both systems with multi-threading, run this to reproduce results from the report\n"
-		"6: Run DWP system with multi-threading with varying lattice spacing and well separation,\n"
-        "   this is used to produce data for the error analysis and tunnelling rate plots in the report\n"
+		"6: Run DWP system with multi-threading with varying beta and well separation,\n"
+        "   this is used to produce data for the error analysis of finite beta effects on splitting energy.\n"
+        "7: Run QHO system with multi-threading with varying lattice spacing,\n"
+        "   this is used to produce data for the error analysis of discretisation\n"
         "0: Exit\n"
         "Warning: Program has a tendancy to crash when ran for long times with visualisation";
 
@@ -234,8 +246,9 @@ void metropolisRepeat(bool winOn, std::string system) { // Loop over repeats
     
 	// Write data to files
     //csvWriteData(system);       // Legacy csv writing functions, replaced by h5 files
-    if (!sixFlag) { writeData(system); }            // Writes all data to a single h5 file, separated into groups
-	else if (sixFlag) { writeData2(system, std::to_string(wellCentres), std::to_string(a)); } // Writes data for option 10
+    if (!sixFlag && !sevenFlag) { writeData(system); }            // Writes all data to a single h5 file, separated into groups
+	else if (sixFlag) { writeData2(system, std::to_string(wellCentres), std::to_string(N * a)); } // Writes data for option six
+	else if (sevenFlag) { writeData3(system, std::to_string(a)); } // Writes data for option seven
 	
     // Clear all vectors for the next run
     E0Therm.clear();

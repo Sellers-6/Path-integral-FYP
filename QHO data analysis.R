@@ -1,9 +1,14 @@
 # nolint start
+
+#####################################################################################################################################
+################################################ Quantum Harmonic Oscillator ########################################################
+#####################################################################################################################################
+
 {
-  library(ggplot2)
+  library(ggplot2) 
   library(gridExtra)  # side by side plots
   library(dplyr)
-  library(rhdf5)
+  library(rhdf5) # read h5 files
   library(minpack.lm) # better exponential fitting
   library(expm) # matrix exponentials
 }
@@ -11,9 +16,12 @@
 # Overwrite figures?
 save_png <- FALSE
 
-# Read data
+###~~~~~~~~~~~###
+### Read data ###
+###~~~~~~~~~~~###
+
 {
-  dataFile <- "data.h5"
+  dataFile <- "data2.h5"
   
   E0ThermData <- as.numeric(unlist(h5read(dataFile, paste0("/QHO/E0Therm"))))
   accRateThermData <- as.numeric(unlist(h5read(dataFile, paste0("/QHO/accRateTherm"))))
@@ -24,14 +32,14 @@ save_png <- FALSE
   antiInstantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/QHO/antiInstantons"))))
   Gx1x1Data <- as.numeric(unlist(h5read(dataFile, paste0("/QHO/Gx1x1"))))
   Gx1x2Data <- as.numeric(unlist(h5read(dataFile, paste0("/QHO/Gx1x2"))))
-  Gx1x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/QHO/Gx1x3"))))
   Gx2x2Data <- as.numeric(unlist(h5read(dataFile, paste0("/QHO/Gx2x2"))))
-  Gx2x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/QHO/Gx2x3"))))
-  Gx3x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/QHO/Gx3x3"))))
   headerData <- as.numeric(unlist(h5read(dataFile, paste0("/QHO/headerInfo"))))
 }
 
-# Variables from the simulation
+###~~~~~~~~~~~~~~~~~~~~###
+### Variables from C++ ###
+###~~~~~~~~~~~~~~~~~~~~###
+
 {
   pathLength <- headerData[1]
   latticeSpacing <- headerData[2]
@@ -123,7 +131,10 @@ if (save_png) {
     dev.off()
 }
 
-# Calculating ground state energy and standard error from MCMC variance
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+### Calculate ground state energy ###
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+
 {
   E0Split <- split(E0Data, rep(1:repeats, each = measures)) # Split E0 into repeats
   
@@ -252,7 +263,8 @@ ggplot(wave_df, aes(x = x)) +
 ### Excited energy states ###
 ###~~~~~~~~~~~~~~~~~~~~~~~###
 
-# Exponential fit
+### Exponential fit ###
+
 fit_correlator_exp <- function(corr, noiseless_region, A_guess, DeltaE_guess) {
   
   lag <- 0:(noiseless_region - 1)
@@ -284,7 +296,7 @@ fit_correlator_exp <- function(corr, noiseless_region, A_guess, DeltaE_guess) {
       labs(
         title = "Correlator with Exponential Fit",
         y = "G(t)",
-        x = "τ"
+        x = "t"
       ) +
       scale_color_manual(
         name = "",
@@ -302,7 +314,6 @@ fit_correlator_exp <- function(corr, noiseless_region, A_guess, DeltaE_guess) {
 {
   Gx1x1Fit <- fit_correlator_exp( corr = Gx1x1Data, noiseless_region = 50, A_guess = 0.5, DeltaE_guess = 1.0)
   Gx2x2Fit <- fit_correlator_exp( corr = Gx2x2Data, noiseless_region = 30, A_guess = 0.5, DeltaE_guess = 2.0)
-  Gx3x3Fit <- fit_correlator_exp( corr = Gx3x3Data, noiseless_region = 10, A_guess = 0.5, DeltaE_guess = 3.0)
 }
 
 Gx1x1Fit$coefficients
@@ -315,12 +326,7 @@ print(Gx2x2Fit$plot)
  
 if (save_png) { ggsave("Figures/QHO_x2x2_correlator.png", width = 7, height = 4, dpi = 1200) }
 
-Gx3x3Fit$coefficients
-print(Gx3x3Fit$plot)
-
-if (save_png) { ggsave("Figures/QHO_x3x3_correlator.png", width = 7, height = 4, dpi = 1200) }
-
-# Log ratio method
+### Log ratio method ### 
 
 log_ratio_energy <- function(corr, latticeSpacing, noiseless_region = 50, E0 = 0) {
   
@@ -357,7 +363,7 @@ log_ratio_energy <- function(corr, latticeSpacing, noiseless_region = 50, E0 = 0
   }
   
   DeltaE <- mean(valid_ratios)
-  E1 <- E0 + DeltaE
+  excited_energy <- E0 + DeltaE
   
   df <- data.frame(
     lag = LHS:RHS,
@@ -372,13 +378,13 @@ log_ratio_energy <- function(corr, latticeSpacing, noiseless_region = 50, E0 = 0
       color = "red"
     ) +
     labs(
-      title = "Log-Ratio Energy Estimate",
-      x = "τ",
-      y = "ΔE(t)"
+      title = "Log-Ratio Splitting Energy Estimate",
+      x = "t",
+      y = "Splitting Energy"
     )
   
   list(
-    E1 = E1,
+    excited_energy = excited_energy,
     DeltaE = DeltaE,
     ratios = ratios,
     mean_ratios = valid_ratios,
@@ -386,206 +392,221 @@ log_ratio_energy <- function(corr, latticeSpacing, noiseless_region = 50, E0 = 0
   )
 }
 
-res <- log_ratio_energy(
-  corr = Gx1x1Data,
-  latticeSpacing = latticeSpacing,
-  noiseless_region = 25,
-  E0 = E0
-)
+Gx1x1_log_ratios <- log_ratio_energy(corr = Gx1x1Data, latticeSpacing = latticeSpacing, noiseless_region = 25, E0 = E0)
 
-res$E1
-print(res$plot)
+Gx1x1_log_ratios$excited_energy
+print(Gx1x1_log_ratios$plot)
 
-# GEVP method 
-Glist <- list(
-  Gx1x1Data,
-  Gx1x2Data,
-  Gx1x3Data,
-  Gx2x2Data,
-  Gx2x3Data,
-  Gx3x3Data
-)
+Gx2x2_log_ratios <- log_ratio_energy(corr = Gx2x2Data, latticeSpacing = latticeSpacing, noiseless_region = 10, E0 = E0)
 
-pathLength <- length(Gx1x1Data)
+Gx2x2_log_ratios$excited_energy
+print(Gx2x2_log_ratios$plot)
 
-# Create graph of splitting energy vs well separation with error bars
-
-diagEnergiesData <- read.csv("DWP diagonalisation/DWP diagonalisation/energies.csv")
-diagWFData <- read.csv("DWP diagonalisation/DWP diagonalisation/wavefunctions.csv")
-
-
-
+### GEVP method ###
 
 {
-  # Matrix of correlators with vector entries "pathLength" long
-  C <- array(0, dim = c(3, 3, pathLength)) 
+  Glist <- list(Gx1x1Data, Gx1x2Data, Gx2x2Data)
 
-  C[1,1,] <- Gx1x1Data
-  C[1,2,] <- Gx1x2Data
-  C[1,3,] <- Gx1x3Data
+  # Build correlator matrix
+  C <- array(0, dim = c(2, 2, pathLength))
 
-  C[2,1,] <- Gx1x2Data
-  C[2,2,] <- Gx2x2Data
-  C[2,3,] <- Gx2x3Data
+  C[1,1,] <- Glist[[1]] 
+  C[1,2,] <- Glist[[2]] 
 
-  C[3,1,] <- Gx1x3Data
-  C[3,2,] <- Gx2x3Data
-  C[3,3,] <- Gx3x3Data
+  C[2,1,] <- Glist[[2]] 
+  C[2,2,] <- Glist[[3]] 
 
-  t0 <- 1
-
-  eigvals <- matrix(0, nrow = pathLength, ncol = 3)
-
-  C0 <- C[,,t0]
-  C0 <- (C0 + t(C0)) / 2
-
-  C0_inv_sqrt <- solve(sqrtm(C0))
-
-  for (t in 1:pathLength) {
-    Ct <- C[,,t]
-    Ct <- (Ct + t(Ct)) / 2
-    
-    M <- C0_inv_sqrt %*% Ct %*% C0_inv_sqrt
-    gevp <- eigen(M)
-    
-    eigvals[t, ] <- Re(gevp$values)
-  }
-
-  eigvals <- t(apply(eigvals, 1, sort, decreasing = TRUE))
-
-  # ---- Effective energies from GEVP eigenvalues ----
-  E <- matrix(NA, nrow = pathLength - 1, ncol = 3)
-
-  for (t in 1:(pathLength - 1)) {
-
-    ratio <- eigvals[t, ] / eigvals[t + 1, ]
-
-    # avoid invalid values
-    ratio[ratio <= 0] <- NA
-
-    E[t, ] <- -log(ratio) / latticeSpacing
-  }
-}
-
-{
-  # Matrix of correlators with vector entries "pathLength" long
-  C <- array(0, dim = c(2, 2, pathLength)) 
-
-  C[1,1,] <- Gx1x1Data
-  C[1,2,] <- Gx1x2Data
-
-  C[2,1,] <- Gx1x2Data
-  C[2,2,] <- Gx2x2Data
-
+  # Solve GEVP
   t0 <- 2
+  eigvals <- matrix(NA, nrow = pathLength, ncol = 2)
 
-  eigvals <- matrix(0, nrow = pathLength, ncol = 2)
-
-  C0 <- C[,,t0]
-  C0 <- (C0 + t(C0)) / 2
-
+  C0 <- (C[,,t0] + t(C[,,t0])) / 2
   C0_inv_sqrt <- solve(sqrtm(C0))
 
   for (t in 1:pathLength) {
-    Ct <- C[,,t]
-    Ct <- (Ct + t(Ct)) / 2
-    
+    Ct <- (C[,,t] + t(C[,,t])) / 2
     M <- C0_inv_sqrt %*% Ct %*% C0_inv_sqrt
-    gevp <- eigen(M)
     
-    eigvals[t, ] <- Re(gevp$values)
+    ev <- eigen(M, symmetric = TRUE)
+    eigvals[t, ] <- sort(Re(ev$values), decreasing = TRUE)
   }
 
-  eigvals <- t(apply(eigvals, 1, sort, decreasing = TRUE))
-
-  # ---- Effective energies from GEVP eigenvalues ----
   E <- matrix(NA, nrow = pathLength - 1, ncol = 2)
 
   for (t in 1:(pathLength - 1)) {
-
-    ratio <- eigvals[t, ] / eigvals[t + 1, ]
-
-    # avoid invalid values
+    ratio <- eigvals[t + 1, ] / eigvals[t, ]
     ratio[ratio <= 0] <- NA
-
     E[t, ] <- -log(ratio) / latticeSpacing
   }
 }
 
-find_flat_region <- function(x, window = 10) {
-  
+find_plateau <- function(x, window = 10) {
   n <- length(x)
-  
-  if (window > n) stop("window is larger than data length")
-  
   best_var <- Inf
   best_start <- 1
   
-  # slide window across data
   for (i in 1:(n - window + 1)) {
+    seg <- x[i:(i + window - 1)]
+    seg <- seg[!is.na(seg)]
+    if (length(seg) < 2) next
     
-    segment <- x[i:(i + window - 1)]
-    
-    # ignore NA values safely
-    segment <- segment[!is.na(segment)]
-    
-    if (length(segment) < 2) next
-    
-    v <- var(segment)
-    
+    v <- var(seg)
     if (v < best_var) {
       best_var <- v
       best_start <- i
     }
   }
   
-  best_region <- x[best_start:(best_start + window - 1)]
+  region <- x[best_start:(best_start + window - 1)]
   
   list(
-    mean = mean(best_region, na.rm = TRUE),
-    start_index = best_start,
-    end_index = best_start + window - 1,
-    variance = best_var,
-    region = best_region
+    mean = mean(region, na.rm = TRUE),
+    start = best_start,
+    end = best_start + window - 1
   )
 }
 
-cut_off <- 50
+p0 <- find_plateau(E[,1])
+p1 <- find_plateau(E[,2])
 
-df <- data.frame(
-  t = 1:cut_off,
-  E0 = E[,1][1:cut_off]
-)
+E0_gevp <- p0$mean
+E1_gevp <- p1$mean
 
-plateau_E0 <- find_flat_region(E[,1], window = 10)
-plateau_E0$mean
+E0_gevp
+E1_gevp
 
-ggplot(df, aes(x = t, y = E0)) +
+plot_effective_energy <- function(E, latticeSpacing, state, cutoff = 50) {
+  
+  vals <- E[, state]
+  idx <- which(!is.na(vals) & seq_along(vals) <= cutoff)
+  
+  df <- data.frame(
+    t = idx * latticeSpacing,
+    E = vals[idx]
+  )
+  
+  ggplot(df, aes(x = t, y = E)) +
+    geom_line() +
+    labs(
+      x = "t",
+      y = paste0("E", state - 1, "(t)"),
+      title = paste("Effective Energy (state", state - 1, ")")
+    )
+}
+
+print(plot_effective_energy(E, latticeSpacing, 1))
+print(plot_effective_energy(E, latticeSpacing, 2))
+
+#####################################################################################################################################
+################################################### Vary lattice spacings ###########################################################
+#####################################################################################################################################
+
+{
+  library(ggplot2)
+  library(gridExtra)  # side by side plots
+  library(dplyr)
+  library(rhdf5) # read h5 files
+  library(minpack.lm) # better exponential fitting
+  library(expm) # eigenvalue solving
+}
+
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+### Read data with varied lattice spacings ###
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+
+{
+  dataFile <- "data2.h5"
+
+  lattice_spacings_vec <- c(0.5, 0.4, 0.3, 0.25, 0.2, 0.175, 0.15, 0.125, 0.1, 0.075, 0.05)
+  path_lengths <- c(200, 250, 333, 400, 500, 571, 667, 800, 1000, 1333, 2000)
+  beta <- 100
+
+  latReps <- length(lattice_spacings_vec)
+
+  # Build paths
+  full_paths <- matrix("", ncol = latReps)
+
+  for (i in seq_along(lattice_spacings_vec)) {
+    ls_str <- sprintf("%.6f", lattice_spacings_vec[i])
+    full_paths[i] <- paste0("/QHO/", ls_str, "/")
+  }
+
+  # Read header data
+  headerSize <- 12
+
+  headerData <- array(NA_real_, dim = c(latReps, headerSize))
+
+  for (i in seq_along(lattice_spacings_vec)) {
+    path <- paste0(full_paths[i], "headerInfo")
+      
+    tmp <- as.numeric(unlist(h5read(dataFile, path)))
+    
+    if (length(tmp) != headerSize) {
+      stop(paste("Header size mismatch at", path))
+    }
+      
+    headerData[i, ] <- tmp
+  }
+
+  # Extract constants (these are same for all runs)
+  decorrSweeps    <- headerData[1, 5]
+  measures        <- headerData[1, 8]
+  repeats         <- headerData[1, 9]
+  numBins         <- headerData[1, 10]
+  mQHO            <- headerData[1, 11]
+  omegaQHO        <- headerData[1, 12]
+
+  totalMeasures   <- measures * repeats
+  totalAcc        <- measures * repeats
+
+  # Allocate data arrays
+  E0Data          <- array(0, dim = c(latReps, totalMeasures))
+  accRateData     <- array(0, dim = c(latReps, totalAcc))
+  histogramData   <- array(0, dim = c(latReps, numBins))
+
+  # Read data
+  for (i in seq_along(lattice_spacings_vec)) {
+    base <- full_paths[i]
+    
+    E0Data[i, ]             <- as.numeric(unlist(h5read(dataFile, paste0(base, "E0"))))
+    accRateData[i, ]        <- as.numeric(unlist(h5read(dataFile, paste0(base, "accRate"))))
+    histogramData[i, ]      <- as.numeric(unlist(h5read(dataFile, paste0(base, "histogram"))))
+  }
+}
+
+###~~~~~~~~~~~~~~~~~###
+### Acceptance rate ###
+###~~~~~~~~~~~~~~~~~###
+
+mean(accRateData[11,]) # Change index to see acceptance rate of one lattice spacing
+
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+### Ground state energy vs lattice spacing ###
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+
+{
+  E0             <- array(0, dim = c(latReps))
+  E0StandardError             <- array(0, dim = c(latReps))
+
+  for (i in seq_along(lattice_spacings_vec)) {
+    E0Split         <- split(E0Data[i, ], rep(1:repeats, each = measures)) # Split E0 into repeats
+    E0RepeatAvg     <- sapply(E0Split, mean)  # Take mean per repeat
+    E0[i]              <- mean(E0RepeatAvg)
+    E0StandardError[i] <- sd(E0RepeatAvg) / sqrt(length(E0RepeatAvg))
+  }
+}
+
+df <- data.frame(lattice = lattice_spacings_vec, E0 = E0, err = E0StandardError)
+
+ggplot(df, aes(x = 1 / (lattice^2), y = E0)) +
+  geom_point() +
   geom_line() +
-  labs(x = "t", y = "E0(t)", title = "Effective Energy (Ground state)")
-
-df <- data.frame(
-  t = 1:cut_off,
-  E1 = E[,2][1:cut_off]
-)
-
-plateau_E1 <- find_flat_region(E[,2], window = 10)
-plateau_E1$mean
-
-ggplot(df, aes(x = t, y = E1)) +
-  geom_line() +
-  labs(x = "t", y = "E1(t)", title = "Effective Energy (1st excited state)")
-
-df <- data.frame(
-  t = 1:cut_off,
-  E2 = E[,3][1:cut_off]
-)
-
-plateau_E2 <- find_flat_region(E[,3], window = 10)
-plateau_E2$mean
-
-ggplot(df, aes(x = t, y = E2)) +
-  geom_line() +
-  labs(x = "t", y = "E2(t)", title = "Effective Energy (2nd excited state)")
+  geom_errorbar(aes(ymin = E0 - err, ymax = E0 + err), width = 0) +
+  geom_hline(yintercept = 0.5, linetype = "dashed", color = "red") +
+  labs(
+    title = "Ground State Energy vs Lattice Spacing (QHO)",
+    x = expression("Inverse square lattice spacing" ~ (1 / (a^2))),
+    y = expression("Ground state energy" ~ E[0])
+  )
 
 # nolint end

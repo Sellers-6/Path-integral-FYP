@@ -1,18 +1,16 @@
 # nolint start
 
+#####################################################################################################################################
+#################################################### Double Well Potential ##########################################################
+#####################################################################################################################################
+
 {
   library(ggplot2)
   library(gridExtra)  # side by side plots
   library(dplyr)
-  library(rhdf5)
+  library(rhdf5) # read h5 files
   library(minpack.lm) # better exponential fitting
   library(expm) # matrix exponentials
-}
-
-#  System
-{
-  # sys <- "QHO"
-  sys <- "DWP"
 }
 
 # Overwrite figures?
@@ -20,46 +18,41 @@ save_png <- FALSE
 
 # Read data
 {
-  dataFile <- "dataTESTING.h5"
+  dataFile <- "data2.h5"
   
-  E0ThermData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/E0Therm"))))
-  accRateThermData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/accRateTherm"))))
-  E0Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/E0"))))
-  accRateData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/accRate"))))
-  histogramData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/histogram"))))
-  instantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/instantons"))))
-  antiInstantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/antiInstantons"))))
-  Gx1x1Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx1x1"))))
-  Gx1x2Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx1x2"))))
-  Gx1x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx1x3"))))
-  Gx2x2Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx2x2"))))
-  Gx2x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx2x3"))))
-  Gx3x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/Gx3x3"))))
-  headerData <- as.numeric(unlist(h5read(dataFile, paste0("/", sys, "/headerInfo"))))
+  E0ThermData <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/E0Therm"))))
+  accRateThermData <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/accRateTherm"))))
+  E0Data <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/E0"))))
+  accRateData <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/accRate"))))
+  histogramData <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/histogram"))))
+  instantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/instantons"))))
+  antiInstantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/antiInstantons"))))
+  Gx1x1Data <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/Gx1x1"))))
+  Gx1x2Data <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/Gx1x2"))))
+  Gx1x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/Gx1x3"))))
+  Gx2x2Data <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/Gx2x2"))))
+  Gx2x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/Gx2x3"))))
+  Gx3x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/Gx3x3"))))
+  headerData <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/headerInfo"))))
 }
 
 # Variables from the simulation
 {
-  pathLength <- headerData[1]
-  latticeSpacing <- headerData[2]
-  epsilon <- headerData[3]
-  accRateInterval <- headerData[4]
-  decorrSweeps <- headerData[5]
-  thermSweeps <- headerData[6]
-  thermInterval <- headerData[7]
-  measures <- headerData[8]
-  repeats <- headerData[9]
-  numBins <- headerData[10]
-  
-  beta <- pathLength * latticeSpacing
-  thermMeasures <- thermSweeps / thermInterval
-
-  if (sys == "QHO") {
-    mQHO <- headerData[11]
-    omegaQHO <- headerData[12]
-  } else if (sys == "DWP") {
+    pathLength <- headerData[1]
+    latticeSpacing <- headerData[2]
+    epsilon <- headerData[3]
+    accRateInterval <- headerData[4]
+    decorrSweeps <- headerData[5]
+    thermSweeps <- headerData[6]
+    thermInterval <- headerData[7]
+    measures <- headerData[8]
+    repeats <- headerData[9]
+    numBins <- headerData[10]
     wellCentres <- headerData[11]
     lambdaDWP <- headerData[12]
+
+    beta <- pathLength * latticeSpacing
+    thermMeasures <- thermSweeps / thermInterval
 
     # Diagonalisation Energies
     energy_row <- as.integer(round((wellCentres - 0.9) * 10))
@@ -75,15 +68,18 @@ save_png <- FALSE
     Split_WKB <- K * exp(-S_inst)
     E0_WKB <- 0.5 * omegaDWP - (Split_WKB / 2)
     E1_WKB <- 0.5 * omegaDWP + (Split_WKB / 2)
-  }
 }
 
-### Thermalisation ###
+###~~~~~~~~~~~~~~~~~###
+### Acceptance rate ###
+###~~~~~~~~~~~~~~~~~###
 
-# Acceptance rate
 mean(accRateThermData) * 100 # Should be between 50 and 80%
 
-# Getting average thermalisation of the ground state energy
+###~~~~~~~~~~~~~~~~###
+### Thermalisation ###
+###~~~~~~~~~~~~~~~~###
+
 {
   # Split into repeats, each column is one repeat
   E0Mat <- matrix(E0ThermData, nrow = thermMeasures, ncol = repeats, byrow = FALSE)
@@ -96,164 +92,92 @@ mean(accRateThermData) * 100 # Should be between 50 and 80%
 
   # Data frame for plotting
   E0ThermDF <- data.frame(sweep = sweepIndex, E0 = E0ThermAvgs)
-}
-
-# Plot thermalisation
-{
-  if (sys == "QHO") {
+  
+  # Plot
     ggplot(data.frame(sweep = sweepIndex, E0 = E0ThermAvgs), aes(x = sweep * thermInterval, y = E0)) +
-      geom_line(color = "blue", linewidth = 0.6) +
-      labs(x = "Sweep", y = expression("Ground State Energy" ~ E[0]),
-        title = "Average Thermalisation of the QHO") +
-      theme_minimal(base_size = 14)
-    if (save_png) {
-      ggsave("Figures/QHO_thermalisation.png", width = 6, height = 4, dpi = 1200)
-    }
-  } else if (sys == "DWP") {
-    ggplot(data.frame(sweep = sweepIndex, E0 = E0ThermAvgs), aes(x = sweep * thermInterval, y = E0)) +
-      geom_line(color = "blue", linewidth = 0.6) +
-      labs(x = "Sweep", y = expression("Ground State Energy" ~ E[0]),
+        geom_line(color = "blue", linewidth = 0.6) +
+        labs(x = "Sweep", y = expression("Ground State Energy" ~ E[0]),
         title = "Average Thermalisation of the DWP") +
-      theme_minimal(base_size = 14)
-    if (save_png) {
-      ggsave("Figures/DWP_thermalisation.png", width = 6, height = 4, dpi = 1200)
-    }
-  }
+        theme_minimal(base_size = 14)
 }
 
-### Ground state energy ###
+if (save_png) { ggsave("Figures/DWP_thermalisation.png", width = 6, height = 4, dpi = 1200) }
 
-# Decorrelation
+###~~~~~~~~~~~~~~~###
+### Decorrelation ###
+###~~~~~~~~~~~~~~~###
+
 {
-  if (measures > 50) {
-    decorrCheck <- 50
-  } else {
-    decorrCheck <- measures
-  }
-  measureIndex <- seq_len(decorrCheck)
-  if (sys == "QHO") {
-    ggplot(data.frame(sweep = measureIndex, E0 = E0Data[1:decorrCheck]), aes(x = sweep, y = E0)) + 
-      geom_line(color = "blue", linewidth = 0.6) +
-      labs(x = "Measure", y = expression("Ground State Energy" ~ E[0]), 
-        title = "Average Decorrelation of the QHO") +
-      theme_minimal(base_size = 14)
-    if (save_png) {
-      ggsave("Figures/QHO_decorrelation.png", width = 6, height = 4, dpi = 1200)  
+    if (measures > 50) {
+        decorrCheck <- 50
+    } else {
+        decorrCheck <- measures
     }
-  } else if (sys == "DWP") {
+    measureIndex <- seq_len(decorrCheck)
     ggplot(data.frame(sweep = measureIndex, E0 = E0Data[1:decorrCheck]), aes(x = sweep, y = E0)) + 
-      geom_line(color = "blue", linewidth = 0.6) +
-      labs(x = "Measure", y = expression("Ground State Energy" ~ E[0]), 
-        title = "Average Decorrelation of the QHO") +
-      theme_minimal(base_size = 14)
-    if (save_png) {
-      ggsave("Figures/DWP_decorrelation.png", width = 6, height = 4, dpi = 1200)  
-    }
-  }
+        geom_line(color = "blue", linewidth = 0.6) +
+        labs(x = "Measure", y = expression("Ground State Energy" ~ E[0]), 
+        title = "Average Decorrelation of the DWP") +
+        theme_minimal(base_size = 14)
 }
 
-# Further proof of decorrelation - auto correlation function
+if (save_png) { ggsave("Figures/DWP_decorrelation.png", width = 6, height = 4, dpi = 1200) }
+
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+### Auto-correlation function ###
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+
 {
   acfResult <- acf(E0Data[1:measures], lag.max = measures - 1, plot = TRUE)
   acfVals <- acfResult$acf
   mean(abs(as.vector(acfVals)[2:length(acfVals)])) # For decorrelated data, we want low acf values (roughly < 0.1)
 }
 
-# Save acf plot
-{
-  if (save_png) {
-    if (sys == "QHO")  {
-        png("Figures/acf_plot_QHO.png", width = 800, height = 600)
+if (save_png) {
+    png("Figures/acf_plot_DWP.png", width = 800, height = 600)
 
-        acfResult <- acf(E0Data[1:measures], lag.max = measures - 1, plot = FALSE)
+    acfResult <- acf(E0Data[1:measures], lag.max = measures - 1, plot = FALSE)
 
-        plot(acfResult,
-            main = "Autocorrelation of Ground State Energy for the QHO",
-            xlab = "Lag (sweeps)",
-            ylab = "Autocorrelation")
+    plot(acfResult, main = "Autocorrelation of Ground State Energy for the DWP", xlab = "Lag (sweeps)", ylab = "Autocorrelation")
 
-        dev.off()
-    } else if (sys == "DWP") {
-      png("Figures/acf_plot_DWP.png", width = 800, height = 600)
-
-      acfResult <- acf(E0Data[1:measures], lag.max = measures - 1, plot = FALSE)
-
-      plot(acfResult,
-          main = "Autocorrelation of Ground State Energy for the DWP",
-          xlab = "Lag (sweeps)",
-          ylab = "Autocorrelation")
-
-      dev.off()
-    }
-  }
-  else {
-    acfResult <- acf(E0Data[1:measures], lag.max = measures - 1)
-  }
+    dev.off()
 }
 
-# Calculating E0 and its error
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+### Calculate ground state energy ###
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+
 {
   E0Split <- split(E0Data, rep(1:repeats, each = measures)) # Split E0 into repeats
   
   E0RepeatAvg <- sapply(E0Split, mean)  # Take mean per repeat
 
-  E0 <- mean(E0RepeatAvg) # Should be close to the expected ground state energy (0.5 for QHO, ~0.68 for DWP)
+  E0 <- mean(E0RepeatAvg)
 
-  E0StandardError <- sd(E0RepeatAvg) / sqrt(length(E0RepeatAvg))  # Standard error
+  E0StandardError <- sd(E0RepeatAvg) / sqrt(length(E0RepeatAvg))
+
+  E0_error <- abs(((E0 - E0_diag) / E0_diag) * 100)
 }
 
-E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError 
+E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError ; E0_error
 
-# Percent error in E0
+###~~~~~~~~~~~~~~~~~###
+### Normality tests ###
+###~~~~~~~~~~~~~~~~~###
+
 {
-  if (sys == "QHO") {
-    E0_error <- abs(((E0 - 0.5) / 0.5) * 100) 
-  }
-  else if (sys == "DWP") {
-    E0_error <- abs(((E0 - E0_diag) / E0_diag) * 100) # Approximate error in E0 by the most accurate method known
-  }
-  E0_error
-}
+    bins <- 7
 
-# Histogram and shapiro test
-{
-  bins <- 7   # Can be increased for high number of repeats
+    hE0 <- hist(E0RepeatAvg, breaks = bins, plot = FALSE) # Compute histogram breaks and bin width
+    binWidth <- diff(hE0$breaks)[1]
 
-  hE0 <- hist(E0RepeatAvg, breaks = bins, plot = FALSE) # Compute histogram breaks and bin width
-  binWidth <- diff(hE0$breaks)[1]
+    E0Norm <- hE0$counts / (sum(hE0$counts) * binWidth) # Normalised histogram counts (probability density)
 
-  E0Norm <- hE0$counts / (sum(hE0$counts) * binWidth) # Normalised histogram counts (probability density)
+    continuousE0 <- seq(min(E0RepeatAvg), max(E0RepeatAvg), length.out = 200) # Continuous x values for normal curve
+    normDist <- dnorm(continuousE0, mean = mean(E0RepeatAvg), sd = sd(E0RepeatAvg))
+    dx <- diff(continuousE0)[1]
+    normDist <- normDist / sum(normDist * dx)  # Normalisation
 
-  continuousE0 <- seq(min(E0RepeatAvg), max(E0RepeatAvg), length.out = 200) # Continuous x values for normal curve
-  normDist <- dnorm(continuousE0, mean = mean(E0RepeatAvg), sd = sd(E0RepeatAvg))
-  dx <- diff(continuousE0)[1]
-  normDist <- normDist / sum(normDist * dx)  # Normalisation
-
-  if (sys == "QHO") {
-    histPlot <- ggplot() +
-      geom_histogram(aes(x = E0RepeatAvg, y = after_stat(density)), # after_stat(density) normalises the histogram to a density
-                    bins = bins, fill = "skyblue", color = "black") +
-      geom_line(aes(x = continuousE0, y = normDist),
-                color = "red", linewidth = 1) +
-      labs(title = "Ground State Energy Histogram for the QHO",
-          x = expression("Ground State Energy " ~ E[0]), y = "Probability Density") 
-
-    shapiroTest <- shapiro.test(E0RepeatAvg)
-    qqPlot <- ggplot(data.frame(E0RepeatAvg), aes(sample = E0RepeatAvg)) +
-      stat_qq() +
-      stat_qq_line(color = "red") +
-      labs(title = paste0("QQ Plot (Shapiro-Wilk p = ", round(shapiroTest$p.value, 4), ")"),
-          x = "Theoretical Quantiles", y = "Sample Quantiles")
-    if (save_png) {
-      png("Figures/QHO_Histogram_qq.png", width = 1200, height = 800)
-          grid.arrange(histPlot, qqPlot, ncol = 2)
-          dev.off()
-    }
-    else {
-      grid.arrange(histPlot, qqPlot, ncol = 2)
-    }
-  }
-  else if (sys == "DWP") {
     histPlot <- ggplot() +
       geom_histogram(aes(x = E0RepeatAvg, y = after_stat(density)), # after_stat(density) normalises the histogram to a density
                     bins = bins, fill = "skyblue", color = "black") +
@@ -262,312 +186,249 @@ E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError
       labs(title = "Ground State Energy Histogram for the DWP",
           x = expression("Ground State Energy " ~ E[0]), y = "Probability Density") 
 
-    shapiroTest <- shapiro.test(E0RepeatAvg)
+    shapiroTest <- shapiro.test(E0RepeatAvg) # Run a Shapiro test on the data, values of p < 0.05 are not normally distributed
     qqPlot <- ggplot(data.frame(E0RepeatAvg), aes(sample = E0RepeatAvg)) +
       stat_qq() +
       stat_qq_line(color = "red") +
       labs(title = paste0("QQ Plot (Shapiro-Wilk p = ", round(shapiroTest$p.value, 4), ")"),
           x = "Theoretical Quantiles", y = "Sample Quantiles")
-    if (save_png) {
+
+    grid.arrange(histPlot, qqPlot, ncol = 2)
+}
+
+if (save_png) {
       png("Figures/DWP_Histogram_qq.png", width = 1200, height = 800)
           grid.arrange(histPlot, qqPlot, ncol = 2)
           dev.off()
     }
-    else {
-      grid.arrange(histPlot, qqPlot, ncol = 2)
-    }
-  }
-}
 
 # histPlot # Show histogram
 
 # qqPlot # Show QQ plot
 
+###~~~~~~~~~~~~~~~###
 ### Wave function ###
+###~~~~~~~~~~~~~~~###
 
 # Histogram data frame creation
 {
   # Histogram range
-  if (sys == "QHO") {
-    sigmaQHO <- 1 / sqrt(2 * mQHO * omegaQHO)
-    xMax <- ceiling(4 * sigmaQHO) + 1  # 4 standard deviations of analytic ground state plus padding
-    xMin <- -xMax
-  }
-  else if (sys == "DWP") {
+  
     sigmaDWP <- 1 / sqrt(omegaDWP)
     xMax <- ceiling(wellCentres + 4 * sigmaDWP) + 1
     xMin <- -xMax
-  }
+  
+    binWidth <- (xMax - xMin) / numBins
+    x_values <- seq(xMin + binWidth/2, xMax - binWidth/2, length.out = numBins)
 
-  binWidth <- (xMax - xMin) / numBins
-  x_values <- seq(xMin + binWidth/2, xMax - binWidth/2, length.out = numBins)
+    hist_matrix <- matrix(histogramData, nrow = repeats, ncol = numBins, byrow = TRUE)
+    hist_avg <- colMeans(hist_matrix)
 
-  hist_matrix <- matrix(histogramData, nrow = repeats, ncol = numBins, byrow = TRUE)
-  hist_avg <- colMeans(hist_matrix)
+    prob_density <- hist_avg / (sum(hist_avg) * binWidth)
 
-  prob_density <- hist_avg / (sum(hist_avg) * binWidth)
-
-  hist_df <- data.frame(
-    x = x_values,
-    probability = prob_density
-  )
+    hist_df <- data.frame(
+        x = x_values,
+        probability = prob_density
+    )
 }
-
-# Plot histogram
-ggplot(hist_df, aes(x = x, y = probability)) +
-  geom_col(width = binWidth, fill = "steelblue") +   # bar plot
-  # Or use geom_line() + geom_point() for a line plot:
-  # geom_line(color = "steelblue", size = 1) +
-  # geom_point(color = "darkblue", size = 2) +
-  labs(title = paste(sys, "position histogram"),
-       x = "x",
-       y = "Probability density") +
-  theme_minimal(base_size = 14)
 
 # Finding the wave function from the histogram
 {
-  psi <- sqrt(prob_density)
+    psi <- sqrt(prob_density)
 
-  wave_df <- data.frame(
-    x = x_values,
-    psi = psi
-  )
+    wave_df <- data.frame(
+        x = x_values,
+        psi = psi
+    )
 
-  # Overlay analytical wave function 
-  if (sys == "QHO") {
-    psiAnalytical <- exp(-(x_values^2) / 2)
-  } else if (sys == "DWP") {
+    # Overlay analytical wave function 
     psiAnalytical <- exp(-(omegaDWP / 2) * (x_values + wellCentres)^2) + exp(-(omegaDWP / 2) * (x_values - wellCentres)^2) # Approximate by 2 Gaussians
-  }
+    
+    # Normalise the analytical wave function 
+    psiAnalytical <- psiAnalytical / sqrt(sum(psiAnalytical ^ 2) * binWidth) 
 
-  # Normalise the analytical wave function 
-  psiAnalytical <- psiAnalytical / sqrt(sum(psiAnalytical ^ 2) * binWidth) 
+    wave_df$psiAnalytical <- psiAnalytical
 
-  wave_df$psiAnalytical <- psiAnalytical
-  
-  ## Diagonalisation wave function
-  if (sys == "DWP")  { 
     f_target <- wellCentres
     diagWFData <- diagWFData %>%
       filter(abs(f - f_target) < 1e-6)
-  }
 }
 
 # Comparing wave functions
+ggplot(wave_df, aes(x = x)) +
+    # MCMC wave function
+    geom_point(aes(y = psi, color = "MCMC"), size = 1) +
 
-{
-  if (sys == "QHO") {
-    ggplot(wave_df, aes(x = x)) +
-      # MCMC wave function
-      geom_point(aes(y = psi, color = "MCMC"), size = 1) +
+    # Diagonalisation wave function
+    geom_line(data = diagWFData,
+            aes(x = x, y = psi0, color = "Diagonalised"),
+            linewidth = 0.7) +
 
-      # Exact wave function
-      geom_line(aes(y = psiAnalytical, color = "Exact")) +
+    # WKB approximation
+    geom_line(aes(y = psiAnalytical, color = "WKB"), linetype = "dashed") +
+    
+    labs(title = "Double-Well Potential Ground State Wave Function", x = "Position x") +
 
-      labs(title = paste(sys, "Quantum Harmonic Oscillator Ground State Wave Function"), x = "Position", y = "Psi") +
+    # coord_cartesian(xlim = c(-2.5, 2.5), ylim = c(0, 0.8)) + 
 
-      scale_y_continuous(
-        name = expression("Wavefunction " ~ psi[0](x))) +
+    scale_y_continuous(
+    name = expression("Wavefunction " ~ psi[0](x))) +
 
-      scale_color_manual(
-        name = "",
-        values = c("MCMC" = "red", "Exact" = "black")) + 
+    scale_color_manual(
+    name = "",
+    values = c("MCMC" = "red", "Diagonalised" = "black", "WKB" = "blue")) + 
 
-      theme_minimal(base_size = 14)
-    if (save_png) {
-      ggsave("Figures/QHO_wave_functions.png", width = 8, height = 4, dpi = 1200)  
-    }
-  } else if (sys == "DWP") {
-    ggplot(wave_df, aes(x = x)) +
-      # MCMC wave function
-      geom_point(aes(y = psi, color = "MCMC"), size = 1) +
+    theme_minimal(base_size = 14)
+   
+ if (save_png) { ggsave("Figures/DWP_wave_functions.png", width = 8, height = 4, dpi = 1200) }
 
-      # Diagonalisation wave function
-      geom_line(data = diagWFData,
-                aes(x = x, y = psi0, color = "Diagonalised"),
-                linewidth = 0.7) +
+###~~~~~~~~~~~~~~~~~~~~~~~###
+### Excited energy states ###
+###~~~~~~~~~~~~~~~~~~~~~~~###
 
-      # WKB approximation
-      geom_line(aes(y = psiAnalytical, color = "WKB"), linetype = "dashed") +
-      
-      labs(title = "Double-Well Potential Ground State Wave Function", x = "Position x") +
+### Exponential fit ###
 
-      # coord_cartesian(xlim = c(-2.5, 2.5), ylim = c(0, 0.8)) + 
-
-      scale_y_continuous(
-        name = expression("Wavefunction " ~ psi[0](x))) +
-
-      scale_color_manual(
-        name = "",
-        values = c("MCMC" = "red", "Diagonalised" = "black", "WKB" = "blue")) + 
+fit_correlator_exp <- function(corr, noiseless_region, A_guess, DeltaE_guess) {
   
-      theme_minimal(base_size = 14)
-    if (save_png) {
-      ggsave("Figures/DWP_wave_functions.png", width = 8, height = 4, dpi = 1200)
-    }
-  }
-}
-
-### x1 x1 correlation function
-
-# Exponential fit
-
-{
-  noiseless_region_x1x1 <- 50 # Adjust to the length of the noiseless region
+  lag <- 0:(noiseless_region - 1)
+  corr_slice <- corr[1:noiseless_region]
+  
   dfCorr <- data.frame(
-    lag = 0:(noiseless_region_x1x1 - 1),
-    correlation = Gx1x1Data[1:noiseless_region_x1x1]
+    lag = lag,
+    correlation = corr_slice
   )
-  fit_data <- subset(dfCorr, lag >= 0 & lag <= noiseless_region_x1x1)
-  if (sys == "QHO") {
-    DeltaE_guess <- 1.0 # Hard coded energy splitting for QHO with m = omega = 1
-  } else if (sys == "DWP") {
-    DeltaE_guess <- Split_diag
-  }
-  A_guess <- 0.098
-  c_guess <- min(fit_data$correlation)
+  
+  c_guess <- min(corr_slice, na.rm = TRUE)
   
   fit <- nlsLM(
     correlation ~ A * exp(-DeltaE * lag * latticeSpacing) + c,
-    data = fit_data,
-    start = list(A = A_guess, c= c_guess, DeltaE = DeltaE_guess),
+    data = dfCorr,
+    start = list(
+      A = A_guess,
+      DeltaE = DeltaE_guess,
+      c = c_guess
+    ),
     control = nls.lm.control(maxiter = 1024)
   )
+  
   dfCorr$fit <- predict(fit, newdata = dfCorr)
-  coef(fit)
+  
+  p <- ggplot(dfCorr, aes(x = lag * latticeSpacing)) +
+      geom_point(aes(y = correlation, color = "MCMC Correlator"), size = 0.5) +
+      geom_line(aes(y = fit, color = "Exponential fit")) +
+      labs(
+        title = "Correlator with Exponential Fit",
+        y = "G(t)",
+        x = "t"
+      ) +
+      scale_color_manual(
+        name = "",
+        values = c("MCMC Correlator" = "black", "Exponential fit" = "red")
+      )
+  
+  list(
+    coefficients = coef(fit),
+    fit_object = fit,
+    data = dfCorr,
+    plot = p
+  )
 }
 
 {
-  if (sys == "QHO") {
-    ggplot(dfCorr, aes(x = lag * latticeSpacing)) +
-      geom_point(aes(y = correlation, color = "MCMC Correlator"), size = 0.5) +
-      geom_line(aes(y = fit, color = "Exponential fit")) +
-      labs(title = "QHO x1 x1 Correlator with Exponential fit", y = "Two-Point Correlator G(t)", x = "Lag t") +
-      scale_color_manual(
-        name = "",
-        values = c("MCMC Correlator" = "black", "Exponential fit" = "red"))
-    if (save_png) {
-      ggsave("Figures/QHO_x1x1_correlator.png", width = 7, height = 4, dpi = 1200)
-    }
-  } else if (sys == "DWP") {
-    ggplot(dfCorr, aes(x = lag * latticeSpacing)) +
-      geom_point(aes(y = correlation, color = "MCMC Correlator"), size = 0.5) +
-      geom_line(aes(y = fit, color = "Exponential fit")) +
-      labs(title = "DWP x1 x1 Correlator with Exponential fit", y = "Two-Point Correlator G(t)", x = "Lag t") +
-      scale_color_manual(
-        name = "",
-        values = c("MCMC Correlator" = "black", "Exponential fit" = "red"))
-    if (save_png) {
-      ggsave("Figures/DWP_x1x1_correlator.png", width = 7, height = 4, dpi = 1200)
-    }
+  Gx1x1Fit <- fit_correlator_exp( corr = Gx1x1Data, noiseless_region = 50, A_guess = 0.5, DeltaE_guess = 1.0)
+  Gx2x2Fit <- fit_correlator_exp( corr = Gx2x2Data, noiseless_region = 30, A_guess = 0.5, DeltaE_guess = 2.0)
+}
+
+Gx1x1Fit$coefficients
+print(Gx1x1Fit$plot) 
+
+if (save_png) { ggsave("Figures/DWP_x1x1_correlator.png", width = 7, height = 4, dpi = 1200) }
+
+Gx2x2Fit$coefficients
+print(Gx2x2Fit$plot) 
+ 
+if (save_png) { ggsave("Figures/DWP_x2x2_correlator.png", width = 7, height = 4, dpi = 1200) }
+
+### Log ratio method ### 
+
+log_ratio_energy <- function(corr, latticeSpacing, noiseless_region = 50, E0 = 0) {
+  
+  if (length(corr) < noiseless_region + 1) {
+    stop("Correlator too short for chosen noiseless_region")
   }
-}
-ggplot(dfCorr, aes(x = lag * latticeSpacing)) +
-      geom_point(aes(y = correlation, color = "MCMC Correlator"), size = 0.5) +
-      geom_line(aes(y = fit, color = "Exponential fit")) +
-      labs(title = "DWP x1 x1 Correlator with Exponential fit", y = "Two-Point Correlator G(t)", x = "Lag t") +
-      scale_color_manual(
-        name = "",
-        values = c("MCMC Correlator" = "black", "Exponential fit" = "red"))
-
-# x2 x2 correlation function
-{
-  noiseless_region_x2x2 <- 50 # Adjust to the length of the noiseless region
-  dfCorr <- data.frame(
-    lag = 0:(noiseless_region_x2x2 - 1),
-    correlation = Gx2x2Data[0:noiseless_region_x2x2]
-  )
-}
-
-ggplot(dfCorr, aes(x = lag, y = correlation)) +
-  geom_line(color = "#000000") +
-  labs(
-    title = paste("x2 x2 correlation function for", sys),
-    x = "Time (index of the path)",
-    y = "G_4(t, 0)"
-  )
-
-### Excited energy states
-
-# E1
-
-{
-  successfulCounts <- 0; E1 <- 0
-
-  LHS <- 1; RHS <- noiseless_region_x1x1
-
-  correlatorRatios <- numeric(RHS - LHS + 1) # To store the log ratios for each lag
-
+  
+  RHS <- noiseless_region
+  LHS <- 1
+  
+  ratios <- numeric(RHS - LHS + 1)
+  valid_count <- 0
+  
+  # Compute log ratios
   for (i in LHS:RHS) {
-    if (Gx1x1Data[i] <= 0 || Gx1x1Data[i + 1] <= 0) {
-      message("Correlation function has non-positive values, cannot compute log ratio.")
-    } 
-    else {
-      E1 <- E1 + E0 + log(Gx1x1Data[i] / Gx1x1Data[i + 1]) / latticeSpacing
-      correlatorRatios[i - LHS + 1] <- log(Gx1x1Data[i] / Gx1x1Data[i + 1]) / latticeSpacing
-      successfulCounts <- successfulCounts + 1
+    
+    if (corr[i] > 0 && corr[i + 1] > 0) {
+      
+      r <- log(corr[i] / corr[i + 1]) / latticeSpacing
+      
+      ratios[i - LHS + 1] <- r
+      valid_count <- valid_count + 1
+      
+    } else {
+      ratios[i - LHS + 1] <- NA
     }
   }
-  E1 <- E1 / successfulCounts; E1
-}
-
-{
-  if (sys == "QHO") {   
-    ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag * latticeSpacing, y = ratio)) +
-      geom_line(aes(color = "Log Ratio")) +
-      geom_hline(data = data.frame(y = E1 - E0), aes(yintercept = y, color = "Splitting Energy"), linetype = "dashed") +
-      labs(title = "Finding the splitting energy for the QHO",
-          x = "Lag t", y = expression("Log(" ~ G[2](t) ~ ") / Log(" ~ G[2](t+a) ~ ")")) +
-      scale_color_manual(name = "", values = c("Log Ratio" = "blue", "Splitting Energy" = "red"))
-    if (save_png) {
-      ggsave("Figures/QHO_log_ratio.png", width = 6, height = 4, dpi = 1200)
-    }
-
-  } else if (sys == "DWP") {
-    ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag * latticeSpacing, y = ratio)) +
-      geom_line(aes(color = "Log Ratio")) +
-      geom_hline(data = data.frame(y = E1 - E0), aes(yintercept = y, color = "Splitting Energy"), linetype = "dashed") +
-      labs(title = "Finding the splitting energy for the DWP",
-          x = "Lag t", y = expression("Log(" ~ G[2](t) ~ ") / Log(" ~ G[2](t+a) ~ ")")) +
-      scale_color_manual(name = "", values = c("Log Ratio" = "blue", "Splitting Energy" = "red"))
-    if (save_png) {
-      ggsave("Figures/DWP_log_ratio.png", width = 6, height = 4, dpi = 1200)
-    }
-  } 
-}
-
-ggplot(data.frame(lag = 1:(length(correlatorRatios)), ratio = correlatorRatios), aes(x = lag * latticeSpacing, y = ratio)) +
-      geom_line(aes(color = "Log Ratio")) +
-      geom_hline(data = data.frame(y = E1 - E0), aes(yintercept = y, color = "Splitting Energy"), linetype = "dashed") +
-      labs(title = "Finding the splitting energy for the QHO",
-          x = "Lag t", y = expression("Log(" ~ G[2](t) ~ ") / Log(" ~ G[2](t+a) ~ ")")) +
-      scale_color_manual(name = "", values = c("Log Ratio" = "blue", "Splitting Energy" = "red"))
-
-E1
-E1 - E0
-Split_diag
-
-{
-  successfulCounts <- 0; E2 <- 0
-
-  for (i in 1:noiseless_region_x2x2) {
-    if (Gx2x2Data[i] <= 0 || Gx2x2Data[i + 1] <= 0) {
-      message("Correlation function has non-positive values, cannot compute log ratio.")
-    } 
-    else {
-      E2 <- E2 + mean(E0RepeatAvg) + log(Gx2x2Data[i] / Gx2x2Data[i + 1]) / latticeSpacing
-      successfulCounts <- successfulCounts + 1
-    }
+  
+  # Average over valid log ratios to get DeltaE
+  valid_ratios <- ratios[!is.na(ratios)]
+  
+  if (length(valid_ratios) == 0) {
+    stop("No valid log-ratio points found")
   }
-  E2 <- E2 / successfulCounts; E2
+  
+  DeltaE <- mean(valid_ratios)
+  excited_energy <- E0 + DeltaE
+  
+  df <- data.frame(
+    lag = LHS:RHS,
+    ratio = ratios
+  )
+  
+  p <- ggplot(df, aes(x = lag * latticeSpacing, y = ratio)) +
+    geom_line(color = "blue") +
+    geom_hline(
+      yintercept = DeltaE,
+      linetype = "dashed",
+      color = "red"
+    ) +
+    labs(
+      title = "Log-Ratio Splitting Energy Estimate",
+      x = "t",
+      y = "Splitting Energy"
+    )
+  
+  list(
+    excited_energy = excited_energy,
+    DeltaE = DeltaE,
+    ratios = ratios,
+    mean_ratios = valid_ratios,
+    plot = p
+  )
 }
 
-E2 - E0
+Gx1x1_log_ratios <- log_ratio_energy(corr = Gx1x1Data, latticeSpacing = latticeSpacing, noiseless_region = 25, E0 = E0)
+
+Gx1x1_log_ratios$excited_energy
+print(Gx1x1_log_ratios$plot)
+
+Gx2x2_log_ratios <- log_ratio_energy(corr = Gx2x2Data, latticeSpacing = latticeSpacing, noiseless_region = 10, E0 = E0)
+
+Gx2x2_log_ratios$excited_energy
+print(Gx2x2_log_ratios$plot)
 
 ### GEVP - Alternative method of extracting excited energy state.division
 
 {
-  # Matrix of correlators with vector entries "pathLength" long
+  # 3 x 3 Matrix of correlators with vector entries "pathLength" long
   C <- array(0, dim = c(3, 3, pathLength)) 
 
   C[1,1,] <- Gx1x1Data
@@ -603,14 +464,13 @@ E2 - E0
 
   eigvals <- t(apply(eigvals, 1, sort, decreasing = TRUE))
 
-  # ---- Effective energies from GEVP eigenvalues ----
   E <- matrix(NA, nrow = pathLength - 1, ncol = 3)
 
   for (t in 1:(pathLength - 1)) {
 
     ratio <- eigvals[t, ] / eigvals[t + 1, ]
 
-    # avoid invalid values
+    # Reject invalid values
     ratio[ratio <= 0] <- NA
 
     E[t, ] <- -log(ratio) / latticeSpacing
@@ -618,7 +478,7 @@ E2 - E0
 }
 
 {
-  # Matrix of correlators with vector entries "pathLength" long
+  # 2 x 2 Matrix of correlators with vector entries "pathLength" long
   C <- array(0, dim = c(2, 2, pathLength)) 
 
   C[1,1,] <- Gx1x1Data
@@ -648,14 +508,13 @@ E2 - E0
 
   eigvals <- t(apply(eigvals, 1, sort, decreasing = TRUE))
 
-  # ---- Effective energies from GEVP eigenvalues ----
   E <- matrix(NA, nrow = pathLength - 1, ncol = 2)
 
   for (t in 1:(pathLength - 1)) {
 
     ratio <- eigvals[t, ] / eigvals[t + 1, ]
 
-    # avoid invalid values
+    # Reject invalid values
     ratio[ratio <= 0] <- NA
 
     E[t, ] <- -log(ratio) / latticeSpacing
@@ -671,12 +530,12 @@ find_flat_region <- function(x, window = 10) {
   best_var <- Inf
   best_start <- 1
   
-  # slide window across data
+  # Slide window across data
   for (i in 1:(n - window + 1)) {
     
     segment <- x[i:(i + window - 1)]
     
-    # ignore NA values safely
+    # Reject NA values 
     segment <- segment[!is.na(segment)]
     
     if (length(segment) < 2) next
@@ -749,7 +608,7 @@ mean(instantonsData)
 # Conditions for good instanton sampling
 
 exp(-S_inst) # Must be << 1
-beta * Split_diag # Should be > 10
+beta * Split_diag # Should be >> 10
 
 # An approximation for the instanton action based on the number of tunnelling events  
 {
@@ -767,108 +626,54 @@ E1; E1_diag; E1_WKB
 
 E1 - E0; Split_diag; Split_WKB 
 
-### Most exact wave function vs Potential - Run after running the rest of the code for DWP, then QHO
-
-# Potentials
-
-{
-  potential_scale <- 5
-
-  V_QHO <- function(x) { omegaQHO * omegaQHO * mQHO * 0.5 * x * x }
-    
-  QHO_potential_df <- data.frame(
-  x = x_values,
-  V_QHO = V_QHO(x_values))
-
-  V_DWP <- function(x) { lambdaDWP * (x * x - wellCentres * wellCentres) * (x * x - wellCentres * wellCentres) }
-  
-  DWP_potential_df <- data.frame(
-  x = x_values,
-  V_DWP = V_DWP(x_values))
-}
-
-{
-  ggplot(wave_df, aes(x = x)) +
-    # Exact QHO wave function
-    geom_line(aes(y = psiAnalytical, color = "QHO Wave function"), linetype = "dashed") +
-
-    # Diagonalisation DWP wave function
-    geom_line(data = diagWFData, aes(x = x, y = psi0, color = "DWP Wave function"), linetype = "dashed") +
-
-    # QHO Potential
-    geom_line(data = QHO_potential_df, aes(x = x_values, y = V_QHO / potential_scale, color = "QHO Potential")) +
-
-    # Double Well Potential
-    geom_line(data = DWP_potential_df, aes(x = x_values, y = V_DWP / potential_scale, color = "DWP Potential")) +
-
-    labs(title = "QHO and DWP Wave Functions and Potentials", x = "Position x", y = "Psi") +
-
-    coord_cartesian(xlim = c(-2.5, 2.5), ylim = c(0, 0.8)) + 
-
-    scale_y_continuous(
-      name = expression("Wavefunction " ~ psi[0](x)),
-      sec.axis = sec_axis(~ . * potential_scale,  name = "Potential V(x)")) +
-
-    scale_color_manual(
-      name = "",
-      values = c("DWP Potential" = "black", "DWP Wave function" = "black", "QHO Potential" = "red", "QHO Wave function" = "red")) + 
-
-    theme_minimal(base_size = 14)
-  ggsave("Figures/Wave_functions_and_potentials.png", width = 8, height = 4, dpi = 600)
-}
-
 #####################################################################################################################################
-####################################################### Read new data ###############################################################
+################################################# Vary Well Centres and Beta ########################################################
 #####################################################################################################################################
 
 {
   library(ggplot2)
   library(gridExtra)  # side by side plots
   library(dplyr)
-  library(rhdf5)
+  library(rhdf5) # read h5 files
   library(minpack.lm) # better exponential fitting
   library(expm) # eigenvalue solving
 }
 
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+### Read varied well centres and beta data ###
+###~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~###
+
 {
   dataFile <- "data.h5"
-  sys <- "DWP"
 
   well_centres_vec <- c(1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0)
-  lattice_spacings_vec <- c(0.1)
-  epsilon_vec <- c(0.4)
-  path_lengths <- c(100000)
-  betas <- c(10000)
+  betas_vec <- c(1000)
+  a <- 0.1
+  path_lengths <- c(10000)
 
   wellReps <- length(well_centres_vec)
-  latReps <- length(lattice_spacings_vec)
-
-  for (i in seq_along(lattice_spacings_vec)) {
-    if (lattice_spacings_vec[i] * path_lengths[i] != betas[i]) {
-      stop("Check beta vector")
-    }
-  }
+  betaReps <- length(betas_vec)
 
   # Build paths
-  full_paths <- matrix("", nrow = wellReps, ncol = latReps)
+  full_paths <- matrix("", nrow = wellReps, ncol = betaReps)
 
   for (i in seq_along(well_centres_vec)) {
     wc_str <- sprintf("%.6f", well_centres_vec[i])
     
-    for (j in seq_along(lattice_spacings_vec)) {
-      ls_str <- sprintf("%.6f", lattice_spacings_vec[j])
+    for (j in seq_along(betas_vec)) {
+      ls_str <- sprintf("%.6f", betas_vec[j])
       
-      full_paths[i, j] <- paste0("/", sys, "/", wc_str, "/", ls_str, "/")
+      full_paths[i, j] <- paste0("/DWP/", wc_str, "/", ls_str, "/")
     }
   }
 
   # Read header data
   headerSize <- 12
 
-  headerData <- array(NA_real_, dim = c(wellReps, latReps, headerSize))
+  headerData <- array(NA_real_, dim = c(wellReps, betaReps, headerSize))
 
   for (i in seq_along(well_centres_vec)) {
-    for (j in seq_along(lattice_spacings_vec)) {
+    for (j in seq_along(betas_vec)) {
       path <- paste0(full_paths[i, j], "headerInfo")
       
       tmp <- as.numeric(unlist(h5read(dataFile, path)))
@@ -893,25 +698,29 @@ E1 - E0; Split_diag; Split_WKB
   totalAcc <- measures * repeats
 
   # Allocate data arrays
-  E0Data             <- array(0, dim = c(wellReps, latReps, totalMeasures))
-  accRateData        <- array(0, dim = c(wellReps, latReps, totalAcc))
-  histogramData      <- array(0, dim = c(wellReps, latReps, numBins))
-  instantonsData     <- array(0, dim = c(wellReps, latReps, totalMeasures))
-  antiInstantonsData <- array(0, dim = c(wellReps, latReps, totalMeasures))
+  E0Data             <- array(0, dim = c(wellReps, betaReps, totalMeasures))
+  accRateData        <- array(0, dim = c(wellReps, betaReps, totalAcc))
+  histogramData      <- array(0, dim = c(wellReps, betaReps, numBins))
+  instantonsData     <- array(0, dim = c(wellReps, betaReps, totalMeasures))
+  antiInstantonsData <- array(0, dim = c(wellReps, betaReps, totalMeasures))
+
+###########################################################################################################################
+############# Going to need to figure out how to make the 3rd dimension of correlator arrays different sizes ##############
+###########################################################################################################################
 
   # Correlators
   corrSize <- path_lengths[1]
 
-  Gx1x1Data <- array(0, dim = c(wellReps, latReps, corrSize))
-  Gx1x2Data <- array(0, dim = c(wellReps, latReps, corrSize))
-  Gx1x3Data <- array(0, dim = c(wellReps, latReps, corrSize))
-  Gx2x2Data <- array(0, dim = c(wellReps, latReps, corrSize))
-  Gx2x3Data <- array(0, dim = c(wellReps, latReps, corrSize))
-  Gx3x3Data <- array(0, dim = c(wellReps, latReps, corrSize))
+  Gx1x1Data <- array(0, dim = c(wellReps, betaReps, corrSize))
+  Gx1x2Data <- array(0, dim = c(wellReps, betaReps, corrSize))
+  Gx1x3Data <- array(0, dim = c(wellReps, betaReps, corrSize))
+  Gx2x2Data <- array(0, dim = c(wellReps, betaReps, corrSize))
+  Gx2x3Data <- array(0, dim = c(wellReps, betaReps, corrSize))
+  Gx3x3Data <- array(0, dim = c(wellReps, betaReps, corrSize))
 
   # Read data
   for (i in seq_along(well_centres_vec)) {
-    for (j in seq_along(lattice_spacings_vec)) {
+    for (j in seq_along(betas_vec)) {
       
       base <- full_paths[i, j]
       
@@ -931,8 +740,11 @@ E1 - E0; Split_diag; Split_WKB
   }
 }
 
+###~~~~~~~~~~~~~~~~~~~~~~~~~~###
+### Theoretical calculations ###
+###~~~~~~~~~~~~~~~~~~~~~~~~~~###
+
 {
-  # Theoretical calculations (vectorised over well separations)
   wellCentres <- well_centres_vec
 
   omegaDWP <- sqrt(8 * lambdaDWP * wellCentres^2)
@@ -955,14 +767,21 @@ E1 - E0; Split_diag; Split_WKB
   Split_diag <- diagEnergiesData[energy_row, 4]
 }
 
-# Check acceptance rate of any iteration by changing the indices of accRateData
-mean(accRateData[11, 1, ]) * 100
+###~~~~~~~~~~~~~~~~~###
+### Acceptance rate ###
+###~~~~~~~~~~~~~~~~~###
 
-E0_vals <- matrix(0, nrow = wellReps, ncol = latReps)
-E0_errors  <- matrix(0, nrow = wellReps, ncol = latReps)
+mean(accRateData[11, 1, ]) * 100 # Check acceptance rate of any iteration by changing the indices
+
+###~~~~~~~~~~~~~~~~~~~~~~~~###
+### Calculate ground state ### 
+###~~~~~~~~~~~~~~~~~~~~~~~~###
+
+E0_vals <- matrix(0, nrow = wellReps, ncol = betaReps)
+E0_errors  <- matrix(0, nrow = wellReps, ncol = betaReps)
 
 for (i in seq_len(wellReps)) {
-  for (j in seq_len(latReps)) {
+  for (j in seq_len(betaReps)) {
     
     # Extract time series for this parameter set
     E0_series <- E0Data[i, j, ]
@@ -984,7 +803,11 @@ E0_errors[,1]
 
 E0_vals[,1]; E0_vals[,1] + E0_errors[,1]; E0_vals[,1] - E0_errors[,1]
 
-# Correlators - Naive version
+###~~~~~~~~~~~~~~~~~~~~~~~###
+### Excited energy states ###
+###~~~~~~~~~~~~~~~~~~~~~~~###
+
+# Exponential fit
 
 fit_correlator <- function(corr, latticeSpacing, noiseless_region, DeltaE_guess) {
   
@@ -1131,9 +954,9 @@ E2_vals[,1]
 
 Split_fit[,1]
 
-#################################################
-# GEVP method for finding excited energy states #
-#################################################
+###~~~~~~~~~~~~~###
+### GEVP method ###
+###~~~~~~~~~~~~~###
 
 build_C_matrix <- function(Glist, pathLength) {
   
