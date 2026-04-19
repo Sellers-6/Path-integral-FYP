@@ -223,10 +223,10 @@ int main()
     ofstream wf_file("wavefunctions.csv");
 
     // headers
-    energy_file << "f,E0,E1,dE\n";
+    energy_file << "f,E0,E1,E2,dE,dE2\n";
     wf_file << "f,x,psi0,psi0_sq\n";
 
-    for (int fIncrement = 0; fIncrement <= 7; fIncrement++) {
+    for (int fIncrement = 0; fIncrement <= 10; fIncrement++) {
         double f = 1.0 + 0.1 * fIncrement;
         int nmax = 1000;
         double** h = new double* [nmax], * e = new double[nmax];
@@ -453,9 +453,11 @@ int main()
 
         double E0 = e[0];
         double E1 = e[1];
+		double E2 = e[2];
         double dE = E1 - E0;
+		double dE2 = E2 - E0;
 
-        energy_file << f << "," << E0 << "," << E1 << "," << dE << "\n";
+        energy_file << f << "," << E0 << "," << E1 << "," << E2 << "," << dE << "," << dE2 << "\n";
 
 		
         //c----------------------------------------------------------------------------c

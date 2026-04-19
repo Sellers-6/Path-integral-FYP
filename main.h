@@ -54,7 +54,7 @@ bool multThreads = false;                      // Flag to determine whether to r
 
 ///// Lattice parameters /////
 
-int N = 100;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
+int N = 5000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Lattice points (represents the "path" of the particle)
 double a = 0.1;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
 double aInverse = 1.0 / a;											
