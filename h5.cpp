@@ -21,7 +21,6 @@ static std::vector<Observable> getObservables() {
         {"accRate", &accRate},
         {"histogram", &histogram},
         {"Gx1x1", &Gx1x1},
-        {"Gx1x2", &Gx1x2},
         {"Gx2x2", &Gx2x2},
         {"instantons", &instantons},
         {"antiInstantons", &antiInstantons},

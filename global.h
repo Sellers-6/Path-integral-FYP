@@ -15,7 +15,6 @@ extern std::vector<double> accRateTherm;
 extern std::vector<double> accRate;
 extern std::vector<double> histogram;
 extern std::vector<double> Gx1x1;
-extern std::vector<double> Gx1x2;
 extern std::vector<double> Gx2x2;
 extern std::vector<double> instantons;
 extern std::vector<double> antiInstantons;

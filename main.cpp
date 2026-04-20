@@ -45,8 +45,10 @@ int main() {
             sixFlag = true;
             std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.325, 1.35, 1.375, 1.4, 1.425, 1.45, 1.475, 1.5, 1.6 }; 
             std::vector<double> betaVec = { 1000, 750, 500, 250, 100, 75, 50, 25, 10 }; 
+            //std::vector<double> wellCentresVec = { 1.3, 1.4, 1.5, 1.6 };
+            //std::vector<double> betaVec = { 1000, 500, 100, 50, 10 };
             for (double betaElement : betaVec) {
-                a = 0.05; epsilon = 0.4;                            // Fix lattice spacing and epsilon.
+                a = 0.1; epsilon = 0.45;                            // Fix lattice spacing and epsilon.
                 for (double wellCentresElement : wellCentresVec) {
 					std::cout << "\n Running DWP system with beta = " << betaElement << " and well centres = " << wellCentresElement << std::endl;
                     wellCentres = wellCentresElement;               // Update the well centres based on the separation.
@@ -58,9 +60,12 @@ int main() {
         else if (choice == "7") { // Run DWP system with multi-threading with varying lattice spacing and well separation.
             multThreads = true;
             sevenFlag = true;
-            std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.325, 1.35, 1.375, 1.4, 1.425, 1.45, 1.475, 1.5, 1.6 };
-			std::vector<double> latticeSpacingsVec = { 0.5, 0.4, 0.3, 0.25, 0.2, 0.175, 0.15, 0.125, 0.1, 0.075, 0.05 };
-            std::vector<double> esplinonVec = { 0.7, 0.65, 0.6, 0.55, 0.53, 0.5, 0.47, 0.45, 0.43, 0.4, 0.3 };
+            //std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.325, 1.35, 1.375, 1.4, 1.425, 1.45, 1.475, 1.5, 1.6 };
+			//std::vector<double> latticeSpacingsVec = { 0.5, 0.4, 0.3, 0.25, 0.2, 0.175, 0.15, 0.125, 0.1, 0.075, 0.05 };
+            //std::vector<double> esplinonVec = { 0.7, 0.65, 0.6, 0.55, 0.53, 0.5, 0.47, 0.45, 0.43, 0.4, 0.3 };
+            std::vector<double> wellCentresVec = { 1.3, 1.4, 1.5, 1.6 };
+            std::vector<double> latticeSpacingsVec = { 0.5, 0.3, 0.2, 0.1, 0.05 };
+            std::vector<double> esplinonVec = { 0.7, 0.6, 0.53, 0.45, 0.3 };
             int epsilonIndex = 0;                                   // Index to keep track of which epsilon value we are using.
             for (double latticeSpacingsElement : latticeSpacingsVec) {
                 a = latticeSpacingsElement;                         // Update the lattice spacing.
@@ -177,7 +182,6 @@ void metropolisRepeat(std::string system) {
         E0.clear();
         histogram.clear();
         Gx1x1.clear();
-        Gx1x2.clear();
         Gx2x2.clear();
 		instantons.clear();
 		antiInstantons.clear();
@@ -204,12 +208,6 @@ void metropolisRepeat(std::string system) {
                 for (size_t i = 0; i < Gx1x1.size(); ++i) { 
                     Gx1x1[i] += data.Gx1x1Temp[i]; 
                 } 
-            }
-
-            if (Gx1x2.empty()) { Gx1x2 = data.Gx1x2Temp; }
-            else {
-                for (size_t i = 0; i < Gx1x2.size(); ++i)
-                    Gx1x2[i] += data.Gx1x2Temp[i];
             }
 
             if (Gx2x2.empty()) { Gx2x2 = data.Gx2x2Temp; }
@@ -257,7 +255,6 @@ void metropolisRepeat(std::string system) {
     E0Therm.clear();
     histogram.clear();
     Gx1x1.clear();
-    Gx1x2.clear();
     Gx2x2.clear();
 	instantons.clear();
 	antiInstantons.clear();
@@ -474,16 +471,13 @@ void computeObservables(std::vector<std::vector<double>>& positionsVector, doubl
     for (int measure = 0; measure < measures; measure++)
     {
         std::vector<double> correlation11Temp;
-        std::vector<double> correlation12Temp;
         std::vector<double> correlation22Temp;
 
         correlation11Temp = correlator(x1[measure], x1[measure]);
-        correlation12Temp = correlator(x1[measure], x2[measure]);
         correlation22Temp = correlator(x2[measure], x2[measure]);
 
         for (int i = 0; i < N; i++) {
             data.Gx1x1Temp[i] += correlation11Temp[i];
-            data.Gx1x2Temp[i] += correlation12Temp[i];
             data.Gx2x2Temp[i] += correlation22Temp[i];
         }
     }
@@ -492,8 +486,6 @@ void computeObservables(std::vector<std::vector<double>>& positionsVector, doubl
     for (int n = 0; n < N; ++n) {
         data.Gx1x1Temp[n] /= measures;
         data.Gx1x1Temp[n] -= x1Vacuum * x1Vacuum;
-        data.Gx1x2Temp[n] /= measures;
-        data.Gx1x2Temp[n] -= x1Vacuum * x2Vacuum;
         data.Gx2x2Temp[n] /= measures;
         data.Gx2x2Temp[n] -= x2Vacuum * x2Vacuum;
     }

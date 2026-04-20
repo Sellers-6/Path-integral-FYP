@@ -3,6 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <numeric>
+#include <cmath>
 #include <string>
 #include <thread>                               // Used to run the visualisation window in a separate thread.
 #include <omp.h>                                // Used for parallelisation, massively reduces the code execution time.
@@ -18,24 +19,24 @@
 
 ///// Acceptance rate settings /////
 
-double epsilon = 0.4;				            // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%.
+double epsilon = 0.45;				            // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%.
 const int accRateInterval = 1000;               // Number of sweeps between recording acceptance rate.
 
 ///// Decorrelation and Thermalisation /////
 
 int thermSweeps;                                // Sweeps to thermalise the system.
 const int thermSweepsQHO = 20000;               // About twice the decorrelation sweeps.
-const int thermSweepsDWP = 2500;
+const int thermSweepsDWP = 100000;
 const int thermInterval = 10;                   // Number of MC sweeps performed between measuring parameters during thermalisation.
 
 int decorrSweeps;                               // Number of sweeps between taking measures of the path to reduce correlation between successive measures.
 const int decorrSweepsQHO = 10000;			     
-const int decorrSweepsDWP = 1250;			    // 1250 sweeps for option 7, 2500 sweeps for option 6.
+const int decorrSweepsDWP = 50000;
 
 ///// Repeats /////
 
 const int repeats = 32;                         // Number of repeats for finding standard error.
-const int measures = 50;                        // Number of measures per repeat.
+const int measures = 5;                        // Number of measures per repeat.
 bool multThreads = false;                       // Flag to determine whether to run the metropolis function in multiple threads, changed by user input.
 
 ///// Lattice parameters /////
@@ -87,7 +88,6 @@ std::vector<double> E0Therm;                    // Ground state energy measureme
 std::vector<double> E0;                         // Decorrelated ground state energy measurements.
 std::vector<double> histogram;                  // Histogram of positions for finding the wave function.
 std::vector<double> Gx1x1;                      // Two-point connected correlator G(n) = G(x(t), x(t+n)).
-std::vector<double> Gx1x2;                      // Two-point connected correlator G(n) = G(x(t), x^2(t+n)) = G(x^2(t), x(t+n)).
 std::vector<double> Gx2x2;                      // Two-point connected correlator G(n) = G(x^2(t), x^2(t+n)).
 std::vector<double> instantons;                 // Number of instantons.
 std::vector<double> antiInstantons;             // Number of anti-instantons.
@@ -107,7 +107,6 @@ struct RepeatData {
     std::vector<double> E0Temp;
     std::vector<double> histogramTemp;
 	std::vector<double> Gx1x1Temp;
-    std::vector<double> Gx1x2Temp;  
     std::vector<double> Gx2x2Temp;
     std::vector<double> instantonsTemp;
     std::vector<double> antiInstantonsTemp;
@@ -128,7 +127,6 @@ struct RepeatData {
         E0Temp.clear();
         histogramTemp = std::vector<double>(numBins, 0.0);
         Gx1x1Temp = std::vector<double>(N, 0.0);
-        Gx1x2Temp = std::vector<double>(N, 0.0);
         Gx2x2Temp = std::vector<double>(N, 0.0);
         instantonsTemp.clear();
         antiInstantonsTemp.clear();
@@ -259,7 +257,7 @@ void setParameters(int beta, double a, double wellCentres) {
 	// This is inefficient for systems that are fast to thermalise/decorrelate, but ensures that all systems are sufficiently thermalised and decorrelated.
     
     // Set lattice paramters
-    N = beta / a;
+    N = std::round(beta / a);
 	aInverse = 1.0 / a;
     
     // Set parameters for the DWP
