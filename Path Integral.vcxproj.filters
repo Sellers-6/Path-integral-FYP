@@ -30,9 +30,6 @@
     <ClInclude Include="window.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="csv.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="global.h">
       <Filter>Header Files</Filter>
     </ClInclude>

@@ -226,8 +226,8 @@ int main()
     energy_file << "f,E0,E1,E2,dE,dE2\n";
     wf_file << "f,x,psi0,psi0_sq\n";
 
-    for (int fIncrement = 0; fIncrement <= 10; fIncrement++) {
-        double f = 1.0 + 0.1 * fIncrement;
+    for (int fIncrement = 0; fIncrement <= 20; fIncrement++) {
+        double f = 1.0 + 0.05 * fIncrement;
         int nmax = 1000;
         double** h = new double* [nmax], * e = new double[nmax];
         double* psi = new double[nmax];

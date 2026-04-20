@@ -9,7 +9,6 @@
 
 #include "random.h"
 #include "potentials.h"
-//#include "csv.h" // Legacy csv writing functions, replaced by h5 files
 
 #include "h5.h"
 #include "window.h"
@@ -24,21 +23,21 @@ bool sevenFlag = false;  // Flag to determine whether user selected option seven
 
 ///// Acceptance rate settings /////
 
-double epsilon = 0.3;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
+double epsilon = 0.4;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
 const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
 
 ///// Decorrelation settings /////
 
 int decorrSweeps;                               // Set by user input based on the system being simulated
 const int decorrSweepsQHO = 10000;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
-const int decorrSweepsDWP = 5000;			        // Decorrelation takes longer in the DWP system
-const int measures = 500;                       // Number of measures taken after thermalisation
+const int decorrSweepsDWP = 1250;			        // Decorrelation takes longer in the DWP system
+const int measures = 50;                       // Number of measures taken after thermalisation
 
 ///// Thermalisation settings /////
 
 int thermSweeps;                                // Set by user input based on the system being simulated
 const int thermSweepsQHO = 20000;       // Number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
-const int thermSweepsDWP = 10000;     // Thermalisation also takes longer in the DWP system
+const int thermSweepsDWP = 2500;     // Thermalisation also takes longer in the DWP system
 const int thermInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
 
 ///// Initialisation settings /////
@@ -50,12 +49,12 @@ int side = 1;    // For the split wells initialisation, determines which well th
 
 ///// Repeats /////
 
-const int repeats = 32;                          // Number of repeats for finding standard error 
+const int repeats = 12;                          // Number of repeats for finding standard error 
 bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads, changed by user input
 
 ///// Lattice parameters /////
 
-int N = 2000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
+int N = 20000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Lattice points (represents the "path" of the particle)
 double a = 0.05;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
 double aInverse = 1.0 / a;											
@@ -82,10 +81,7 @@ std::vector<double> accRateTherm;   //
 std::vector<double> accRate;	//
 std::vector<double> Gx1x1;     //
 std::vector<double> Gx1x2;
-std::vector<double> Gx1x3;
 std::vector<double> Gx2x2;    //
-std::vector<double> Gx2x3;
-std::vector<double> Gx3x3;
 std::vector<double> histogram;
 std::vector<double> instantons;
 std::vector<double> antiInstantons;
@@ -108,10 +104,7 @@ struct RepeatData {
     std::vector<double> E0Temp;     // Ground-state energy measurements during this repeat
 	std::vector<double> Gx1x1Temp;   // Correlators during this repeat
     std::vector<double> Gx1x2Temp;  
-    std::vector<double> Gx1x3Temp;
     std::vector<double> Gx2x2Temp;
-    std::vector<double> Gx2x3Temp;
-    std::vector<double> Gx3x3Temp;
     std::vector<double> accRateTemp;    // Acceptance rate per repeat (decorrelation steps)
     std::vector<double> histogramTemp;
     std::vector<double> instantonsTemp;
@@ -134,10 +127,7 @@ struct RepeatData {
         E0Temp.clear();
         Gx1x1Temp = std::vector<double>(N, 0.0);
         Gx1x2Temp = std::vector<double>(N, 0.0);
-        Gx1x3Temp = std::vector<double>(N, 0.0);
         Gx2x2Temp = std::vector<double>(N, 0.0);
-        Gx2x3Temp = std::vector<double>(N, 0.0);
-        Gx3x3Temp = std::vector<double>(N, 0.0);
         accRateTemp.clear();
         histogramTemp = std::vector<double>(numBins, 0.0);
         instantonsTemp.clear();

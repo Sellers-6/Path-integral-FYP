@@ -29,11 +29,11 @@ save_png <- FALSE
   antiInstantonsData <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/antiInstantons"))))
   Gx1x1Data <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/Gx1x1"))))
   Gx1x2Data <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/Gx1x2"))))
-  Gx1x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/Gx1x3"))))
   Gx2x2Data <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/Gx2x2"))))
-  Gx2x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/Gx2x3"))))
-  Gx3x3Data <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/Gx3x3"))))
   headerData <- as.numeric(unlist(h5read(dataFile, paste0("/DWP/headerInfo"))))
+
+  diagEnergiesData <- read.csv("DWP diagonalisation/DWP diagonalisation/energies.csv")
+  diagWFData <- read.csv("DWP diagonalisation/DWP diagonalisation/wavefunctions.csv")
 }
 
 # Variables from the simulation
@@ -55,7 +55,7 @@ save_png <- FALSE
     thermMeasures <- thermSweeps / thermInterval
 
     # Diagonalisation Energies
-    energy_row <- as.integer(round((wellCentres - 0.9) * 10))
+    energy_row <- as.integer(round((wellCentres - 0.95) * 20))
     E0_diag <- diagEnergiesData[energy_row, 2]
     E1_diag <- diagEnergiesData[energy_row, 3]
     Split_diag <- diagEnergiesData[energy_row, 4]
@@ -159,7 +159,7 @@ if (save_png) {
   E0_error <- abs(((E0 - E0_diag) / E0_diag) * 100)
 }
 
-E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError ; E0_error
+E0; E0_diag; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError ; E0_error
 
 ###~~~~~~~~~~~~~~~~~###
 ### Normality tests ###
@@ -280,7 +280,7 @@ ggplot(wave_df, aes(x = x)) +
 
     theme_minimal(base_size = 14)
    
- if (save_png) { ggsave("Figures/DWP_wave_functions.png", width = 8, height = 4, dpi = 1200) }
+if (save_png) { ggsave("Figures/DWP_wave_functions.png", width = 8, height = 4, dpi = 1200) }
 
 ###~~~~~~~~~~~~~~~~~~~~~~~###
 ### Excited energy states ###
@@ -335,7 +335,7 @@ fit_correlator_exp <- function(corr, noiseless_region, A_guess, DeltaE_guess) {
 }
 
 {
-  Gx1x1Fit <- fit_correlator_exp( corr = Gx1x1Data, noiseless_region = 50, A_guess = 0.5, DeltaE_guess = 1.0)
+  Gx1x1Fit <- fit_correlator_exp( corr = Gx1x1Data, noiseless_region = 100, A_guess = 0.5, DeltaE_guess = 1.0)
   Gx2x2Fit <- fit_correlator_exp( corr = Gx2x2Data, noiseless_region = 30, A_guess = 0.5, DeltaE_guess = 2.0)
 }
 
@@ -415,67 +415,17 @@ log_ratio_energy <- function(corr, latticeSpacing, noiseless_region = 50, E0 = 0
   )
 }
 
-Gx1x1_log_ratios <- log_ratio_energy(corr = Gx1x1Data, latticeSpacing = latticeSpacing, noiseless_region = 25, E0 = E0)
+Gx1x1_log_ratios <- log_ratio_energy(corr = Gx1x1Data, latticeSpacing = latticeSpacing, noiseless_region = 500, E0 = E0)
 
 Gx1x1_log_ratios$excited_energy
 print(Gx1x1_log_ratios$plot)
 
-Gx2x2_log_ratios <- log_ratio_energy(corr = Gx2x2Data, latticeSpacing = latticeSpacing, noiseless_region = 10, E0 = E0)
+Gx2x2_log_ratios <- log_ratio_energy(corr = Gx2x2Data, latticeSpacing = latticeSpacing, noiseless_region = 50, E0 = E0)
 
 Gx2x2_log_ratios$excited_energy
 print(Gx2x2_log_ratios$plot)
 
 ### GEVP - Alternative method of extracting excited energy state.division
-
-{
-  # 3 x 3 Matrix of correlators with vector entries "pathLength" long
-  C <- array(0, dim = c(3, 3, pathLength)) 
-
-  C[1,1,] <- Gx1x1Data
-  C[1,2,] <- Gx1x2Data
-  C[1,3,] <- Gx1x3Data
-
-  C[2,1,] <- Gx1x2Data
-  C[2,2,] <- Gx2x2Data
-  C[2,3,] <- Gx2x3Data
-
-  C[3,1,] <- Gx1x3Data
-  C[3,2,] <- Gx2x3Data
-  C[3,3,] <- Gx3x3Data
-
-  t0 <- 1
-
-  eigvals <- matrix(0, nrow = pathLength, ncol = 3)
-
-  C0 <- C[,,t0]
-  C0 <- (C0 + t(C0)) / 2
-
-  C0_inv_sqrt <- solve(sqrtm(C0))
-
-  for (t in 1:pathLength) {
-    Ct <- C[,,t]
-    Ct <- (Ct + t(Ct)) / 2
-    
-    M <- C0_inv_sqrt %*% Ct %*% C0_inv_sqrt
-    gevp <- eigen(M)
-    
-    eigvals[t, ] <- Re(gevp$values)
-  }
-
-  eigvals <- t(apply(eigvals, 1, sort, decreasing = TRUE))
-
-  E <- matrix(NA, nrow = pathLength - 1, ncol = 3)
-
-  for (t in 1:(pathLength - 1)) {
-
-    ratio <- eigvals[t, ] / eigvals[t + 1, ]
-
-    # Reject invalid values
-    ratio[ratio <= 0] <- NA
-
-    E[t, ] <- -log(ratio) / latticeSpacing
-  }
-}
 
 {
   # 2 x 2 Matrix of correlators with vector entries "pathLength" long
@@ -713,10 +663,7 @@ E1 - E0; Split_diag; Split_WKB
 
   Gx1x1Data <- array(0, dim = c(wellReps, betaReps, corrSize))
   Gx1x2Data <- array(0, dim = c(wellReps, betaReps, corrSize))
-  Gx1x3Data <- array(0, dim = c(wellReps, betaReps, corrSize))
   Gx2x2Data <- array(0, dim = c(wellReps, betaReps, corrSize))
-  Gx2x3Data <- array(0, dim = c(wellReps, betaReps, corrSize))
-  Gx3x3Data <- array(0, dim = c(wellReps, betaReps, corrSize))
 
   # Read data
   for (i in seq_along(well_centres_vec)) {
@@ -732,10 +679,7 @@ E1 - E0; Split_diag; Split_WKB
       
       Gx1x1Data[i, j, ] <- as.numeric(unlist(h5read(dataFile, paste0(base, "Gx1x1"))))
       Gx1x2Data[i, j, ] <- as.numeric(unlist(h5read(dataFile, paste0(base, "Gx1x2"))))
-      Gx1x3Data[i, j, ] <- as.numeric(unlist(h5read(dataFile, paste0(base, "Gx1x3"))))
       Gx2x2Data[i, j, ] <- as.numeric(unlist(h5read(dataFile, paste0(base, "Gx2x2"))))
-      Gx2x3Data[i, j, ] <- as.numeric(unlist(h5read(dataFile, paste0(base, "Gx2x3"))))
-      Gx3x3Data[i, j, ] <- as.numeric(unlist(h5read(dataFile, paste0(base, "Gx3x3"))))
     }
   }
 }
@@ -1101,10 +1045,7 @@ for (i in seq_len(wellReps)) {
     Glist <- list(
       Gx1x1Data[i,j,],
       Gx1x2Data[i,j,],
-      Gx1x3Data[i,j,],
-      Gx2x2Data[i,j,],
-      Gx2x3Data[i,j,],
-      Gx3x3Data[i,j,]
+      Gx2x2Data[i,j,]
     )
     
     C <- build_C_matrix(Glist, pathLength)

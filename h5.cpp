@@ -19,10 +19,7 @@ static std::vector<Observable> getObservables()
         {"histogram", &histogram},
         {"Gx1x1", &Gx1x1},
         {"Gx1x2", &Gx1x2},
-        {"Gx1x3", &Gx1x3},
         {"Gx2x2", &Gx2x2},
-        {"Gx2x3", &Gx2x3},
-        {"Gx3x3", &Gx3x3},
         {"instantons", &instantons},
         {"antiInstantons", &antiInstantons},
         {"headerInfo", &headerInfo}

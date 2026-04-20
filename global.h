@@ -12,10 +12,7 @@ extern std::vector<double> accRate;
 extern std::vector<double> histogram;
 extern std::vector<double> Gx1x1;
 extern std::vector<double> Gx1x2;
-extern std::vector<double> Gx1x3;
 extern std::vector<double> Gx2x2;
-extern std::vector<double> Gx2x3;
-extern std::vector<double> Gx3x3;
 extern std::vector<double> instantons;
 extern std::vector<double> antiInstantons;
 extern std::vector<double> headerInfo;   // Stores the parameters of the run, written to the h5 file as an attribute for reference

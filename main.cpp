@@ -23,10 +23,10 @@ int main() {    // Accepts user choice of system type and window visualisation
         else if (choice == "6") {  // Run DWP system with multi-threading with varying lattice spacing and well separation.
             multThreads = true;
             sixFlag = true;
-            std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.325, 1.35, 1.375, 1.4, 1.425, 1.45, 1.475, 1.5, 1.6, 1.7 }; // Varying the separation of the wells.
+            std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.325, 1.35, 1.375, 1.4, 1.425, 1.45, 1.475, 1.5, 1.6 }; // Varying the separation of the wells.
             std::vector<double> betaVec = { 1000, 750, 500, 250, 100, 75, 50, 25, 10 }; // Varying beta to see how it affects the error in the splitting energy.
             for (double betaElement : betaVec) {
-                a = 0.1; epsilon = 0.4; // Fix lattice spacing and epsilon.
+                a = 0.05; epsilon = 0.4; // Fix lattice spacing and epsilon.
                 for (double wellCentresElement : wellCentresVec) {
 					std::cout << "\n Running DWP system with beta = " << betaElement << " and well centres = " << wellCentresElement << std::endl;
                     wellCentres = wellCentresElement; // Update the well centres based on the separation.
@@ -35,7 +35,7 @@ int main() {    // Accepts user choice of system type and window visualisation
                 }
             }
         }
-        else if (choice == "7") { // Run QHO system with multi-threading with varying lattice spacings.
+        else if (choice == "7") { // Run DWP system with multi-threading with varying lattice spacings.
             multThreads = true;
             sevenFlag = true;
 			std::vector<double> latticeSpacingsVec = { 0.5, 0.4, 0.3, 0.25, 0.2, 0.175, 0.15, 0.125, 0.1, 0.075, 0.05 };
@@ -44,9 +44,9 @@ int main() {    // Accepts user choice of system type and window visualisation
             for (double latticeSpacingsElement : latticeSpacingsVec) {
                 a = latticeSpacingsElement; // Update the lattice spacing.
                 epsilon = esplinonVec[epsilonIndex]; // Update epsilon based on the lattice spacing, smaller lattice spacings require smaller epsilon for good acceptance rates.
-                std::cout << "\n Running QHO system with lattice spacing = " << latticeSpacingsElement << " and epsilon = " << epsilon << std::endl;
-				setParameters(100, a, wellCentres); // Keep beta fixed at 100, which is large enough to capture the ground state properties well for the QHO.
-                metropolisRepeat(false, "QHO");
+                std::cout << "\n Running DWP system with lattice spacing = " << latticeSpacingsElement << " and epsilon = " << epsilon << std::endl;
+				setParameters(100, a, wellCentres); // Keep beta fixed at 100, which is large enough to capture the ground state properties well for the DWP.
+                metropolisRepeat(false, "DWP");
                 epsilonIndex++;
             }
         }
@@ -133,10 +133,7 @@ void metropolisRepeat(bool winOn, std::string system) { // Loop over repeats
         E0.clear();
         Gx1x1.clear();
         Gx1x2.clear();
-        Gx1x3.clear();
         Gx2x2.clear();
-        Gx2x3.clear();
-        Gx3x3.clear();
         positions.clear();
 		histogram.clear();
 		instantons.clear();
@@ -176,36 +173,12 @@ void metropolisRepeat(bool winOn, std::string system) { // Loop over repeats
                     Gx1x2[i] += data.Gx1x2Temp[i];
             }
 
-            if (Gx1x3.empty()) {
-                Gx1x3 = data.Gx1x3Temp;
-            }
-            else {
-                for (size_t i = 0; i < Gx1x3.size(); ++i)
-                    Gx1x3[i] += data.Gx1x3Temp[i];
-            }
-
             if (Gx2x2.empty()) {
                 Gx2x2 = data.Gx2x2Temp;
             }
             else {
                 for (size_t i = 0; i < Gx2x2.size(); ++i)
                     Gx2x2[i] += data.Gx2x2Temp[i];
-            }
-
-            if (Gx2x3.empty()) {
-                Gx2x3 = data.Gx2x3Temp;
-            }
-            else {
-                for (size_t i = 0; i < Gx2x3.size(); ++i)
-                    Gx2x3[i] += data.Gx2x3Temp[i];
-            }
-
-            if (Gx3x3.empty()) {
-                Gx3x3 = data.Gx3x3Temp;
-            }
-            else {
-                for (size_t i = 0; i < Gx3x3.size(); ++i)
-                    Gx3x3[i] += data.Gx3x3Temp[i];
             }
 
             // Histogram for the wavefunction
@@ -245,7 +218,6 @@ void metropolisRepeat(bool winOn, std::string system) { // Loop over repeats
     constructHeaderInfo(system);
     
 	// Write data to files
-    //csvWriteData(system);       // Legacy csv writing functions, replaced by h5 files
     if (!sixFlag && !sevenFlag) { writeData(system); }            // Writes all data to a single h5 file, separated into groups
 	else if (sixFlag) { writeData2(system, std::to_string(wellCentres), std::to_string(N * a)); } // Writes data for option six
 	else if (sevenFlag) { writeData3(system, std::to_string(a)); } // Writes data for option seven
@@ -258,10 +230,7 @@ void metropolisRepeat(bool winOn, std::string system) { // Loop over repeats
     positions.clear();
     Gx1x1.clear();
     Gx1x2.clear();
-    Gx1x3.clear();
     Gx2x2.clear();
-    Gx2x3.clear();
-    Gx3x3.clear();
 	histogram.clear();
 	instantons.clear();
 	antiInstantons.clear();
@@ -408,7 +377,6 @@ void computeObservables(std::vector<std::vector<double>>& positionsVector, doubl
 
     double x1Vacuum = 0.0;
     double x2Vacuum = 0.0;
-	double x3Vacuum = 0.0;
 
     for (int cfg = 0; cfg < measures; cfg++)
     {
@@ -416,13 +384,11 @@ void computeObservables(std::vector<std::vector<double>>& positionsVector, doubl
         {
             x1Vacuum += O1[cfg][t];
 			x2Vacuum += O2[cfg][t];
-            x3Vacuum += O3[cfg][t];
         }
 	}
 
 	x1Vacuum /= (measures * N);
 	x2Vacuum /= (measures * N);
-	x3Vacuum /= (measures * N);
 
     for (int cfg = 0; cfg < measures; cfg++)
     {
@@ -442,10 +408,7 @@ void computeObservables(std::vector<std::vector<double>>& positionsVector, doubl
         for (int i = 0; i < N; i++) {
             data.Gx1x1Temp[i] += correlation11Temp[i];
             data.Gx1x2Temp[i] += correlation12Temp[i];
-            data.Gx1x3Temp[i] += correlation13Temp[i];
             data.Gx2x2Temp[i] += correlation22Temp[i];
-            data.Gx2x3Temp[i] += correlation23Temp[i];
-            data.Gx3x3Temp[i] += correlation33Temp[i];
         }
     }
 
@@ -455,14 +418,8 @@ void computeObservables(std::vector<std::vector<double>>& positionsVector, doubl
 		data.Gx1x1Temp[n] -= x1Vacuum * x1Vacuum; 
         data.Gx1x2Temp[n] /= measures;
 		data.Gx1x2Temp[n] -= x1Vacuum * x2Vacuum;
-        data.Gx1x3Temp[n] /= measures;
-		data.Gx1x3Temp[n] -= x1Vacuum * x3Vacuum;
         data.Gx2x2Temp[n] /= measures;
 		data.Gx2x2Temp[n] -= x2Vacuum * x2Vacuum;
-        data.Gx2x3Temp[n] /= measures;
-		data.Gx2x3Temp[n] -= x2Vacuum * x3Vacuum;
-        data.Gx3x3Temp[n] /= measures;
-		data.Gx3x3Temp[n] -= x3Vacuum * x3Vacuum;
     }
 
     for (int i = 0; i < measures; i++)
