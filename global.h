@@ -1,7 +1,11 @@
 #pragma once
 
 #include <vector>
-#include <complex>      // Used for complex numbers in path integral calculations
+#include <complex>
+
+/*****************************************************************/
+/*********** External declaration of global variables ************/
+/*****************************************************************/
 
 ///// Vectors for data /////
 
@@ -15,9 +19,7 @@ extern std::vector<double> Gx1x2;
 extern std::vector<double> Gx2x2;
 extern std::vector<double> instantons;
 extern std::vector<double> antiInstantons;
-extern std::vector<double> headerInfo;   // Stores the parameters of the run, written to the h5 file as an attribute for reference
-
-
+extern std::vector<double> headerInfo;
 
 ///// Lattice parameters /////
 
@@ -37,5 +39,5 @@ extern double wellCentres;
 
 ///// Mathematical constants /////
 
-const double pif = 3.14159265358979323846;      // Pi as a double 
+const double pif = 3.14159265358979323846;      // Pi
 const std::complex <double> i(0.0, 1.0);	    // Imaginary unit

@@ -1,17 +1,15 @@
 #pragma once
 
 #include <random>
-#include "global.h"     // Used for global variables which other headers need to access
+#include "global.h"
 
-//// Header file for random number generation functions ////
-
-
-// TLDR: Use the following line of code to produce a random (ish) number between a and b:
-// float randomNumber = rfRange(a, b);
+/*************************************************/
+/*********** Random number generation ************/
+/*************************************************/
 
 const int seed = 500;
 
-typedef std::mt19937 MyRng; // certain generator for random numbers
+typedef std::mt19937 MyRng; // Mersenne twister random number generator, good quality and fast.
 
 inline MyRng& globalRng() {
     static MyRng rng;

@@ -1,10 +1,13 @@
 #include "window.h"
 
+/************************************************************/
+/*********** Visualisation of the Euclidean path ************/
+/************************************************************/
 
-// Define the globals here — only once
-int delay = 0;
+int delay = 0;                                          // Delay in milliseconds between frames.
 bool winRunning = false;
-double winSizeIncrement = 0.01;
+
+// Window visualisation magic, feel free to change windowWidth/windowHeight and minVal/maxVal, everything else should be kept the same.
 
 void window(const std::vector<double>& positions, bool& runningFlag) {
     SDL_Init(SDL_INIT_VIDEO);
@@ -29,15 +32,9 @@ void window(const std::vector<double>& positions, bool& runningFlag) {
                 runningFlag = false;
         }
 
-		//auto minmax = std::minmax_element(positions.begin(), positions.end());    // Dynamically adjust the y-axis scaling based on the current path values, to keep the plot visible as it evolves
-        //double minVal = *minmax.first;
-        //double maxVal = *minmax.second;
-        //if (maxVal - minVal < 1e-6) maxVal = minVal + 1e-6;
-
-		// For simplicity, we can use a fixed y-axis range based on the expected values of the path
+		// Fixed y-axis range based on the expected values of the path, adjust for different potentials.
 		double minVal = -6.0;
 		double maxVal = 6.0;
-
 
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
         SDL_RenderClear(renderer);

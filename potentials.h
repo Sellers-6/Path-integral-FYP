@@ -2,12 +2,14 @@
 
 #include "global.h"
 
+/********************************************/
+/*********** Potential functions ************/
+/********************************************/
+
 double (*potential)(double);
 double (*potentialDifferential)(double);
 
-
 /////// Quantum Harmonic Oscillator ///////
-
 
 class QHO
 {
@@ -20,9 +22,7 @@ public:
     }
 };
 
-
 /////// Double-Well Potential ///////
-
 
 class DWP
 {

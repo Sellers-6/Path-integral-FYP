@@ -1,16 +1,19 @@
 #include "h5.h"
 
+/****************************************/
+/*********** h5 data storage ************/
+/****************************************/
+
 const char* fileName = "data2";
 const char* fullFileName = "data2.h5";
 
-struct Observable
-{
+struct Observable {
     std::string name;
     const std::vector<double>* vec;
 };
 
-static std::vector<Observable> getObservables()
-{
+// Update this function to include all the observables you want to store in the HDF5 file.
+static std::vector<Observable> getObservables() {
     return {
         {"E0Therm", &E0Therm},
         {"E0", &E0},
@@ -22,86 +25,46 @@ static std::vector<Observable> getObservables()
         {"Gx2x2", &Gx2x2},
         {"instantons", &instantons},
         {"antiInstantons", &antiInstantons},
-        {"headerInfo", &headerInfo}
-    };
+        {"headerInfo", &headerInfo}};
 }
 
-static hid_t openOrCreateFile()
-{
+static hid_t openOrCreateFile() {
     H5Eset_auto2(H5E_DEFAULT, nullptr, nullptr);
     hid_t file = H5Fopen(fullFileName, H5F_ACC_RDWR, H5P_DEFAULT);
 
-    if (file < 0)
-    {
-        file = H5Fcreate(
-            fullFileName,
-            H5F_ACC_TRUNC,
-            H5P_DEFAULT,
-            H5P_DEFAULT
-        );
-    }
+    if (file < 0) { file = H5Fcreate(fullFileName, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT); }
 
     return file;
 }
 
-static hid_t createOrReplaceGroup(hid_t file, const std::string& path)
-{
+static hid_t createOrReplaceGroup(hid_t file, const std::string& path) {
     hid_t current = file;
 
     std::stringstream ss(path);
     std::string part;
     std::string fullPath;
 
-    while (std::getline(ss, part, '/'))
-    {
-        if (!fullPath.empty())
-            fullPath += "/";
+    while (std::getline(ss, part, '/')) {
+        if (!fullPath.empty()) { fullPath += "/"; }
         fullPath += part;
 
         // If this is the final group, replace it
         bool isFinal = (ss.peek() == EOF);
 
-        if (H5Lexists(current, part.c_str(), H5P_DEFAULT) > 0)
-        {
-            if (isFinal)
-            {
+        if (H5Lexists(current, part.c_str(), H5P_DEFAULT) > 0) {
+            if (isFinal) {
                 H5Ldelete(current, part.c_str(), H5P_DEFAULT);
-                current = H5Gcreate(
-                    current,
-                    part.c_str(),
-                    H5P_DEFAULT,
-                    H5P_DEFAULT,
-                    H5P_DEFAULT
-                );
+                current = H5Gcreate(current, part.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
             }
-            else
-            {
-                current = H5Gopen(
-                    current,
-                    part.c_str(),
-                    H5P_DEFAULT
-                );
-            }
+            else { current = H5Gopen(current, part.c_str(), H5P_DEFAULT); }
         }
-        else
-        {
-            current = H5Gcreate(
-                current,
-                part.c_str(),
-                H5P_DEFAULT,
-                H5P_DEFAULT,
-                H5P_DEFAULT
-            );
-        }
+        else { current = H5Gcreate(current, part.c_str(), H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT); }
 
-        if (current < 0)
-        {
-            std::cerr << "Failed creating/opening group: "
-                << part << "\n";
+        if (current < 0) {
+            std::cerr << "Failed creating/opening group: " << part << "\n";
             return -1;
         }
     }
-
     return current;
 }
 
@@ -111,48 +74,28 @@ static void writeVector(hid_t group, const std::vector<double>& data) {
 
     hid_t space = H5Screate_simple(1, dims, nullptr);
 
-    hid_t dataset = H5Dcreate(
-        group,
-        fileName,
-        H5T_NATIVE_DOUBLE,
-        space,
-        H5P_DEFAULT,
-        H5P_DEFAULT,
-        H5P_DEFAULT
-    );
+    hid_t dataset = H5Dcreate(group, fileName, H5T_NATIVE_DOUBLE, space, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
 
-    H5Dwrite(
-        dataset,
-        H5T_NATIVE_DOUBLE,
-        H5S_ALL,
-        H5S_ALL,
-        H5P_DEFAULT,
-        data.data()
-    );
+    H5Dwrite(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, data.data());
 
     H5Dclose(dataset);
     H5Sclose(space);
 }
 
-void writeData(const std::string& system)
-{
+void writeData(const std::string& system) {
     hid_t file = openOrCreateFile();
-    if (file < 0)
-    {
+    if (file < 0) {
         std::cerr << "Failed to open HDF5 file\n";
         return;
     }
 
     auto observables = getObservables();
 
-    for (const auto& obs : observables)
-    {
-        std::string path =
-            system + "/" + obs.name;
+    for (const auto& obs : observables) {
+        std::string path = system + "/" + obs.name;
 
         hid_t group = createOrReplaceGroup(file, path);
-        if (group < 0)
-            continue;
+        if (group < 0) { continue; }
 
         writeVector(group, *obs.vec);
 
@@ -162,63 +105,68 @@ void writeData(const std::string& system)
     H5Fclose(file);
 }
 
-void writeData2(
-    const std::string& system,
-    const std::string& wellCentres,
-    const std::string& beta)
-{
+void writeData6(const std::string& system, const std::string& wellCentres, const std::string& beta) {
     hid_t file = openOrCreateFile();
-    if (file < 0)
-    {
+    if (file < 0) {
         std::cerr << "Failed to open HDF5 file\n";
         return;
     }
 
     auto observables = getObservables();
 
-    for (const auto& obs : observables)
-    {
-        std::string path =
-            system + "/" + wellCentres + "/" + beta + "/" + obs.name;
+    for (const auto& obs : observables) {
+        std::string path = system + "/six/" + wellCentres + "/" + beta + "/" + obs.name;
 
         hid_t group = createOrReplaceGroup(file, path);
-        if (group < 0)
-            continue;
+        if (group < 0) { continue; }
 
         writeVector(group, *obs.vec);
 
         H5Gclose(group);
     }
-
     H5Fclose(file);
 }
 
-void writeData3(
-    const std::string& system,
-    const std::string& latticeSpacing)
-{
+void writeData7( const std::string& system, const std::string& wellCentres, const std::string& latticeSpacing) {
     hid_t file = openOrCreateFile();
-    if (file < 0)
-    {
+    if (file < 0) {
         std::cerr << "Failed to open HDF5 file\n";
         return;
     }
 
     auto observables = getObservables();
 
-    for (const auto& obs : observables)
-    {
-        std::string path =
-            system + "/" + latticeSpacing + "/" + obs.name;
+    for (const auto& obs : observables) {
+        std::string path = system + "/seven/" + wellCentres + "/" + latticeSpacing + "/" + obs.name;
 
         hid_t group = createOrReplaceGroup(file, path);
-        if (group < 0)
-            continue;
+        if (group < 0) { continue; }
 
         writeVector(group, *obs.vec);
 
         H5Gclose(group);
     }
+    H5Fclose(file);
+}
 
+void writeData8(const std::string& system, const std::string& latticeSpacing) {
+    hid_t file = openOrCreateFile();
+    if (file < 0) {
+        std::cerr << "Failed to open HDF5 file\n";
+        return;
+    }
+
+    auto observables = getObservables();
+
+    for (const auto& obs : observables) {
+        std::string path = system + "/eight/" + latticeSpacing + "/" + obs.name;
+
+        hid_t group = createOrReplaceGroup(file, path);
+        if (group < 0) { continue; }
+
+        writeVector(group, *obs.vec);
+
+        H5Gclose(group);
+    }
     H5Fclose(file);
 }

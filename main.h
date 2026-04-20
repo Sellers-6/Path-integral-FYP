@@ -1,140 +1,137 @@
 #pragma once
 
-#include <iostream>     // Used for standard input and output streams
-#include <vector>       // Used for dynamic arrays such as paths
-#include <string>       // Generally useful for dealing with strings
-#include <thread>       // Used to run the window in a separate thread
-#include <numeric>  	// Used for std::accumulate 
-#include <omp.h>        // Used for parallelisation of the metropolis function, massively reduces the code execution time
+#include <iostream>
+#include <vector>
+#include <numeric>
+#include <string>
+#include <thread>                               // Used to run the visualisation window in a separate thread.
+#include <omp.h>                                // Used for parallelisation, massively reduces the code execution time.
 
 #include "random.h"
 #include "potentials.h"
-
 #include "h5.h"
 #include "window.h"
 
-
-///// Simulation settings /////
-
-const bool takeMeasuresFlag = true;    // Flag to determine whether to take measures 
-const int numBins = 100;              // Number of bins for the histogram of positions
-bool sixFlag = false;    // Flag to determine whether user selected option six or not 
-bool sevenFlag = false;  // Flag to determine whether user selected option seven or not
+/***********************************************************************/
+/*********** Parameters, data vectors, and helper functions ************/
+/***********************************************************************/
 
 ///// Acceptance rate settings /////
 
-double epsilon = 0.4;				        // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%. Lower rate is better for DWP so it can autocorrelate faster.
-const int accRateInterval = 1000;               // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
+double epsilon = 0.4;				            // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%.
+const int accRateInterval = 1000;               // Number of sweeps between recording acceptance rate.
 
-///// Decorrelation settings /////
+///// Decorrelation and Thermalisation /////
 
-int decorrSweeps;                               // Set by user input based on the system being simulated
-const int decorrSweepsQHO = 10000;			        // Number of sweeps between taking measures of the path to reduce correlation between successive measures
-const int decorrSweepsDWP = 1250;			        // Decorrelation takes longer in the DWP system
-const int measures = 50;                       // Number of measures taken after thermalisation
+int thermSweeps;                                // Sweeps to thermalise the system.
+const int thermSweepsQHO = 20000;               // About twice the decorrelation sweeps.
+const int thermSweepsDWP = 2500;
+const int thermInterval = 10;                   // Number of MC sweeps performed between measuring parameters during thermalisation.
 
-///// Thermalisation settings /////
-
-int thermSweeps;                                // Set by user input based on the system being simulated
-const int thermSweepsQHO = 20000;       // Number of iterations for thermalisation, system is assumed to be thermalised after this many sweeps 
-const int thermSweepsDWP = 2500;     // Thermalisation also takes longer in the DWP system
-const int thermInterval = 10;    // Number of MC sweeps performed between measuring parameters during thermalisation
-
-///// Initialisation settings /////
-
-const bool hot_start = false;
-const bool split_wells = false;
-const double max_distance = 4;
-int side = 1;    // For the split wells initialisation, determines which well the particle starts in (1 for right, -1 for left)
+int decorrSweeps;                               // Number of sweeps between taking measures of the path to reduce correlation between successive measures.
+const int decorrSweepsQHO = 10000;			     
+const int decorrSweepsDWP = 1250;			    // 1250 sweeps for option 7, 2500 sweeps for option 6.
 
 ///// Repeats /////
 
-const int repeats = 12;                          // Number of repeats for finding standard error 
-bool multThreads = false;                      // Flag to determine whether to run the metropolis function in multiple threads, changed by user input
+const int repeats = 32;                         // Number of repeats for finding standard error.
+const int measures = 50;                        // Number of measures per repeat.
+bool multThreads = false;                       // Flag to determine whether to run the metropolis function in multiple threads, changed by user input.
 
 ///// Lattice parameters /////
 
-int N = 20000;												// Number of lattice points. This discretises the imaginary time, so increasing N increases the accuracy of the simulation
-std::vector<double> positions = std::vector<double>(N, 0.0);	// Lattice points (represents the "path" of the particle)
-double a = 0.05;											// Lattice spacing. Through the lattice spacing we define beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
-double aInverse = 1.0 / a;											
+int N = 5000;									// Number of lattice points.
+double a = 0.1;								// Lattice spacing. Beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
+double aInverse = 1.0 / a;										
+std::vector<double> positions = std::vector<double>(N, 0.0);	// Represents the Euclidean "path" of the particle.
+
 
 ///// QHO specific parameters /////
 
-const int m = 1;                    // Unit mass
-const int omega = 1;                // Unit frequency
+const int m = 1;                                // Unit mass.
+const int omega = 1;                            // Unit harmonic frequency.
 
 ///// DWP specific parameters /////
 
-double wellCentres = 1.4;     // Well centre positions, increasing this moves the wells further apart
-const double lambda = 1;          // Coupling constant, increasing this deepens the wells and increases the barrier between them
+double wellCentres = 1.4;                       // Well centre positions.
+const double lambda = 1.0;                      // Coupling constant. Kept as one, changing lambda just changes the scale of the system.
 
-double omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.
-// To use that the ground and first excited states are centred around 0.5, we require that omegaDWP = 1, which gives the relation lambda = 1 / (8 * wellCentres^2). 
-double tunnellingThreshold = 0.2 * wellCentres;     // Threshold for determining whether the particle is in the left or right well
+double omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the DWP.
+double tunnellingThreshold = 0.2 * wellCentres; // Threshold for determining whether the particle is in the left or right well
+
+///// Histogram for wave function /////
+
+const int numBins = 100;                        // Number of bins for the histogram of positions.
+double xMax;                                    // Maximum x value for the histogram of positions, set based on the maximum position reached during thermalisation.
+double xMin;                                    // Minimum x value for the histogram of positions, set based on the minimum position reached during thermalisation.
+double binWidth;                                // Bin width for the histogram. Set based on xMax, xMin and numBins.
+
+///// Initialisation settings /////
+
+const bool hotStart = false;                   // Start the path with random configuration.
+const double maxDistance = 4;                  // Maximum distance from the origin for the initial positions of the path, used for the hot start initialisation.
+
+int side = 1;                                   // Determines which well the particle starts in (1 for right, -1 for left)
+
+///// Flags /////
+
+bool sixFlag = false;                           // Flag to determine whether user selected option six or not.
+bool sevenFlag = false;                         // Flag to determine whether user selected option seven or not.
+bool eightFlag = false;                         // Flag to determine whether user selected option eight or not.
 
 ///// Vectors to store data /////
 
-std::vector<double> E0Therm;        //
-std::vector<double> E0;       //
-std::vector<double> accRateTherm;   //
-std::vector<double> accRate;	//
-std::vector<double> Gx1x1;     //
-std::vector<double> Gx1x2;
-std::vector<double> Gx2x2;    //
-std::vector<double> histogram;
-std::vector<double> instantons;
-std::vector<double> antiInstantons;
-std::vector<double> headerInfo;
-
-///// Boudaries of the histogram /////
-
-double xMax;                       // Maximum x value for the histogram of positions, set based on the maximum position reached during thermalisation
-double xMin;                       // Minimum x value for the histogram of positions, set based on the maximum position reached during thermalisation
-double binWidth;                   // Bin width for the histogram, set based on the histogram range and the number of bins
+std::vector<double> accRateTherm;               // Acceptance rate measurements during thermalisation.
+std::vector<double> accRate;	                // Acceptance rate measurements after thermalisation.
+std::vector<double> E0Therm;                    // Ground state energy measurements during thermalisaiton.
+std::vector<double> E0;                         // Decorrelated ground state energy measurements.
+std::vector<double> histogram;                  // Histogram of positions for finding the wave function.
+std::vector<double> Gx1x1;                      // Two-point connected correlator G(n) = G(x(t), x(t+n)).
+std::vector<double> Gx1x2;                      // Two-point connected correlator G(n) = G(x(t), x^2(t+n)) = G(x^2(t), x(t+n)).
+std::vector<double> Gx2x2;                      // Two-point connected correlator G(n) = G(x^2(t), x^2(t+n)).
+std::vector<double> instantons;                 // Number of instantons.
+std::vector<double> antiInstantons;             // Number of anti-instantons.
+std::vector<double> headerInfo;                 // Vector to store the parameters of a simulation, useful for data analysis.
 
 ///// Shared data between threads /////
 
 struct RepeatData {
     // Path positions
-    std::vector<double> positions;          // All particle positions recorded for decorrelated measurements
-    std::vector<std::vector<double>> positionsVector; // Vector of all positions measured
+    std::vector<double> positions;              // Particle positions on the lattice.
+    std::vector<std::vector<double>> positionsVector; // Vector of all positions measured, stored for computing observables at the end of the repeat.
 
-    // Measurement vectors (and vacuum piece)
-    std::vector<double> E0Temp;     // Ground-state energy measurements during this repeat
-	std::vector<double> Gx1x1Temp;   // Correlators during this repeat
+    // Temporary measurement vectors 
+    std::vector<double> accRateThermTemp;
+    std::vector<double> accRateTemp;
+    std::vector<double> E0ThermTemp;
+    std::vector<double> E0Temp;
+    std::vector<double> histogramTemp;
+	std::vector<double> Gx1x1Temp;
     std::vector<double> Gx1x2Temp;  
     std::vector<double> Gx2x2Temp;
-    std::vector<double> accRateTemp;    // Acceptance rate per repeat (decorrelation steps)
-    std::vector<double> histogramTemp;
     std::vector<double> instantonsTemp;
     std::vector<double> antiInstantonsTemp;
 
-    // Thermalisation data
-    std::vector<double> E0ThermTemp;      // Temporary accumulator to check thermalisation
-    std::vector<double> accRateThermTemp;     // Acceptance rate during thermalisation
-
-    // Metropolis counters
-    int sweep;           // Current sweep number
-    int measureCount;    // Number of measurements taken so far
-    int acceptedMoves;   // Count of accepted moves since last measurement
+    // MCMC counters
+    int sweep;           // MCMC sweep counter.
+    int measureCount;    // Number of measurements taken.
+    int acceptedMoves;   // Accepted moves since last measurement of acceptance rate.
 
     // Constructor to initialise vectors
     RepeatData(int N = 0, int numBins = 0, int measures = 0) {
         positions = std::vector<double>(N, 0.0);
         positionsVector = std::vector<std::vector<double>>(measures, std::vector<double>(N, 0.0));
 
+        accRateThermTemp.clear();
+        accRateTemp.clear();
+        E0ThermTemp.clear();
         E0Temp.clear();
+        histogramTemp = std::vector<double>(numBins, 0.0);
         Gx1x1Temp = std::vector<double>(N, 0.0);
         Gx1x2Temp = std::vector<double>(N, 0.0);
         Gx2x2Temp = std::vector<double>(N, 0.0);
-        accRateTemp.clear();
-        histogramTemp = std::vector<double>(numBins, 0.0);
         instantonsTemp.clear();
         antiInstantonsTemp.clear();
-
-        E0ThermTemp.clear();
-        accRateThermTemp.clear();
 
         sweep = 0;
         measureCount = 0;
@@ -144,18 +141,17 @@ struct RepeatData {
 
 ///// Function declarations /////
 
-void chooseSystem();                                      // Allows user to choose which system to perform metropolis algorithm on
+void chooseSystem();
 
-void metropolisRepeat(bool winOn, std::string system);      // Repeats the metropolis function "repeats" times
+void metropolisRepeat(std::string system);
 
-void metropolis(bool winOn, std::string system, int repeat, std::mt19937& rng, RepeatData& data,
-    double (*potential)(double), double (*potentialDifferential)(double));            // Parent function for metropolisUpdate, runs loops to execute sufficient updates to the path
+void metropolis(std::string system, int repeat, std::mt19937& rng, RepeatData& data, double (*potential)(double), double (*potentialDifferential)(double));
 
-void metropolisUpdate(bool winOn, double (*potential)(double), std::mt19937& rng, RepeatData& data);  // Mechanics of the Metropolis algorithm such as checking whether a proposed update is accepted
+void metropolisSweep(double (*potential)(double), std::mt19937& rng, RepeatData& data);
 
 void initialise(std::string system, std::mt19937& rng, RepeatData& data);
 
-void thermalise(bool winOn, double (*potentialDifferential)(double), double (*potential)(double), std::mt19937& rng, RepeatData& data);
+void thermalise(double (*potentialDifferential)(double), double (*potential)(double), std::mt19937& rng, RepeatData& data);
 
 void takeThermMeasures(std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double), RepeatData& data);
 
@@ -166,26 +162,26 @@ void computeObservables(std::vector<std::vector<double>>& positionsVector, doubl
 ///// Helper functions /////
 
 double(*findPotential(const std::string& system))(double) {
-    if (system == "QHO") { // Quantum harmonic oscillator
+    if (system == "QHO") {                      // Quantum harmonic oscillator.
         return QHO::potential;
     }
-    else if (system == "DWP") { // Double-well potential
+    else if (system == "DWP") {                 // Double-well potential.
         return DWP::potential;
     }
     else {
-		return QHO::potential; // Default to QHO potential
+		return QHO::potential;                  // Default to QHO potential.
     }
 }
 
 double(*findPotentialDifferential(const std::string& system))(double) {
-    if (system == "QHO") { // Quantum harmonic oscillator
+    if (system == "QHO") {
         return QHO::potentialDifferential;
     }
-    else if (system == "DWP") { // Double-well potential
+    else if (system == "DWP") {
         return DWP::potentialDifferential;
     }
     else {
-        return QHO::potentialDifferential; // Default to QHO potential
+        return QHO::potentialDifferential;
     }
 }
 
@@ -204,16 +200,14 @@ static std::vector<double> correlator(const std::vector<double>& positionsLeft, 
 	int halfTime = N / 2;
 
     for (int t = 0; t < N; t++) {
-
         double position_t = positionsRight[t];
 
-        // Case 1: no wrap
+        // Wrap around the correlator instead of using expensive modulo arithmetic
         int maxNoWrap = std::min(halfTime, N - t - 1);
         for (int n = 0; n <= maxNoWrap; n++) {
-            correlationTemp[n] += positionsLeft[t + n] * position_t;
+            correlationTemp[n] += positionsLeft[(t + n)] * position_t;
         }
 
-        // Case 2: wrap
         for (int n = maxNoWrap + 1; n <= halfTime; n++) {
             correlationTemp[n] += positionsLeft[t + n - N] * position_t;
         }
@@ -232,45 +226,43 @@ static std::vector<double> correlator(const std::vector<double>& positionsLeft, 
     return correlationTemp;
 }
 
-static int whichWell(double x, double threshold)
-{
-    if (x > threshold)  return 1;   // right well
-	if (x < -threshold) return -1;  // left well
-    return 0;                       // barrier
+static int whichWell(double x, double threshold) {
+    if (x > threshold) { return 1; }            // Right well.
+	if (x < -threshold) { return -1; }          // Left well.
+    return 0;                                   // Barrier.
 }
 
 void constructHeaderInfo(const std::string& system) {
     headerInfo.clear();
-	headerInfo.push_back(N);    // Lattice points
-	headerInfo.push_back(a);    // Lattice spacing
-	headerInfo.push_back(epsilon);  // Maximum random displacement for Metropolis algorithm
-	headerInfo.push_back(accRateInterval);  // Number of sweeps between recording the acceptance rate of the Metropolis algorithm
-	headerInfo.push_back(decorrSweeps); // Number of sweeps between taking measures to reduce correlation
-	headerInfo.push_back(thermSweeps);  // Number of sweeps for thermalisation, after which we assume the system is thermalised and take measures
-	headerInfo.push_back(thermInterval);  // Number of sweeps between measuring parameters during thermalisation
-	headerInfo.push_back(measures); // Number of measures taken after thermalisation
-    headerInfo.push_back(repeats);   // Number of repeats for finding standard error
-    headerInfo.push_back(numBins);  // Number of bins for the histogram of positions
+	headerInfo.push_back(N);                    // Lattice size.
+	headerInfo.push_back(a);                    // Lattice spacing.
+	headerInfo.push_back(epsilon);              // Maximum random displacement for MCMC.
+	headerInfo.push_back(accRateInterval);      // Number of sweeps between recording the acceptance rate.
+	headerInfo.push_back(decorrSweeps);         // Number of sweeps between taking measures.
+	headerInfo.push_back(thermSweeps);          // Number of sweeps for thermalisation.
+	headerInfo.push_back(thermInterval);        // Number of sweeps between measuring parameters during thermalisation.
+	headerInfo.push_back(measures);             // Number of measures taken.
+    headerInfo.push_back(repeats);              // Number of repeats/independent threads.
+    headerInfo.push_back(numBins);              // Number of bins for the histogram of positions.
     if (system == "QHO") {
-        headerInfo.push_back(m);        // Mass for the quantum harmonic oscillator potential
-        headerInfo.push_back(omega);    // Frequency for the quantum harmonic oscillator potential
+        headerInfo.push_back(m);                // Mass for QHO.
+        headerInfo.push_back(omega);            // Frequency for QHO.
     }
     else if (system == "DWP") {
-        headerInfo.push_back(wellCentres);  // Well centre positions for the double well potential
-        headerInfo.push_back(lambda);       // Coupling constant for the double well potential
+        headerInfo.push_back(wellCentres);      // Well centre positions for DWP.
+        headerInfo.push_back(lambda);           // Coupling constant for the DWP.
 	}
 }
 
 void setParameters(int beta, double a, double wellCentres) {
-	
     // Use thermalisation/decorrelation sweeps for the system with smallest a, as this will be the slowest to thermalise and decorrelatese.
 	// This is inefficient for systems that are fast to thermalise/decorrelate, but ensures that all systems are sufficiently thermalised and decorrelated.
     
-    // Set the other lattice paramters
+    // Set lattice paramters
     N = beta / a;
 	aInverse = 1.0 / a;
     
-    // Set the potential parameters for the DWP
-    omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the double well potential is equal to the square root of the second derivative of the potential at the minima, which is 8 * lambda * wellCentres^2.
+    // Set parameters for the DWP
+    omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);
     tunnellingThreshold = 0.2 * wellCentres;
 }

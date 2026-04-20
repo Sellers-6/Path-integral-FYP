@@ -1,120 +1,161 @@
-///// Simulating quantum systems with different potentials using Feynman path integral and Metropolis algorithm /////
-// Throughout the program, hbar is assumed to be 1 (reduced planck's constant) //
-
 #include "main.h"
 
-int main() {    // Accepts user choice of system type and window visualisation
-    std::cout << "Simulating quantum systems with different potentials using the Feynman path integral and Metropolis algorithm";
+/***********************************************************************/
+/*********** Euclidean path propagation with MCMC algorithm ************/
+/***********************************************************************/
+
+int main() {
+    std::cout << "Euclidean path propagation with MCMC algorithm.";
     std::string choice;
-	chooseSystem(); // Print the options to the user
+    // Print the simulation options to the user.
+    chooseSystem();
 	while (true) {
+        // Accept user choice of simulation to perform.
 		std::cout << "Enter choice: ";
         std::cin >> choice;
-        if (choice == "1")      { multThreads = true;  metropolisRepeat(false, "QHO"); }
-        else if (choice == "2") { metropolisRepeat(true, "QHO"); }
-        else if (choice == "3") { multThreads = true;  metropolisRepeat(false, "DWP"); }
-        else if (choice == "4") { metropolisRepeat(true, "DWP"); }
-        else if (choice == "5") { // Run both systems in one go, used to produce data for the report
-            multThreads = true; 
-            metropolisRepeat(false, "QHO");
-            metropolisRepeat(false, "DWP");
+        if (choice == "1")      { // Run QHO with multi-threading.
+            multThreads = true;  
+            std::cout << "Using multiple threads to simulate the QHO. Taking " << measures << " measures and running " << repeats << " repeats." << std::endl;
+            metropolisRepeat("QHO"); 
+        }
+        else if (choice == "2") { // Run QHO with visualisation.
+            winRunning = true;
+            std::cout << "Providing a visualisation of the Euclidean path for the QHO." << std::endl;
+            metropolisRepeat("QHO"); 
+        }
+        else if (choice == "3") { // Run DWP with multi-threading.
+            multThreads = true;  
+            std::cout << "Using multiple threads to simulate the DWP. Taking " << measures << " measures and running " << repeats << " repeats." << std::endl;
+            metropolisRepeat("DWP"); 
+        }
+        else if (choice == "4") { // Run DWP with visualisation.
+            winRunning = true;
+            std::cout << "Providing a visualisation of the Euclidean path for the DWP." << std::endl;
+            metropolisRepeat("DWP"); 
+        }
+        else if (choice == "5") { // Run both systems with multi-threading.
+            std::cout << "Using multiple threads to simulate the QHO and DWP. Taking " << measures << " measures and running " << repeats << " repeats." << std::endl;
+            multThreads = true;
+            metropolisRepeat("QHO");
+            metropolisRepeat("DWP");
             std::cout << "Exiting..." << std::endl; break;
 		}
-        else if (choice == "6") {  // Run DWP system with multi-threading with varying lattice spacing and well separation.
+        else if (choice == "6") { // Run DWP system with multi-threading with varying beta and well separation.
             multThreads = true;
             sixFlag = true;
-            std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.325, 1.35, 1.375, 1.4, 1.425, 1.45, 1.475, 1.5, 1.6 }; // Varying the separation of the wells.
-            std::vector<double> betaVec = { 1000, 750, 500, 250, 100, 75, 50, 25, 10 }; // Varying beta to see how it affects the error in the splitting energy.
+            std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.325, 1.35, 1.375, 1.4, 1.425, 1.45, 1.475, 1.5, 1.6 }; 
+            std::vector<double> betaVec = { 1000, 750, 500, 250, 100, 75, 50, 25, 10 }; 
             for (double betaElement : betaVec) {
-                a = 0.05; epsilon = 0.4; // Fix lattice spacing and epsilon.
+                a = 0.05; epsilon = 0.4;                            // Fix lattice spacing and epsilon.
                 for (double wellCentresElement : wellCentresVec) {
 					std::cout << "\n Running DWP system with beta = " << betaElement << " and well centres = " << wellCentresElement << std::endl;
-                    wellCentres = wellCentresElement; // Update the well centres based on the separation.
+                    wellCentres = wellCentresElement;               // Update the well centres based on the separation.
                     setParameters(betaElement, a, wellCentres);
-                    metropolisRepeat(false, "DWP");
+                    metropolisRepeat("DWP");
                 }
             }
         }
-        else if (choice == "7") { // Run DWP system with multi-threading with varying lattice spacings.
+        else if (choice == "7") { // Run DWP system with multi-threading with varying lattice spacing and well separation.
             multThreads = true;
             sevenFlag = true;
+            std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.325, 1.35, 1.375, 1.4, 1.425, 1.45, 1.475, 1.5, 1.6 };
 			std::vector<double> latticeSpacingsVec = { 0.5, 0.4, 0.3, 0.25, 0.2, 0.175, 0.15, 0.125, 0.1, 0.075, 0.05 };
             std::vector<double> esplinonVec = { 0.7, 0.65, 0.6, 0.55, 0.53, 0.5, 0.47, 0.45, 0.43, 0.4, 0.3 };
-            int epsilonIndex = 0; // Index to keep track of which epsilon value we are using.
+            int epsilonIndex = 0;                                   // Index to keep track of which epsilon value we are using.
             for (double latticeSpacingsElement : latticeSpacingsVec) {
-                a = latticeSpacingsElement; // Update the lattice spacing.
-                epsilon = esplinonVec[epsilonIndex]; // Update epsilon based on the lattice spacing, smaller lattice spacings require smaller epsilon for good acceptance rates.
-                std::cout << "\n Running DWP system with lattice spacing = " << latticeSpacingsElement << " and epsilon = " << epsilon << std::endl;
-				setParameters(100, a, wellCentres); // Keep beta fixed at 100, which is large enough to capture the ground state properties well for the DWP.
-                metropolisRepeat(false, "DWP");
+                a = latticeSpacingsElement;                         // Update the lattice spacing.
+                epsilon = esplinonVec[epsilonIndex];                // Update epsilon based on the lattice spacing, smaller lattice spacings require smaller epsilon for good acceptance rates.
+                for (double wellCentresElement : wellCentresVec) {
+                    std::cout << "\n Running DWP system with lattice spacing = " << latticeSpacingsElement << " and well centres = " << wellCentresElement << std::endl;
+                    wellCentres = wellCentresElement;               // Update the well centres based on the separation.
+					setParameters(100, a, wellCentres);             // Use the same beta for all runs, large enough to capture the ground state accurately.
+                    metropolisRepeat("DWP");
+                }
                 epsilonIndex++;
             }
         }
-        else if (choice == "0") { std::cout << "Exiting..." << std::endl; break; }
-        else { std::cerr << "Invalid choice." << std::endl; }
-
-        // Reprint the options to the user, wait for further input
+        else if (choice == "8") { // Run QHO system with multi-threading with varying lattice spacing.
+            multThreads = true;
+            eightFlag = true;
+            std::vector<double> latticeSpacingsVec = { 0.5, 0.4, 0.3, 0.25, 0.2, 0.175, 0.15, 0.125, 0.1, 0.075, 0.05 };
+            std::vector<double> esplinonVec = { 0.7, 0.65, 0.6, 0.55, 0.53, 0.5, 0.47, 0.45, 0.43, 0.4, 0.3 };
+            int epsilonIndex = 0;                                   // Index to keep track of which epsilon value we are using.
+            for (double latticeSpacingsElement : latticeSpacingsVec) {
+                a = latticeSpacingsElement;                         // Update the lattice spacing.
+                epsilon = esplinonVec[epsilonIndex];                // Update epsilon based on the lattice spacing, smaller lattice spacings require smaller epsilon for good acceptance rates.
+                std::cout << "\n Running QHO system with lattice spacing = " << latticeSpacingsElement << " and epsilon = " << epsilon << std::endl;
+                setParameters(100, a, wellCentres);                 // Keep beta fixed at 100, which is large enough to capture the ground state properties well for the QHO.
+                metropolisRepeat("QHO");
+                epsilonIndex++;
+            }
+        }
+        else if (choice == "0") { // Exit the program.
+            std::cout << "Exiting..." << std::endl; 
+            break;
+        }
+		else {                    // Invalid choice, reprompt the user.
+            std::cerr << "Invalid choice." << std::endl; 
+        }
+        // Reprint the simulation options to the user.
         chooseSystem();
     }
     return 0;
 }
 
-void chooseSystem() {  // Function to display user choices
+void chooseSystem() {
+    // User choices.
     std::string chooseSystemString = "\n1: Perform Metropolis algorithm on the QHO system (with multi-threading) \n"
         "2: Perform Metropolis algorithm on the QHO system (with path visualisation)\n"
         "3: Perform Metropolis algorithm on the DWP system (with multi-threading)\n"
         "4: Perform Metropolis algorithm on the DWP system (with path visualisation)\n"
-        "5: Run both systems with multi-threading, run this to reproduce results from the report\n"
+        "5: Run the QHO and DWP systems with multi-threading\n"
 		"6: Run DWP system with multi-threading with varying beta and well separation,\n"
-        "   this is used to produce data for the error analysis of finite beta effects on splitting energy.\n"
-        "7: Run QHO system with multi-threading with varying lattice spacing,\n"
-        "   this is used to produce data for the error analysis of discretisation\n"
+        "   this is used to produce data for the error analysis of finite beta effects on energy levels.\n"
+        "7: Run DWP system with multi-threading with varying lattice spacing and well separation,\n"
+        "   this is used to produce data for the error analysis of discretisation on energy levels.\n"
+        "8: Run QHO system with multi-threading with varying lattice spacing.\n"
         "0: Exit\n"
         "Warning: Program has a tendancy to crash when ran for long times with visualisation";
-
     std::cout << chooseSystemString << std::endl;
 }
 
-void metropolisRepeat(bool winOn, std::string system) { // Loop over repeats
-    std::cout << "Performing MCMC algorithm for the " << system << "." << std::endl;
-
-	// Set up the potentials for the simulation based on user choice
+void metropolisRepeat(std::string system) { 
+	// Set up the potentials for the simulation based on user choice.
 	potential = findPotential(system);
 	potentialDifferential = findPotentialDifferential(system);
 
-	// Set histogram range, deccorelation sweeps, and thermalisation sweeps based on the system being simulated
-	if (system == "QHO") { // Anharmonic oscillator has the same quadratic term as the harmonic oscillator, so we can use that to set the histogram range
+	// Set histogram range, deccorelation sweeps, and thermalisation sweeps based on the system being simulated.
+	if (system == "QHO") {
         double sigmaQHO = 1.0 / (std::sqrt(2.0 * m * omega)); 
-        xMax = ceil(sigmaQHO * 4.0) + 1;  // Set the maximum x value for the histogram to be 4 standard deviations of the analytic ground state wavefunction (plus padding)
+        xMax = ceil(sigmaQHO * 4.0) + 1;                            // Set the maximum x value for the histogram to be 4 standard deviations of the analytic ground state wavefunction plus padding.
         xMin = -xMax;
         decorrSweeps = decorrSweepsQHO;
 		thermSweeps = thermSweepsQHO;
     }
     else if (system == "DWP") {
-		double sigmaDWP = 1.0 / (std::sqrt(omegaDWP)); // Use the frequency of the wells to calculate the standard deviation of the wavefunction in each well
+		double sigmaDWP = 1.0 / (std::sqrt(omegaDWP));              // Use the frequency of the wells to calculate the standard deviation of the wavefunction in each well.
         xMax = ceil(wellCentres + 4.0 * sigmaDWP) + 1; 
 		xMin = -xMax;
         decorrSweeps = decorrSweepsDWP;
 		thermSweeps = thermSweepsDWP;
 	}	
-    // Set the bin width for the histogram based on the range of positions and the number of bins
+    // Set the bin width for the histogram based on the range of positions and the number of bins.
     binWidth = (xMax - xMin) / numBins;
 
-    if (multThreads == true) {  // Running with multiple threads, much faster.
-        std::cout << "Using multiple threads to speed up the simulation. Taking " << measures << " measures and running " << repeats << " repeats." << std::endl;
+    if (multThreads == true) { // Run with multiple threads, much faster.
         std::cout << "                                           Percent complete                                           " << std::endl;
         std::cout << "<       10        20        30        40        50        60        70        80        90        100>" << std::endl;
         std::cout << "<";
-        std::vector<RepeatData> repeatResults(repeats); // Store results of all repeats
+        std::vector<RepeatData> repeatResults(repeats);             // Store results of all repeats.
         double iterationNumber = 1.0;
         double percentDone = 0.0;
         #pragma omp parallel for
         for (int r = 0; r < repeats; ++r) {
-            std::mt19937 rng(seed + r);
+            std::mt19937 rng(seed + r);                             // Use a different seed for each repeat to ensure different random numbers across repeats, but still have reproducibility.
 
-            RepeatData data(N, numBins, measures);
+			RepeatData data(N, numBins, measures);                  // Construct a RepeatData object to store the results of this repeat.
 
-            metropolis(winOn, system, r, rng, data, potential, potentialDifferential);
+            metropolis(system, r, rng, data, potential, potentialDifferential);
 
             repeatResults[r] = data;
 
@@ -127,224 +168,245 @@ void metropolisRepeat(bool winOn, std::string system) { // Loop over repeats
         }
         std::cout << ">";
 
-        // Merge thread-safe results after parallel region
+        // Merge thread-safe results after parallel region. Update to include all observables.
+        positions.clear();
+        
+        accRateTherm.clear();
+        accRate.clear();
         E0Therm.clear();
-        accRateTherm.clear(); 
         E0.clear();
+        histogram.clear();
         Gx1x1.clear();
         Gx1x2.clear();
         Gx2x2.clear();
-        positions.clear();
-		histogram.clear();
 		instantons.clear();
 		antiInstantons.clear();
-        accRate.clear();
 
         for (int r = 0; r < repeats; ++r) {
             const auto& data = repeatResults[r];
 
-			// Acceptance rate during thermalisation
 			accRateTherm.insert(accRateTherm.end(), data.accRateThermTemp.begin(), data.accRateThermTemp.end());
 
-			// Acceptance rate during measurements
 			accRate.insert(accRate.end(), data.accRateTemp.begin(), data.accRateTemp.end());
 
-			// Ground-state energy during thermalisation
             E0Therm.insert(E0Therm.end(), data.E0ThermTemp.begin(), data.E0ThermTemp.end());
 
-            // Ground-state energy
             E0.insert(E0.end(), data.E0Temp.begin(), data.E0Temp.end());
 
-
-            // Correlators — sum them up for later averaging
-            if (Gx1x1.empty()) {
-                Gx1x1 = data.Gx1x1Temp;
-            }
-            else {
-                for (size_t i = 0; i < Gx1x1.size(); ++i)
-                    Gx1x1[i] += data.Gx1x1Temp[i];
-            }
-
-            if (Gx1x2.empty()) {
-                Gx1x2 = data.Gx1x2Temp;
-            }
-            else {
-                for (size_t i = 0; i < Gx1x2.size(); ++i)
-                    Gx1x2[i] += data.Gx1x2Temp[i];
-            }
-
-            if (Gx2x2.empty()) {
-                Gx2x2 = data.Gx2x2Temp;
-            }
-            else {
-                for (size_t i = 0; i < Gx2x2.size(); ++i)
-                    Gx2x2[i] += data.Gx2x2Temp[i];
-            }
-
-            // Histogram for the wavefunction
-            if (histogram.empty()) {
-                histogram = data.histogramTemp;  
-            }
+            if (histogram.empty()) { histogram = data.histogramTemp; }
             else {
                 for (int i = 0; i < numBins; ++i)
                     histogram[i] += data.histogramTemp[i];
             }
 
+            if (Gx1x1.empty()) { Gx1x1 = data.Gx1x1Temp; }
+            else { 
+                for (size_t i = 0; i < Gx1x1.size(); ++i) { 
+                    Gx1x1[i] += data.Gx1x1Temp[i]; 
+                } 
+            }
+
+            if (Gx1x2.empty()) { Gx1x2 = data.Gx1x2Temp; }
+            else {
+                for (size_t i = 0; i < Gx1x2.size(); ++i)
+                    Gx1x2[i] += data.Gx1x2Temp[i];
+            }
+
+            if (Gx2x2.empty()) { Gx2x2 = data.Gx2x2Temp; }
+            else {
+                for (size_t i = 0; i < Gx2x2.size(); ++i)
+                    Gx2x2[i] += data.Gx2x2Temp[i];
+            }           
+
             instantons.insert(instantons.end(), data.instantonsTemp.begin(), data.instantonsTemp.end());
             antiInstantons.insert(antiInstantons.end(), data.antiInstantonsTemp.begin(), data.antiInstantonsTemp.end());
         }
 
-        // Average correlators over repeats
-        for (size_t i = 0; i < Gx1x1.size(); ++i)
-            Gx1x1[i] /= repeats;
-
-        for (size_t i = 0; i < Gx2x2.size(); ++i)
-            Gx2x2[i] /= repeats;
+        // Average correlators over repeats.
+        for (size_t i = 0; i < Gx1x1.size(); ++i) { Gx1x1[i] /= repeats; }
+        for (size_t i = 0; i < Gx2x2.size(); ++i) { Gx2x2[i] /= repeats; }
     }
     else { // Visualisation.
-        std::cout << "Providing a visualisation of the evolution of the path. Running " << repeats << " repeats and taking " << measures << " measures." << std::endl;
-
-        RepeatData data(N, numBins);    // Still use this for the single threaded version, though it's not necessary it is convenient
+        RepeatData data(N, numBins);                                // Remains convenient to construct the RepeatData struct.
         
-        // Window thread setup
-        std::thread windowThread(window, std::ref(data.positions), std::ref(winOn)); 
+        // Window thread setup.
+        std::thread windowThread(window, std::ref(data.positions), std::ref(winRunning)); 
         std::mt19937 rng(seed);
 
-        while (true) {
-            metropolisUpdate(winOn, potential, rng, data);
+        initialise(system, rng, data);
+
+		while (true) { // Keep updating the path and the window until the user closes the window.
+            metropolisSweep(potential, rng, data);
         }
     }
 
     constructHeaderInfo(system);
     
-	// Write data to files
-    if (!sixFlag && !sevenFlag) { writeData(system); }            // Writes all data to a single h5 file, separated into groups
-	else if (sixFlag) { writeData2(system, std::to_string(wellCentres), std::to_string(N * a)); } // Writes data for option six
-	else if (sevenFlag) { writeData3(system, std::to_string(a)); } // Writes data for option seven
+	// Write data to files.
+    if (!sixFlag && !sevenFlag && !eightFlag) { writeData(system); }                                // Writes all data to a single h5 file, separated into groups.
+	else if (sixFlag) { writeData6(system, std::to_string(wellCentres), std::to_string(N * a)); }   // Writes data for option six.
+    else if (sevenFlag) { writeData7(system, std::to_string(wellCentres), std::to_string(a)); }     // Writes data for option seven.
+	else if (eightFlag) { writeData8(system, std::to_string(a)); }                                  // Writes data for option eight.
 	
-    // Clear all vectors for the next run
-    E0Therm.clear();
-    accRateTherm.clear();
-    E0.clear();
-    accRate.clear();
+    // Clear all vectors for the next run.
     positions.clear();
+    
+    accRateTherm.clear();
+    accRate.clear();
+    E0.clear();
+    E0Therm.clear();
+    histogram.clear();
     Gx1x1.clear();
     Gx1x2.clear();
     Gx2x2.clear();
-	histogram.clear();
 	instantons.clear();
 	antiInstantons.clear();
 	headerInfo.clear();
 }
 
-void metropolis(bool winOn, std::string system, int repeat, std::mt19937& rng, RepeatData& data,
-    double (*potential)(double), double (*potentialDifferential)(double)) { // Metropolis function which gets called initially, then calls other functions to perform the algorithm
-    // Set initial path and counters to 0
+void metropolis(std::string system, int repeat, std::mt19937& rng, RepeatData& data, double (*potential)(double), double (*potentialDifferential)(double)) {
+    // Set initial path and counters to 0.
     initialise(system, rng, data);
 
-    // Thermalise the system
-    thermalise(winOn, potentialDifferential, potential, rng, data);
+    // Thermalise the system.
+    thermalise(potentialDifferential, potential, rng, data);
 
-    if (takeMeasuresFlag == true) { takeMeasures(data.positions, data); } // First measurement after thermalisation
+    takeMeasures(data.positions, data);                 // First measurement after thermalisation.
 
-	// Take measures of the path every "decorrelation" sweeps
-    if (takeMeasuresFlag == true) {
-        while (data.measureCount < measures) {
-            metropolisUpdate(winOn, potential, rng, data);
-            data.sweep++;
-            if (remainder(data.sweep, decorrSweeps) == 0) {
-                takeMeasures(data.positions, data);
-            }
-        }
-		computeObservables(data.positionsVector, potentialDifferential, potential, data); // Compute the observables based on the measured paths
+	// Take measures of the path every "decorrelation" sweeps.
+    while (data.measureCount < measures) {
+        metropolisSweep(potential, rng, data);
+        data.sweep++;
+        if (remainder(data.sweep, decorrSweeps) == 0) { takeMeasures(data.positions, data); }
     }
+    // Compute the observables based on the measured paths.
+	computeObservables(data.positionsVector, potentialDifferential, potential, data); 
+    
 }
 
-void metropolisUpdate(bool winOn, double (*potential)(double), std::mt19937& rng, RepeatData& data) {    // The core of the simulation, the metropolis algorithm function
+void metropolisSweep(double (*potential)(double), std::mt19937& rng, RepeatData& data) {
     double newPosition;
-    for (int i = 0; i < N; i++) {
-        double y = uniformMinus1to1(rng);  // Sets a random number between -1 and 1
-        newPosition = data.positions[i] + epsilon * y; // Incrementing one position by float between -epsilon and +epsilon
-		double oldPosition = data.positions[i];
-		double leftPosition = data.positions[(i - 1 + N) % N];   // Previous position, with periodic BCs
-		double rightPosition = data.positions[(i + 1) % N];      // Next position, with periodic BCs
-        double kineticDelta =
+
+    double y;
+	double oldPosition;
+	double leftPosition;
+	double rightPosition;
+    double kineticDelta;
+    double potentialDelta;
+	double actionDelta;
+    
+    // Left most point, wrap around to the right.
+    y = uniformMinus1to1(rng);                                      // Set a random number between -1 and 1.
+    newPosition = data.positions[0] + epsilon * y;                  // Increments one position by random number between -epsilon and +epsilon.
+    oldPosition = data.positions[0];
+    leftPosition = data.positions[N - 1];                           // Previous position.
+    rightPosition = data.positions[1];                              // Next position.
+    kineticDelta =
+        (rightPosition - newPosition) * (rightPosition - newPosition)
+        - (rightPosition - oldPosition) * (rightPosition - oldPosition)
+        + (newPosition - leftPosition) * (newPosition - leftPosition)
+        - (oldPosition - leftPosition) * (oldPosition - leftPosition);
+
+    potentialDelta = potential(newPosition) - potential(oldPosition);
+
+    actionDelta = (m * 0.5 * aInverse) * kineticDelta + a * potentialDelta;
+    // Metropolis acceptance.
+    if (actionDelta < 0 || uniform01(rng) < exp(-actionDelta)) {    // Accepted move.
+        data.positions[0] = newPosition;
+        data.acceptedMoves++;
+    }
+
+	// Update the middle points.
+    for (int i = 1; i < N - 1; i++) {
+        y = uniformMinus1to1(rng);                                  // Set a random number between -1 and 1.
+        newPosition = data.positions[i] + epsilon * y;              // Increments one position by random number between -epsilon and +epsilon.
+		oldPosition = data.positions[i];
+		leftPosition = data.positions[i - 1];                       // Previous position.
+		rightPosition = data.positions[i + 1];                      // Next position.
+        kineticDelta =
             (rightPosition - newPosition) * (rightPosition - newPosition) 
             - (rightPosition - oldPosition) * (rightPosition - oldPosition)
             + (newPosition - leftPosition) * (newPosition - leftPosition)
             - (oldPosition - leftPosition) * (oldPosition - leftPosition);
 
-        double potentialDelta = potential(newPosition) - potential(oldPosition);
+        potentialDelta = potential(newPosition) - potential(oldPosition);
 
-        double actionDelta = (m * 0.5 * aInverse) * kineticDelta + a * potentialDelta;
-        // Metropolis acceptance
-        if (actionDelta < 0 || uniform01(rng) < exp(-actionDelta)) { // Accepted move
+        actionDelta = (m * 0.5 * aInverse) * kineticDelta + a * potentialDelta;
+        // Metropolis acceptance.
+        if (actionDelta < 0 || uniform01(rng) < exp(-actionDelta)) { // Accepted move.
             data.positions[i] = newPosition;
             data.acceptedMoves++;
         }
     }
-    // Update the window if user wanted visualisation
-    if (winOn == true) {
+
+    // Right most point, wrap around to the left.
+    y = uniformMinus1to1(rng);                                      // Set a random number between -1 and 1.
+    newPosition = data.positions[N - 1] + epsilon * y;              // Increments one position by random number between -epsilon and +epsilon.
+    oldPosition = data.positions[N - 1];
+    leftPosition = data.positions[N - 2];                           // Previous position.
+    rightPosition = data.positions[0];                              // Next position.
+    kineticDelta =
+        (rightPosition - newPosition) * (rightPosition - newPosition)
+        - (rightPosition - oldPosition) * (rightPosition - oldPosition)
+        + (newPosition - leftPosition) * (newPosition - leftPosition)
+        - (oldPosition - leftPosition) * (oldPosition - leftPosition);
+
+    potentialDelta = potential(newPosition) - potential(oldPosition);
+
+    actionDelta = (m * 0.5 * aInverse) * kineticDelta + a * potentialDelta;
+    // Metropolis acceptance.
+    if (actionDelta < 0 || uniform01(rng) < exp(-actionDelta)) {    // Accepted move.
+        data.positions[N - 1] = newPosition;
+        data.acceptedMoves++;
+    }
+
+    // Update the window if user wanted visualisation.
+    if (winRunning == true) {
         std::this_thread::sleep_for(std::chrono::milliseconds(delay));
     }
 }
 
-void initialise(std::string system, std::mt19937& rng, RepeatData& data) {   // Initialises variables and path
-    // Reset the path
-    data.positions = std::vector<double>(N, 0.0); // Reset the path
-    if (system == "DWP") // DWP requires a different initial (cold) path since the potential wells are not centered around 0
+void initialise(std::string system, std::mt19937& rng, RepeatData& data) {
+    // Reset the path.
+    data.positions = std::vector<double>(N, 0.0);
+    if (system == "DWP")                                            // DWP starts in one of the two wells.
     {
         data.positions = std::vector<double>(N, wellCentres * side);
-		side *= -1; // Start the next run in the opposite well to encourage tunnelling and faster thermalisation
+		side *= -1;                                                 // Start the next run in the opposite well to symmetrise the wave function.
     }
-    
-    data.Gx1x1Temp = std::vector<double>(N, 0.0);
-    data.Gx2x2Temp = std::vector<double>(N, 0.0);
-    data.E0Temp.clear();
 
+	// Reset counters.
     data.sweep = 0;
     data.measureCount = 0;
     data.acceptedMoves = 0;
 
-    if (hot_start) {
-        for (int i = 0; i < N; i++)
-            data.positions[i] = uniformMinus1to1(rng) * max_distance;
-    }
-
-    if (split_wells) {
-        for (int i = 0; i < N; i++) {
-            if (i < N / 2) {
-                data.positions[i] = wellCentres; // Start half the path in one well
-            }
-            else {
-                data.positions[i] = -wellCentres; // Start the other half in the other well
-            }
-        }
+	// Initialise the path with random values between -maxDistance and maxDistance.
+    if (hotStart) {
+        for (int i = 0; i < N; i++) { data.positions[i] = uniformMinus1to1(rng) * maxDistance; }
     }
 }
 
-void thermalise(bool winOn, double (*potentialDifferential)(double), double (*potential)(double), std::mt19937& rng, RepeatData& data) { // Thermalisation function to reach equilibrium before measurements
+void thermalise(double (*potentialDifferential)(double), double (*potential)(double), std::mt19937& rng, RepeatData& data) {
+    // Thermalisation performed before before measurements.
     while (data.sweep < thermSweeps) {
-        metropolisUpdate(winOn, potential, rng, data);
+        metropolisSweep(potential, rng, data);
         data.sweep++;
 
-        if ((data.sweep - 1) % thermInterval == 0) { // Take thermalisation measures
-            takeThermMeasures(data.positions, potentialDifferential, potential, data);
-        }
+        if ((data.sweep - 1) % thermInterval == 0) { takeThermMeasures(data.positions, potentialDifferential, potential, data); }
     }
 }
 
 void takeThermMeasures(std::vector<double>& positions, double (*potentialDifferential)(double), double (*potential)(double), RepeatData& data) {
-    // Record acceptance rate between decorrelations
+    // Record acceptance rate.
     data.accRateThermTemp.push_back((double)(data.acceptedMoves) / (N * (double)thermInterval));
     data.acceptedMoves = 0;
 
-    // Record ground state energy
+    // Record ground state energy.
     data.E0ThermTemp.push_back(E0Calc(positions, potentialDifferential, potential));
 }
 
-void takeMeasures(std::vector<double>& positions, RepeatData& data) {    // Takes all measurements at current path state in one function
-    // Record acceptance rate between decorrelations
+void takeMeasures(std::vector<double>& positions, RepeatData& data) {
+    // Record acceptance rate.
     data.accRateTemp.push_back((double)(data.acceptedMoves) / (N * (double)decorrSweeps));
     data.acceptedMoves = 0;
 
@@ -353,58 +415,72 @@ void takeMeasures(std::vector<double>& positions, RepeatData& data) {    // Take
         data.positionsVector[data.measureCount][i] = positions[i];
     }
 
-    // Increment measure count
+    // Increment measure count.
     data.measureCount++;
 }
 
 void computeObservables(std::vector<std::vector<double>>& positionsVector, double (*potentialDifferential)(double), double (*potential)(double), RepeatData& data) {
 
-    std::vector<std::vector<double>> O1(measures, std::vector<double>(N));
-    std::vector<std::vector<double>> O2(measures, std::vector<double>(N));
-    std::vector<std::vector<double>> O3(measures, std::vector<double>(N));
+    for (int i = 0; i < measures; i++) {
+        // Record ground state energy.
+        double E0 = E0Calc(positionsVector[i], potentialDifferential, potential);
+        data.E0Temp.push_back(E0);
 
-    for (int cfg = 0; cfg < measures; cfg++)
-    {
-        for (int t = 0; t < N; t++)
-        {
-            double x = positionsVector[cfg][t];
 
-            O1[cfg][t] = x;
-            O2[cfg][t] = x * x;
-            O3[cfg][t] = x * x * x;
+        // Record histogram data for the wavefunction.
+        for (int t = 0; t < N; t++) {
+            double x = positionsVector[i][t];
+
+            int bin = int((x - xMin) / binWidth);
+
+            if (bin >= 0 && bin < numBins) { data.histogramTemp[bin] += 1.0; }
         }
     }
 
-    double x1Vacuum = 0.0;
-    double x2Vacuum = 0.0;
+    // Average the histogram over measures and normalise it.
+    for (int i = 0; i < numBins; i++) { data.histogramTemp[i] /= (measures * N); }
 
-    for (int cfg = 0; cfg < measures; cfg++)
+    // Compute correlators.
+    std::vector<std::vector<double>> x1(measures, std::vector<double>(N));
+    std::vector<std::vector<double>> x2(measures, std::vector<double>(N));
+
+    for (int measure = 0; measure < measures; measure++)
     {
         for (int t = 0; t < N; t++)
         {
-            x1Vacuum += O1[cfg][t];
-			x2Vacuum += O2[cfg][t];
+            double x = positionsVector[measure][t];
+
+            x1[measure][t] = x;
+            x2[measure][t] = x * x;
         }
-	}
+    }
 
-	x1Vacuum /= (measures * N);
-	x2Vacuum /= (measures * N);
+    // Find vacuum point for x and x squared.
+    double x1Vacuum = 0.0;
+    double x2Vacuum = 0.0;
 
-    for (int cfg = 0; cfg < measures; cfg++)
+    for (int measure = 0; measure < measures; measure++)
+    {
+        for (int t = 0; t < N; t++)
+        {
+            x1Vacuum += x1[measure][t];
+            x2Vacuum += x2[measure][t];
+        }
+    }
+
+    x1Vacuum /= (measures * N);
+    x2Vacuum /= (measures * N);
+
+    for (int measure = 0; measure < measures; measure++)
     {
         std::vector<double> correlation11Temp;
         std::vector<double> correlation12Temp;
-        std::vector<double> correlation13Temp;
         std::vector<double> correlation22Temp;
-        std::vector<double> correlation23Temp;
-        std::vector<double> correlation33Temp;
-        correlation11Temp = correlator(O1[cfg], O1[cfg]);
-        correlation12Temp = correlator(O1[cfg], O2[cfg]);
-        correlation13Temp = correlator(O1[cfg], O3[cfg]);
-        correlation22Temp = correlator(O2[cfg], O2[cfg]);
-        correlation23Temp = correlator(O2[cfg], O3[cfg]);
-        correlation33Temp = correlator(O3[cfg], O3[cfg]);
-            
+
+        correlation11Temp = correlator(x1[measure], x1[measure]);
+        correlation12Temp = correlator(x1[measure], x2[measure]);
+        correlation22Temp = correlator(x2[measure], x2[measure]);
+
         for (int i = 0; i < N; i++) {
             data.Gx1x1Temp[i] += correlation11Temp[i];
             data.Gx1x2Temp[i] += correlation12Temp[i];
@@ -412,71 +488,45 @@ void computeObservables(std::vector<std::vector<double>>& positionsVector, doubl
         }
     }
 
-    // Average correlators
+    // Average correlators and remove vacuum point.
     for (int n = 0; n < N; ++n) {
         data.Gx1x1Temp[n] /= measures;
-		data.Gx1x1Temp[n] -= x1Vacuum * x1Vacuum; 
+        data.Gx1x1Temp[n] -= x1Vacuum * x1Vacuum;
         data.Gx1x2Temp[n] /= measures;
-		data.Gx1x2Temp[n] -= x1Vacuum * x2Vacuum;
+        data.Gx1x2Temp[n] -= x1Vacuum * x2Vacuum;
         data.Gx2x2Temp[n] /= measures;
-		data.Gx2x2Temp[n] -= x2Vacuum * x2Vacuum;
+        data.Gx2x2Temp[n] -= x2Vacuum * x2Vacuum;
     }
 
-    for (int i = 0; i < measures; i++)
-    {
-        // Record ground state energy
-        double E0 = E0Calc(positionsVector[i], potentialDifferential, potential);
-        data.E0Temp.push_back(E0); // Save every measure of the ground state energy to calculate the error later
-
-
-        // Record histogram data for the wavefunction
-        for (int t = 0; t < N; t++) {
-            double x = positionsVector[i][t];
-
-            int bin = int((x - xMin) / binWidth);
-
-            if (bin >= 0 && bin < numBins) {
-                data.histogramTemp[bin] += 1.0;
-            }
-        }
-        // Find instantons and anti instantons
+    // Find instantons and anti instantons.
+    for (int i = 0; i < measures; i++) {
         int prev = whichWell(positionsVector[i][0], tunnellingThreshold);
 
         int instantons = 0;
         int antiInstantons = 0;
 
-        for (int j = 1; j < N; j++)
-        {
+        for (int j = 1; j < N; j++) {
             int curr = whichWell(positionsVector[i][j], tunnellingThreshold);
 
-            if (curr == 0) continue;   // Ignore barrier
+            if (curr == 0) { continue; }                                // Ignore barrier.
 
-            if (prev == -1 && curr == 1)
-                instantons++;
+            if (prev == -1 && curr == 1) { instantons++; }
 
-            if (prev == 1 && curr == -1)
-                antiInstantons++;
+            if (prev == 1 && curr == -1) { antiInstantons++; }
 
             prev = curr;
         }
 
-        // Check for tunnelling in the first position to account for the periodic boundary conditions
+        // Check for tunnelling in the first position to account for the periodic boundary conditions.
         int curr = whichWell(positionsVector[i][0], tunnellingThreshold);
 
-        if (curr != 0)  // Ignore barrier
-        {
-            if (prev == -1 && curr == 1)
-                instantons++;
+        if (curr != 0) { // Ignore barrier
+            if (prev == -1 && curr == 1) { instantons++; }
 
-            if (prev == 1 && curr == -1)
-                antiInstantons++;
+            if (prev == 1 && curr == -1) { antiInstantons++; }
         }
 
         data.instantonsTemp.push_back(instantons);
         data.antiInstantonsTemp.push_back(antiInstantons);
-    }
-
-    for (int i = 0; i < numBins; i++) { // Average the histogram over measures and normalise it
-        data.histogramTemp[i] /= (measures * N);
     }
 }
