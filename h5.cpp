@@ -4,8 +4,8 @@
 /*********** h5 data storage ************/
 /****************************************/
 
-const char* fileName = "data2";
-const char* fullFileName = "data2.h5";
+const char* fileName = "data";
+const char* fullFileName = "data.h5";
 
 struct Observable {
     std::string name;

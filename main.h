@@ -35,13 +35,13 @@ const int decorrSweepsDWP = 50000;
 
 ///// Repeats /////
 
-const int repeats = 32;                         // Number of repeats for finding standard error.
+const int repeats = 12;                         // Number of repeats for finding standard error.
 const int measures = 5;                        // Number of measures per repeat.
 bool multThreads = false;                       // Flag to determine whether to run the metropolis function in multiple threads, changed by user input.
 
 ///// Lattice parameters /////
 
-int N = 5000;									// Number of lattice points.
+int N = 10000;									// Number of lattice points.
 double a = 0.1;								// Lattice spacing. Beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
 double aInverse = 1.0 / a;										
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Represents the Euclidean "path" of the particle.
@@ -54,7 +54,7 @@ const int omega = 1;                            // Unit harmonic frequency.
 
 ///// DWP specific parameters /////
 
-double wellCentres = 1.4;                       // Well centre positions.
+double wellCentres = 1.6;                       // Well centre positions.
 const double lambda = 1.0;                      // Coupling constant. Kept as one, changing lambda just changes the scale of the system.
 
 double omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the DWP.
