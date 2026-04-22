@@ -1,0 +1,32 @@
+Updates per [time]:
+
+Uh^-1: 74,367,561,600 updates / hour
+Um^-1: 1,239,459,360 updates / minute
+Us^-1: 20,657,656 updates / second
+
+MCMC speed:
+
+4.5 Ghz = 4,500,000,000 Operations/second ->
+218 Operations per site
+
+Option 6:
+
+Sites: 	28,200
+Sweeps: 570,000 * (measures + 2)
+Time:	Sites * Sweeps Uh^-1
+2 Hour measures: 2 / (28,200 * 570,000 / 74,367,561,600) - 2
+
+Option 7:
+
+Sites:  40,000
+Sweeps: 570,000 * (measures + 2)
+Time:	Sites * Sweeps Uh^-1
+2 Hour measures: 2 / (40,000 * 570,000 / 74,367,561,600) - 2
+
+Option 8:
+
+Sites: 	3,333 
+Sweeps: 1,750,000 * (measures + 2)
+Time:	Sites * Sweeps Uh^-1
+2 Hour measures: 2 / (3,333 * 1,750,000 / 74,367,561,600) - 2
+

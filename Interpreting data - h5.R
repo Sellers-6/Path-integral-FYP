@@ -1404,4 +1404,88 @@ ggplot(EA_data, aes(x = 1/(a * a), y = E0MCMC, color = factor(Separation))) +
 #     splitting_error = abs((E1 - E0) - (E1Real - E0Real))
 #   )
 
+##################################################################################################
+##################################################################################################
+##################################################################################################
+
+
+{
+  library(ggplot2) 
+  library(gridExtra)    # Side by side plots
+  library(dplyr)
+  library(rhdf5)        # Read h5 files
+  library(minpack.lm)   # Better exponential fitting
+  library(expm)         # Matrix exponentials
+
+  read_h5 <- function(name) as.numeric(unlist(h5read(dataFile, paste0(base, name))))
+
+  fit_correlator <- function(correlator, latticeSpacing, noiseless_region, E0, DeltaE_guess) {
+    
+    lag <- 0:(noiseless_region - 1)
+    correlator <- correlator[1:noiseless_region] # Use only noiseless region of the correlator
+    
+    df <- data.frame(lag = lag, correlation = correlator)
+    
+    fit <- nlsLM(
+      correlation ~ A * exp(-DeltaE * lag * latticeSpacing) + c,
+      data = df,
+      start = list(A = correlator[1], c = min(correlator), DeltaE = DeltaE_guess),
+      control = nls.lm.control(maxiter = 1024)
+    )
+    
+    list(
+      E = E0 + coef(fit)["DeltaE"],
+      DeltaE = coef(fit)["DeltaE"],
+      fit = predict(fit, newdata = df),
+      df = df
+    )
+  }
+
+  log_ratio_energy <- function(correlator, latticeSpacing, E0, max_lag) {
+    
+    ratios <- 0:max_lag
+    
+    for (i in 1:max_lag) {
+      if (correlator[i] > 0 && correlator[i + 1] > 0) { 
+        ratios[i] <- log(correlator[i] / correlator[i + 1]) / latticeSpacing 
+      } 
+      else { ratios[i] <- NA }
+    }
+    
+    ratios <- ratios[!is.na(ratios)] # Reject NA log results
+    
+    DeltaE <- mean(ratios)
+    E <- E0 + DeltaE
+    
+    list(
+      E = E,
+      DeltaE = DeltaE,
+      ratios = ratios
+    )
+  }
+
+  plot_correlator <- function(correlator, latticeSpacing, exponential_fit_results = NULL) {
+    n <- length(correlator)
+    df <- data.frame(time = 0:(n - 1) * latticeSpacing, correlator = correlator)
+    
+    p <- ggplot(df, aes(x = time, y = correlator)) +
+      geom_line(size = 0.5) +
+      geom_point(size = 1) +
+      labs(x = "Euclidean time t", y = "G(t)", title = "DWP correlator") +
+      theme_minimal(base_size = 14)
+    
+    if (!is.null(exponential_fit_results)) {
+      df_fit <- data.frame(time = (0:(length(exponential_fit_results$fit) - 1)) * latticeSpacing,
+                          fit_val = exponential_fit_results$fit)
+      
+      p <- p + geom_line(data = df_fit, aes(x = time, y = fit_val), color = "red", linetype = "dashed")
+    }
+    
+    return(p)
+  }
+}
+
+#########################################################################
+
+
 # nolint end

@@ -13,36 +13,36 @@
 #include "h5.h"
 #include "window.h"
 
-/***********************************************************************/
-/*********** Parameters, data vectors, and helper functions ************/
-/***********************************************************************/
+/*****************************************************************************/
+/*********** Parameters, observable vectors, and helper functions ************/
+/*****************************************************************************/
 
 ///// Acceptance rate settings /////
 
-double epsilon = 0.45;				            // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%.
+double epsilon = 0.4;				            // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%.
 const int accRateInterval = 1000;               // Number of sweeps between recording acceptance rate.
 
 ///// Decorrelation and Thermalisation /////
 
 int thermSweeps;                                // Sweeps to thermalise the system.
-const int thermSweepsQHO = 20000;               // About twice the decorrelation sweeps.
-const int thermSweepsDWP = 100000;
-const int thermInterval = 10;                   // Number of MC sweeps performed between measuring parameters during thermalisation.
+int thermSweepsQHO = 20000;                     // About twice the decorrelation sweeps.
+int thermSweepsDWP = 10000;
+const int thermInterval = 1000;                 // Number of MC sweeps performed between measuring parameters during thermalisation.
 
 int decorrSweeps;                               // Number of sweeps between taking measures of the path to reduce correlation between successive measures.
-const int decorrSweepsQHO = 10000;			     
-const int decorrSweepsDWP = 50000;
+int decorrSweepsQHO = 10000;			     
+int decorrSweepsDWP = 5000;
 
 ///// Repeats /////
 
-const int repeats = 12;                         // Number of repeats for finding standard error.
-const int measures = 5;                        // Number of measures per repeat.
+int repeats = 32;                         // Number of repeats for finding standard error.
+int measures = 100;                        // Number of measures per repeat.
 bool multThreads = false;                       // Flag to determine whether to run the metropolis function in multiple threads, changed by user input.
 
 ///// Lattice parameters /////
 
-int N = 10000;									// Number of lattice points.
-double a = 0.1;								// Lattice spacing. Beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
+int N = 2000;									// Number of lattice points.
+double a = 0.075;								// Lattice spacing. Beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
 double aInverse = 1.0 / a;										
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Represents the Euclidean "path" of the particle.
 
@@ -54,7 +54,7 @@ const int omega = 1;                            // Unit harmonic frequency.
 
 ///// DWP specific parameters /////
 
-double wellCentres = 1.6;                       // Well centre positions.
+double wellCentres = 1.4;                       // Well centre positions.
 const double lambda = 1.0;                      // Coupling constant. Kept as one, changing lambda just changes the scale of the system.
 
 double omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);  // Frequency of the wells in the DWP.
@@ -252,15 +252,14 @@ void constructHeaderInfo(const std::string& system) {
 	}
 }
 
-void setParameters(int beta, double a, double wellCentres) {
-    // Use thermalisation/decorrelation sweeps for the system with smallest a, as this will be the slowest to thermalise and decorrelatese.
-	// This is inefficient for systems that are fast to thermalise/decorrelate, but ensures that all systems are sufficiently thermalised and decorrelated.
-    
+void setParameters(int beta, double latticeSpacing, double well_Centres) {
     // Set lattice paramters
+	a = latticeSpacing;
     N = std::round(beta / a);
 	aInverse = 1.0 / a;
     
     // Set parameters for the DWP
+	wellCentres = well_Centres;
     omegaDWP = std::sqrt(8 * lambda * wellCentres * wellCentres);
     tunnellingThreshold = 0.2 * wellCentres;
 }

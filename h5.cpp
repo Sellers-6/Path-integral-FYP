@@ -15,10 +15,10 @@ struct Observable {
 // Update this function to include all the observables you want to store in the HDF5 file.
 static std::vector<Observable> getObservables() {
     return {
-        {"E0Therm", &E0Therm},
-        {"E0", &E0},
         {"accRateTherm", &accRateTherm},
         {"accRate", &accRate},
+        {"E0Therm", &E0Therm},
+        {"E0", &E0},
         {"histogram", &histogram},
         {"Gx1x1", &Gx1x1},
         {"Gx2x2", &Gx2x2},
@@ -148,7 +148,7 @@ void writeData7( const std::string& system, const std::string& wellCentres, cons
     H5Fclose(file);
 }
 
-void writeData8(const std::string& system, const std::string& latticeSpacing) {
+void writeData8(const std::string& system, const std::string& wellCentres) {
     hid_t file = openOrCreateFile();
     if (file < 0) {
         std::cerr << "Failed to open HDF5 file\n";
@@ -158,7 +158,7 @@ void writeData8(const std::string& system, const std::string& latticeSpacing) {
     auto observables = getObservables();
 
     for (const auto& obs : observables) {
-        std::string path = system + "/eight/" + latticeSpacing + "/" + obs.name;
+        std::string path = system + "/eight/" + wellCentres + "/" + obs.name;
 
         hid_t group = createOrReplaceGroup(file, path);
         if (group < 0) { continue; }

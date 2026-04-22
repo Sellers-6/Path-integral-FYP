@@ -43,55 +43,69 @@ int main() {
         else if (choice == "6") { // Run DWP system with multi-threading with varying beta and well separation.
             multThreads = true;
             sixFlag = true;
-            std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.325, 1.35, 1.375, 1.4, 1.425, 1.45, 1.475, 1.5, 1.6 }; 
-            std::vector<double> betaVec = { 1000, 750, 500, 250, 100, 75, 50, 25, 10 }; 
-            //std::vector<double> wellCentresVec = { 1.3, 1.4, 1.5, 1.6 };
-            //std::vector<double> betaVec = { 1000, 500, 100, 50, 10 };
+            std::vector<double> wellCentresVec =        { 1.000, 1.100, 1.200, 1.300, 1.4000, 1.50000 };
+            std::vector<double> thermalisationVec =     { 10000, 10000, 10000, 10000, 100000, 1000000 };
+            std::vector<double> betaVec =               { 500, 400, 250, 100, 75, 50, 25, 10 };
+            int thermalisationIndex = 0;
+			measures = 1; repeats = 32;
             for (double betaElement : betaVec) {
-                a = 0.1; epsilon = 0.45;                            // Fix lattice spacing and epsilon.
+                a = 0.05; epsilon = 0.32;                           // Fix lattice spacing and epsilon.
                 for (double wellCentresElement : wellCentresVec) {
-					std::cout << "\n Running DWP system with beta = " << betaElement << " and well centres = " << wellCentresElement << std::endl;
+                    thermSweepsDWP = thermalisationVec[thermalisationIndex % thermalisationVec.size()];
+                    decorrSweepsDWP = thermSweepsDWP / 2;
                     wellCentres = wellCentresElement;               // Update the well centres based on the separation.
                     setParameters(betaElement, a, wellCentres);
+                    std::cout << "\n Running DWP system with beta = " << betaElement << " and well centres = " << wellCentresElement << std::endl;
                     metropolisRepeat("DWP");
+                    thermalisationIndex++;
                 }
             }
         }
         else if (choice == "7") { // Run DWP system with multi-threading with varying lattice spacing and well separation.
             multThreads = true;
             sevenFlag = true;
-            //std::vector<double> wellCentresVec = { 1.0, 1.1, 1.2, 1.3, 1.325, 1.35, 1.375, 1.4, 1.425, 1.45, 1.475, 1.5, 1.6 };
-			//std::vector<double> latticeSpacingsVec = { 0.5, 0.4, 0.3, 0.25, 0.2, 0.175, 0.15, 0.125, 0.1, 0.075, 0.05 };
-            //std::vector<double> esplinonVec = { 0.7, 0.65, 0.6, 0.55, 0.53, 0.5, 0.47, 0.45, 0.43, 0.4, 0.3 };
-            std::vector<double> wellCentresVec = { 1.3, 1.4, 1.5, 1.6 };
-            std::vector<double> latticeSpacingsVec = { 0.5, 0.3, 0.2, 0.1, 0.05 };
-            std::vector<double> esplinonVec = { 0.7, 0.6, 0.53, 0.45, 0.3 };
-            int epsilonIndex = 0;                                   // Index to keep track of which epsilon value we are using.
+            std::vector<double> wellCentresVec =        { 1.000, 1.100, 1.200, 1.300, 1.4000, 1.50000 };
+            std::vector<double> thermalisationVec =     { 10000, 10000, 10000, 10000, 100000, 1000000 };
+            std::vector<double> latticeSpacingsVec =    { 0.5, 0.40, 0.3, 0.25, 0.20, 0.175, 0.15, 0.125, 0.10, 0.075, 0.05 };
+            std::vector<double> esplinonVec =           { 0.7, 0.65, 0.6, 0.57, 0.55, 0.520, 0.50, 0.480, 0.45, 0.400, 0.30 };
+            int thermalisationIndex = 0;
+            int epsilonIndex = 0;
+            measures = 1; repeats = 32;
             for (double latticeSpacingsElement : latticeSpacingsVec) {
                 a = latticeSpacingsElement;                         // Update the lattice spacing.
                 epsilon = esplinonVec[epsilonIndex];                // Update epsilon based on the lattice spacing, smaller lattice spacings require smaller epsilon for good acceptance rates.
                 for (double wellCentresElement : wellCentresVec) {
-                    std::cout << "\n Running DWP system with lattice spacing = " << latticeSpacingsElement << " and well centres = " << wellCentresElement << std::endl;
+                    thermSweepsDWP = thermalisationVec[thermalisationIndex % thermalisationVec.size()];
+                    decorrSweepsDWP = thermSweepsDWP / 2;
                     wellCentres = wellCentresElement;               // Update the well centres based on the separation.
-					setParameters(100, a, wellCentres);             // Use the same beta for all runs, large enough to capture the ground state accurately.
+					setParameters(500, a, wellCentres);             // Use the same beta for all runs, large enough to capture the ground state accurately.
+                    std::cout << "\n Running DWP system with lattice spacing = " << latticeSpacingsElement << " and well centres = " << wellCentresElement << std::endl;
                     metropolisRepeat("DWP");
+                    thermalisationIndex++;
                 }
                 epsilonIndex++;
             }
         }
-        else if (choice == "8") { // Run QHO system with multi-threading with varying lattice spacing.
+        else if (choice == "8") { // Run DWP system with multi-threading with varying well separation.
             multThreads = true;
             eightFlag = true;
-            std::vector<double> latticeSpacingsVec = { 0.5, 0.4, 0.3, 0.25, 0.2, 0.175, 0.15, 0.125, 0.1, 0.075, 0.05 };
-            std::vector<double> esplinonVec = { 0.7, 0.65, 0.6, 0.55, 0.53, 0.5, 0.47, 0.45, 0.43, 0.4, 0.3 };
-            int epsilonIndex = 0;                                   // Index to keep track of which epsilon value we are using.
-            for (double latticeSpacingsElement : latticeSpacingsVec) {
-                a = latticeSpacingsElement;                         // Update the lattice spacing.
-                epsilon = esplinonVec[epsilonIndex];                // Update epsilon based on the lattice spacing, smaller lattice spacings require smaller epsilon for good acceptance rates.
-                std::cout << "\n Running QHO system with lattice spacing = " << latticeSpacingsElement << " and epsilon = " << epsilon << std::endl;
-                setParameters(100, a, wellCentres);                 // Keep beta fixed at 100, which is large enough to capture the ground state properties well for the QHO.
-                metropolisRepeat("QHO");
-                epsilonIndex++;
+            std::vector<double> wellCentresVec =        {   0.025, 0.050, 0.075, 0.100, 0.125, 0.150, 0.175, 0.200, 0.225, 0.250, 0.275, 0.300, 0.325, 0.350, 0.375, 0.400,  0.425,  0.450,  0.475,  0.500,
+                                                            0.525, 0.550, 0.575, 0.600, 0.625, 0.650, 0.675, 0.700, 0.725, 0.750, 0.775, 0.800, 0.825, 0.850, 0.875, 0.900,  0.925,  0.950,  0.975,  1.000, 
+                                                            1.025, 1.050, 1.075, 1.100, 1.125, 1.150, 1.175, 1.200, 1.225, 1.250, 1.275, 1.300, 1.325, 1.350, 1.375, 1.400,  1.425,  1.450,  1.475,  1.500 };
+            std::vector<double> thermalisationVec =     {   10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000,  10000,  10000,  10000,  10000, 
+                                                            10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000,  10000,  10000,  10000,  10000, 
+                                                            10000, 10000, 10000, 10000, 10000, 10000, 10000, 25000, 25000, 25000, 50000, 50000, 50000, 50000, 75000, 100000, 250000, 500000, 750000, 1000000 };
+            int thermalisationIndex = 0;
+            measures = 10; repeats = 32;
+            a = 0.075; epsilon = 0.35;                              // Found to give 60% acceptance rate with lattice spacing = 0.075.
+            for (double wellCentresElement : wellCentresVec) {
+                thermSweepsDWP = thermalisationVec[thermalisationIndex];
+                decorrSweepsDWP = thermSweepsDWP / 2;
+                wellCentres = wellCentresElement;                   // Update the well centres based on the separation.
+                setParameters(250, 0.075, wellCentres);             // Run for fixed lattice spacing and inverse temperature beta, found to be big enough in analysis.
+                std::cout << "\n Running DWP system with well centres = " << wellCentresElement << std::endl;
+                metropolisRepeat("DWP");
+                thermalisationIndex++;
             }
         }
         else if (choice == "0") { // Exit the program.
@@ -118,7 +132,7 @@ void chooseSystem() {
         "   this is used to produce data for the error analysis of finite beta effects on energy levels.\n"
         "7: Run DWP system with multi-threading with varying lattice spacing and well separation,\n"
         "   this is used to produce data for the error analysis of discretisation on energy levels.\n"
-        "8: Run QHO system with multi-threading with varying lattice spacing.\n"
+        "8: Run DWP system with multi-threading with varying well separation.\n"
         "0: Exit\n"
         "Warning: Program has a tendancy to crash when ran for long times with visualisation";
     std::cout << chooseSystemString << std::endl;
@@ -233,8 +247,16 @@ void metropolisRepeat(std::string system) {
 
         initialise(system, rng, data);
 
+        int currentSweep = 0;
+        int checkPointInterval = 10000;
+        int checkPoint = checkPointInterval;
 		while (true) { // Keep updating the path and the window until the user closes the window.
             metropolisSweep(potential, rng, data);
+            currentSweep++;
+            if (currentSweep == checkPoint) {
+                checkPoint += checkPointInterval;
+                std::cout << "Sweep number: " << currentSweep << std::endl; // This can be commented out, but is useful for telling how many sweeps tunneling takes in the DWP system.
+            }
         }
     }
 
@@ -244,7 +266,7 @@ void metropolisRepeat(std::string system) {
     if (!sixFlag && !sevenFlag && !eightFlag) { writeData(system); }                                // Writes all data to a single h5 file, separated into groups.
 	else if (sixFlag) { writeData6(system, std::to_string(wellCentres), std::to_string(N * a)); }   // Writes data for option six.
     else if (sevenFlag) { writeData7(system, std::to_string(wellCentres), std::to_string(a)); }     // Writes data for option seven.
-	else if (eightFlag) { writeData8(system, std::to_string(a)); }                                  // Writes data for option eight.
+	else if (eightFlag) { writeData8(system, std::to_string(wellCentres)); }                                  // Writes data for option eight.
 	
     // Clear all vectors for the next run.
     positions.clear();
