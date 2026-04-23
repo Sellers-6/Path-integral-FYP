@@ -192,19 +192,21 @@ E0; E0_diag; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0Standard
       geom_histogram(aes(x = E0RepeatAvg, y = after_stat(density)), # after_stat(density) normalises the histogram to a density
                     bins = bins, fill = "skyblue", color = "black") +
       geom_line(aes(x = continuousE0, y = normDist), color = "red", linewidth = 1) +
-      labs(title = "Ground State Energy Histogram for the DWP",
-          x = expression("Ground State Energy " ~ E[0]), y = "Probability Density") 
+      labs(x = expression("Ground State Energy " ~ E[0]), y = "Probability Density") +
+      theme_minimal(base_size = 14) +
+      theme(axis.title = element_text(size = 18), axis.text = element_text(size = 14))
 
     shapiroTest <- shapiro.test(E0RepeatAvg) # Run a Shapiro test on the data, values of p < 0.05 are not normally distributed
     qqPlot <- ggplot(data.frame(E0RepeatAvg), aes(sample = E0RepeatAvg)) +
       stat_qq() +
       stat_qq_line(color = "red") +
-      labs(title = paste0("QQ Plot (Shapiro-Wilk p = ", round(shapiroTest$p.value, 4), ")"),
-          x = "Theoretical Quantiles", y = "Sample Quantiles")
+      labs(x = "Theoretical Quantiles", y = "Sample Quantiles") +
+      theme_minimal(base_size = 14) +
+      theme(axis.title = element_text(size = 18), axis.text = element_text(size = 14))
 
     grid.arrange(histPlot, qqPlot, ncol = 2)
 }
-
+save_png <- TRUE
 if (save_png) {
       png("Figures/DWP_Histogram_qq.png", width = 1200, height = 800)
           grid.arrange(histPlot, qqPlot, ncol = 2)
