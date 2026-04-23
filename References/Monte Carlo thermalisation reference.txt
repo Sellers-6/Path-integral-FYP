@@ -1,6 +1,0 @@
-https://bookdown.org/rdpeng/advstatcomp/monitoring-convergence.html 
-
-Chapter 7.4
-
-[3] C. Gattringer, C. B. Lang, “Quantum chromodynamics on the lattice”, Lect.Notes Phys. 788 (2010),
-1-343. from the project selection page

@@ -145,10 +145,10 @@ if (save_png) {
 
   E0StandardError <- sd(E0RepeatAvg) / sqrt(length(E0RepeatAvg))
 
-  E0_error <- abs(((E0 - 0.5) / 0.5) * 100) # Percent error
+  E0_pc_error <- abs(((E0 - 0.5) / 0.5) * 100) # Percent error
 }
 
-E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError ; E0_error
+E0; mean(E0RepeatAvg) + E0StandardError; mean(E0RepeatAvg) - E0StandardError ; E0_pc_error; E0StandardError
 
 ###~~~~~~~~~~~~~~~~~###
 ### Normality tests ###
@@ -321,7 +321,7 @@ log_ratio_energy <- function(correlator, latticeSpacing, E0, plateau_width) {
   delta_E_pc_error <- abs(((delta_E - 1.0) / 1.0) * 100)
 }
 
-E1; 1.5; E1 - delta_E_err - E0StandardError; E1 + delta_E_err + E0StandardError; E1_pc_error
+E1; 1.5; E1 - sqrt(delta_E_err^2 + E0StandardError^2); E1 + sqrt(delta_E_err^2 + E0StandardError^2); E1_pc_error; sqrt(delta_E_err^2 + E0StandardError^2)
 delta_E; 1.0; delta_E - delta_E_err; delta_E + delta_E_err; delta_E_pc_error
 
 # E2

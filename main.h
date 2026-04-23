@@ -19,19 +19,19 @@
 
 ///// Acceptance rate settings /////
 
-double epsilon = 0.4;				            // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%.
+double epsilon = 0.3;				            // Maximum random displacement for Metropolis algorithm, decreasing epsilon increases acceptance rate. Want an acceptance rate between 50% and 80%.
 const int accRateInterval = 1000;               // Number of sweeps between recording acceptance rate.
 
 ///// Decorrelation and Thermalisation /////
 
 int thermSweeps;                                // Sweeps to thermalise the system.
-int thermSweepsQHO = 20000;                     // About twice the decorrelation sweeps.
-int thermSweepsDWP = 10000;
+int thermSweepsQHO = 100000;                     // About twice the decorrelation sweeps.
+int thermSweepsDWP = 100000;
 const int thermInterval = 1000;                 // Number of MC sweeps performed between measuring parameters during thermalisation.
 
 int decorrSweeps;                               // Number of sweeps between taking measures of the path to reduce correlation between successive measures.
-int decorrSweepsQHO = 10000;			     
-int decorrSweepsDWP = 5000;
+int decorrSweepsQHO = 50000;			     
+int decorrSweepsDWP = 50000;
 
 ///// Repeats /////
 
@@ -41,7 +41,7 @@ bool multThreads = false;                       // Flag to determine whether to 
 
 ///// Lattice parameters /////
 
-int N = 2000;									// Number of lattice points.
+int N = 500;									// Number of lattice points.
 double a = 0.075;								// Lattice spacing. Beta = N * a, the inverse temperature of the system. Making beta larger allows us to project out the ground state more effectively.
 double aInverse = 1.0 / a;										
 std::vector<double> positions = std::vector<double>(N, 0.0);	// Represents the Euclidean "path" of the particle.
@@ -79,6 +79,7 @@ int side = 1;                                   // Determines which well the par
 bool sixFlag = false;                           // Flag to determine whether user selected option six or not.
 bool sevenFlag = false;                         // Flag to determine whether user selected option seven or not.
 bool eightFlag = false;                         // Flag to determine whether user selected option eight or not.
+bool createInstantonFigure = false;             // Flag to determine whether to create the instanton figure or not.
 
 ///// Vectors to store data /////
 

@@ -71,14 +71,15 @@ save_png <- FALSE
   Split_diag    <- diagEnergiesData[energy_row, 5]
   Split_diag_2  <- diagEnergiesData[energy_row, 6]
 
-  # WKB analysis
+  # ABCs analysis
   omegaDWP  <- sqrt(8 * lambdaDWP * wellCentres^2)
+
   S_inst    <- (2/3) * omegaDWP * (wellCentres^2) 
   alpha     <- 1 / 12 # A complicated calculation performed in Zinn-Justin 1993 (or ABCs of Instantons) gives this value
   K         <- omegaDWP * sqrt(S_inst / (2 * pi)) * (alpha ^ -0.5) # A prefactor for the splitting energy
-  Split_WKB <- K * exp(-S_inst)
-  E0_WKB    <- 0.5 * omegaDWP - (Split_WKB / 2)
-  E1_WKB    <- 0.5 * omegaDWP + (Split_WKB / 2)
+  Split_ABCs <- K * exp(-S_inst)
+  E0_ABCs    <- 0.5 * omegaDWP - (Split_ABCs / 2)
+  E1_ABCs    <- 0.5 * omegaDWP + (Split_ABCs / 2)
 }
 
 ###~~~~~~~~~~~~~~~~~###
@@ -259,23 +260,22 @@ if (save_png) {
 {
   ggplot(wave_df, aes(x = x)) +
     # MCMC wave function
-    geom_point(aes(y = psi, color = "MCMC"), size = 1.5) +
-    geom_line(aes(y = psi, color = "MCMC"), linewidth = 0.7, linetype = "dotted") +
+    geom_point(aes(y = psi, color = "MCMC"), size = 0.6) +
 
     # Diagonalisation wave function
-    geom_line(data = diagWFData, aes(x = x, y = psi0, color = "Diagonalised"), linewidth = 0.7) +
+    geom_line(data = diagWFData, aes(x = x, y = psi0, color = "Diagonalised"), linewidth = 0.5, alpha = 0.7) +
 
-    # WKB approximation
-    geom_line(aes(y = psiAnalytical, color = "WKB"), linetype = "dashed") +
+    # ABCs approximation
+    geom_line(aes(y = psiAnalytical, color = "Double Gaussian"), linewidth = 0.5, linetype = "dashed") +
     
-    labs(title = "Double-Well Potential Ground State Wave Function", x = "Position x", y = expression("Wavefunction " ~ psi[0](x))) +
+    labs(x = "Position x", y = expression("Wavefunction " ~ psi[0](x))) +
 
-    scale_color_manual(name = "", values = c("MCMC" = "red", "Diagonalised" = "black", "WKB" = "blue")) + 
+    scale_color_manual(name = "", values = c("MCMC" = "red", "Diagonalised" = "black", "Double Gaussian" = "blue")) + 
 
     theme_minimal(base_size = 14)
 }
-   
-if (save_png) { ggsave("Figures/DWP_wave_functions.png", width = 8, height = 4, dpi = 1200) }
+save_png <- TRUE   
+if (save_png) { ggsave("Figures/DWP_wave_functions.png", width = 12, height = 4, dpi = 1200) }
 
 ###~~~~~~~~~~~~~~~~~~~~~~~###
 ### Excited energy states ###
@@ -468,13 +468,13 @@ mean(instantonsData) / pathLength
 
 S_inst; S_inst_approximation
 
-# Comparing energies against diagonalisation method and WKB
+# Comparing energies against diagonalisation method and ABCs
 
-E0; E0_diag; E0_WKB
+E0; E0_diag; E0_ABCs
 
-E1; E1_diag; E1_WKB
+E1; E1_diag; E1_ABCs
 
-E1 - E0; Split_diag; Split_WKB 
+E1 - E0; Split_diag; Split_ABCs
 
 #####################################################################################################################################
 ################################################# Vary Well Centres and Beta ########################################################
@@ -501,13 +501,13 @@ save_png <- FALSE
 ###~~~~~~~~~~~###
 
 {
-  dataFile <- "data2.h5"
+  dataFile <- "data.h5"
 
   read_h5 <- function(name) as.numeric(unlist(h5read(dataFile, paste0(base, name))))
   
-  well_centres_vec <- c(1.0, 1.1, 1.2, 1.3, 1.325, 1.35, 1.375, 1.4, 1.425, 1.45, 1.475, 1.5, 1.6)
-  betas_vec <- c(1000, 750, 500, 250, 100, 75, 50, 25, 10)
-  latticeSpacing <- 0.1 
+  well_centres_vec <- c(1.0, 1.1, 1.2, 1.3, 1.4, 1.5)
+  betas_vec <- c(500, 400, 250, 100, 75, 50, 25)
+  latticeSpacing <- 0.05 
   path_lengths <- as.integer(betas_vec / latticeSpacing)
   
   wellReps <- length(well_centres_vec)
@@ -586,9 +586,14 @@ save_png <- FALSE
   alpha <- 1 / 12
   K <- omegaDWP * sqrt(S_inst / (2 * pi)) * (alpha ^ -0.5)
 
-  Split_WKB <- K * exp(-S_inst)
-  E0_WKB <- 0.5 * omegaDWP - (Split_WKB / 2)
-  E1_WKB <- 0.5 * omegaDWP + (Split_WKB / 2)
+  Split_ABCs <- K * exp(-S_inst)
+  E0_ABCs <- 0.5 * omegaDWP - (Split_ABCs / 2)
+  E1_ABCs <- 0.5 * omegaDWP + (Split_ABCs / 2)
+
+  # Grabovsky Splitting energy
+  Split_Grabovsky <- (omegaDWP / pi) * exp(-omegaDWP * wellCentres^2)
+  E0_Grabovsky    <- 0.5 * omegaDWP - (Split_Grabovsky / 2)
+  E1_Grabovsky    <- 0.5 * omegaDWP + (Split_Grabovsky / 2)
 
   # Diagonalisation data
   diagEnergiesData <- read.csv("DWP diagonalisation/DWP diagonalisation/energies.csv")
@@ -667,24 +672,48 @@ print(E0_vals, digits = 4)
     )
 }
 
+error_summary <- plot_df %>%
+  filter(Beta == 250) %>% 
+  mutate(
+    # Statistical Percentage Error (MCMC noise)
+    stat_pc_error = (Error / Energy) * 100,
+    
+    # Systematic Percentage Bias (Diagonalization used as benchmark)
+    sys_pc_error = (abs(Energy - E0_diag) / E0_diag) * 100
+  )
+
+# Calculate the averages across all well centres
+avg_stat_error <- mean(error_summary$stat_pc_error)
+avg_sys_error  <- mean(error_summary$sys_pc_error)
+
+# Print results
+cat(sprintf("Average Statistical Error: %.3f%%\n", avg_stat_error))
+cat(sprintf("Average Systematic Bias:    %.3f%%\n", avg_sys_error))
+
+# Combine in quadrature
+avg_total_error <- sqrt(avg_stat_error^2 + avg_sys_error^2)
+
+cat(sprintf("Total Combined Relative Error: %.3f%%\n", avg_total_error))
+
 ggplot(plot_df, aes(x = Beta, y = Energy, color = Well_Color)) +
   # Diagonalised values
   geom_hline(aes(yintercept = E0_diag, color = Well_Color), linetype = "dashed") +
   
   # MCMC ground state energy
-  geom_line(aes(group = WellCentre), size = 0.7) +
+  geom_line(aes(group = WellCentre), linewidth = 0.7) +
   geom_point(size = 2) +
-  geom_errorbar(aes(ymin = Energy - Error, ymax = Energy + Error), width = 0.05) +
+  geom_errorbar(aes(ymin = Energy - Error, ymax = Energy + Error), width = 0.03) +
   
   # Apply log scale to x-axis as Beta spans orders of magnitude
   scale_x_log10(breaks = betas_vec) +
   
   # Labels and theme
-  labs(title = "Ground State Energy Convergence", x = "Inverse Temperature Beta", 
+  labs(title = "Ground State Convergence with Decreasing Temperature", x = expression("Inverse Temperature"~Beta), 
       y = expression("Ground State Energy " ~ E[0]), color = "Well Centre") +
-  theme_minimal(base_size = 14)
+  theme_minimal(base_size = 14) +
+  theme(axis.title = element_text(size = 18), axis.text = element_text(size = 14))
 
-if (save_png) { ggsave("Figures/DWP_E0_vary_beta.png", width = 7, height = 4, dpi = 1200) }
+if (save_png) { ggsave("Figures/DWP_E0_vary_beta.png", width = 11, height = 10, dpi = 1200) }
 
 ###~~~~~~~~~~~~~~~~~~~~~~~###
 ### Excited energy states ###
@@ -756,7 +785,7 @@ log_ratio_energy <- function(correlator, latticeSpacing, E0, plateau_width = 10)
         correlator = Gx1x1Data[[i]][[j]],
         latticeSpacing = latticeSpacing,
         E0 = E0_vals[i, j],
-        plateau_width = 20
+        plateau_width = 5
       )
       
       E1_vals_log[i, j] <- log_ratio_results$E
@@ -764,7 +793,7 @@ log_ratio_energy <- function(correlator, latticeSpacing, E0, plateau_width = 10)
       # Estimate error by the standard deviation of ratios in the best plateau 
       delta_E_err_log[i, j]  <- sd(log_ratio_results$plateau) / sqrt(length(log_ratio_results$plateau))
 
-      noiseless_regions[i, j] <- log_ratio_results$plateau_indices
+      # noiseless_regions[i, j] <- log_ratio_results$plateau_indices
     }
   }
 }
@@ -800,15 +829,14 @@ ggplot(plot_log_df, aes(x = Beta, y = Splitting, color = Well_Factor)) +
   scale_x_log10(breaks = betas_vec) +
 
   labs(
-    title = "Energy Splitting Convergence with increasing Beta",
+    title = "Energy Splitting Convergence",
     x = expression("Log of Inverse Temperature" ~ Log[10](Beta)),
     y = expression(Delta * E),
     color = "Well Centre") +
-  ylim(0, 1) + 
-  theme_minimal(base_size = 14)
+  # ylim(0, 1) + 
+    theme_minimal(base_size = 14)
 
-if (save_png) { ggsave("Figures/DWP_delta_E_vary_beta.png", width = 7, height = 4, dpi = 1200) }
-
+if (save_png) { ggsave("Figures/DWP_delta_E_vary_beta.png", width = 10, height = 10, dpi = 1200) }
 
 # Exponential fit method
 
@@ -875,7 +903,7 @@ plot_correlator <- function(correlator, noiseless_region, latticeSpacing, wellCe
 # Naively choose noiseless region
 
 {
-  noiseless_region <- 1:20 
+  naive_noiseless_region <- 1:20 
 
   for (i in seq_len(wellReps)) {
     for (j in seq_len(betaReps)) {
@@ -884,7 +912,7 @@ plot_correlator <- function(correlator, noiseless_region, latticeSpacing, wellCe
       exponential_fit_results <- fit_correlator(
         Gx1x1Data[[i]][[j]],
         latticeSpacing,
-        noiseless_region,
+        naive_noiseless_region,
         E0_vals[i, j],
         DeltaE_guess = Split_diag[i] # Could estimate splitting energy if no known values were available
       )
@@ -926,6 +954,14 @@ delta_E_vals_fit
 wellIndex <- 1
 betaIndex <- 1
 
+plot_correlator(Gx1x1Data[[wellIndex]][[betaIndex]], naive_noiseless_region, latticeSpacing, well_centres_vec[wellIndex],
+  fit_correlator(
+      Gx1x1Data[[wellIndex]][[betaIndex]],
+      latticeSpacing,
+      naive_noiseless_region,
+      E0_vals[wellIndex, betaIndex],
+      DeltaE_guess = Split_diag[wellIndex]))
+
 plot_correlator(Gx1x1Data[[wellIndex]][[betaIndex]], noiseless_regions[wellIndex, betaIndex], latticeSpacing, well_centres_vec[wellIndex],
   fit_correlator(
       Gx1x1Data[[wellIndex]][[betaIndex]],
@@ -933,7 +969,6 @@ plot_correlator(Gx1x1Data[[wellIndex]][[betaIndex]], noiseless_regions[wellIndex
       noiseless_regions[wellIndex, betaIndex],
       E0_vals[wellIndex, betaIndex],
       DeltaE_guess = Split_diag[wellIndex]))
-
 
 #####################################################################################################################################
 ########################################## Vary Well Centres and Lattice Spacing ####################################################
@@ -961,10 +996,10 @@ plot_correlator(Gx1x1Data[[wellIndex]][[betaIndex]], noiseless_regions[wellIndex
   
   read_h5 <- function(name) as.numeric(unlist(h5read(dataFile, paste0(base, name))))
 
-  well_centres_vec <- c(1.0, 1.1, 1.2, 1.3, 1.325, 1.35, 1.375, 1.4, 1.425, 1.45, 1.475, 1.5, 1.6)
+  well_centres_vec <- c(1.0, 1.1, 1.2, 1.3, 1.4, 1.5)
   # Now we vary lattice spacing (a) instead of beta
   lattice_spacing_vec <- c(0.5, 0.4, 0.3, 0.25, 0.2, 0.175, 0.15, 0.125, 0.1, 0.075, 0.05)
-  beta_val <- 100 # Keep beta constant for this comparison
+  beta_val <- 500 # Keep beta constant for this comparison
   
   wellReps <- length(well_centres_vec)
   lsReps   <- length(lattice_spacing_vec)
@@ -1041,9 +1076,9 @@ plot_correlator(Gx1x1Data[[wellIndex]][[betaIndex]], noiseless_regions[wellIndex
   alpha <- 1 / 12
   K <- omegaDWP * sqrt(S_inst / (2 * pi)) * (alpha ^ -0.5)
 
-  Split_WKB <- K * exp(-S_inst)
-  E0_WKB <- 0.5 * omegaDWP - (Split_WKB / 2)
-  E1_WKB <- 0.5 * omegaDWP + (Split_WKB / 2)
+  Split_ABCs <- K * exp(-S_inst)
+  E0_ABCs <- 0.5 * omegaDWP - (Split_ABCs / 2)
+  E1_ABCs <- 0.5 * omegaDWP + (Split_ABCs / 2)
 
   # Diagonalisation data
   diagEnergiesData <- read.csv("DWP diagonalisation/DWP diagonalisation/energies.csv")
@@ -1104,6 +1139,24 @@ print(E0_vals, digits = 3)
     )
 }
 
+ls_error_summary <- plot_df %>%
+  filter(latticeSpacing == 0.075) %>% 
+  mutate(
+    stat_pc_error = (Error / Energy) * 100,
+    sys_pc_error  = (abs(Energy - E0_diag) / E0_diag) * 100,
+    total_pc_err  = sqrt(stat_pc_error^2 + sys_pc_error^2)
+  )
+
+# If you want the average across ALL lattice spacings tested:
+avg_ls_stat <- mean(ls_error_summary$stat_pc_error)
+avg_ls_sys  <- mean(ls_error_summary$sys_pc_error)
+avg_ls_tot  <- mean(ls_error_summary$total_pc_err)
+
+# Print results
+cat(sprintf("Average Stats Error (all a): %.3f%%\n", avg_ls_stat))
+cat(sprintf("Average Sys Bias (all a):    %.3f%%\n", avg_ls_sys))
+cat(sprintf("Total Combined Error:        %.3f%%\n", avg_ls_tot))
+
 ggplot(plot_df, aes(x = 1 / (latticeSpacing^2), y = Energy, color = Well_Color)) +
   # Diagonalised values
   geom_hline(aes(yintercept = E0_diag, color = Well_Color), linetype = "dashed") +
@@ -1111,14 +1164,15 @@ ggplot(plot_df, aes(x = 1 / (latticeSpacing^2), y = Energy, color = Well_Color))
   # MCMC ground state energy
   geom_line(aes(group = WellCentre), size = 0.7) +
   geom_point(size = 2) +
-  geom_errorbar(aes(ymin = Energy - Error, ymax = Energy + Error), width = 0.05) +
+  geom_errorbar(aes(ymin = Energy - Error, ymax = Energy + Error), width = 10) +
   
   # Labels and theme
-  labs(title = "Ground State Energy Convergence", x = expression("Inverse square lattice spacing" ~ 1 / a^2), 
+  labs(title = "Ground State Convergence with Decreasing Lattice Spacing", x = expression("Inverse square lattice spacing" ~ 1 / a^2), 
       y = expression("Ground State Energy " ~ E[0]), color = "Well Centre") +
-  theme_minimal(base_size = 14)
+  theme_minimal(base_size = 14) +
+  theme(axis.title = element_text(size = 18), axis.text = element_text(size = 14))
 
-if (save_png) { ggsave("Figures/DWP_E0_vary_ls.png", width = 7, height = 4, dpi = 1200) }
+if (save_png) { ggsave("Figures/DWP_E0_vary_ls.png", width = 11, height = 10, dpi = 1200) }
 
 ###~~~~~~~~~~~~~~~~~~~~~~~###
 ### Excited energy states ###
@@ -1190,7 +1244,7 @@ log_ratio_energy <- function(correlator, latticeSpacing, E0, plateau_width = 10)
         correlator = Gx1x1Data[[i]][[j]],
         latticeSpacing = lattice_spacing_vec[[j]],
         E0 = E0_vals[i, j],
-        plateau_width = 20
+        plateau_width = 10
       )
       
       E1_vals_log[i, j] <- log_ratio_results$E
@@ -1198,7 +1252,7 @@ log_ratio_energy <- function(correlator, latticeSpacing, E0, plateau_width = 10)
       # Estimate error by the standard deviation of ratios in the best plateau 
       delta_E_err_log[i, j]  <- sd(log_ratio_results$plateau) / sqrt(length(log_ratio_results$plateau))
 
-      noiseless_regions[i, j] <- log_ratio_results$plateau_indices
+      # noiseless_regions[i, j] <- log_ratio_results$plateau_indices
     }
   }
 }
@@ -1227,7 +1281,7 @@ ggplot(plot_log_df, aes(x = 1 / (LatticeSpacing^2), y = Splitting, color = Well_
   # MCMC data
   geom_line(aes(group = Well_Factor), size = 0.8) +
   geom_point(size = 2.5) +
-  geom_errorbar(aes(ymin = Splitting - Splitting_err, ymax = Splitting + Splitting_err), width = 0.01) +
+  # geom_errorbar(aes(ymin = Splitting - Splitting_err, ymax = Splitting + Splitting_err), width = 0.5) +
   
   # Diagonalisation data
   geom_hline(aes(yintercept = Split_diag[Well_Factor], color = Well_Factor), linetype = "dashed") +
@@ -1237,10 +1291,10 @@ ggplot(plot_log_df, aes(x = 1 / (LatticeSpacing^2), y = Splitting, color = Well_
     x = expression("Inverse square lattice spacing" ~ 1 / (a^2)),
     y = expression(Delta * E),
     color = "Well Centre") +
-  ylim(0, 1) + 
-  theme_minimal(base_size = 14)
+  theme_minimal(base_size = 14) +
+  theme(axis.title = element_text(size = 18), axis.text = element_text(size = 14))
 
-if (save_png) { ggsave("Figures/DWP_delta_E_vary_ls.png", width = 7, height = 4, dpi = 1200) }
+if (save_png) { ggsave("Figures/DWP_delta_E_vary_ls.png", width = 11, height = 10, dpi = 1200) }
 
 # Exponential fit
 
@@ -1450,15 +1504,21 @@ plot_correlator(Gx1x1Data[[wellIndex]][[lsIndex]], noiseless_regions[wellIndex, 
 
   wellCentres <- well_centres_vec
 
+  # ABCs analysis
   omegaDWP <- sqrt(8 * lambdaDWP * wellCentres^2)
   S_inst   <- (2/3) * omegaDWP * (wellCentres^2)
 
   alpha <- 1 / 12
   K <- omegaDWP * sqrt(S_inst / (2 * pi)) * (alpha ^ -0.5)
 
-  Split_WKB <- K * exp(-S_inst)
-  E0_WKB <- 0.5 * omegaDWP - (Split_WKB / 2)
-  E1_WKB <- 0.5 * omegaDWP + (Split_WKB / 2)
+  Split_ABCs <- K * exp(-S_inst)
+  E0_ABCs <- 0.5 * omegaDWP - (Split_ABCs / 2)
+  E1_ABCs <- 0.5 * omegaDWP + (Split_ABCs / 2)
+
+  # Grabovsky
+  Split_Grabovsky <- (omegaDWP / pi) * exp(-omegaDWP * wellCentres^2)
+  E0_Grabovsky    <- 0.5 * omegaDWP - (Split_Grabovsky / 2)
+  E1_Grabovsky    <- 0.5 * omegaDWP + (Split_Grabovsky / 2)
 
   # Diagonalisation data
   diagEnergiesData <- read.csv("DWP diagonalisation/DWP diagonalisation/energies.csv")
@@ -1503,7 +1563,18 @@ plot_correlator(Gx1x1Data[[wellIndex]][[lsIndex]], noiseless_regions[wellIndex, 
     E0RepeatAvg <- sapply(E0Split, mean)
     
     E0_vals[i]   <- mean(E0RepeatAvg)
-    E0_errors[i] <- sd(E0RepeatAvg) / sqrt(length(E0RepeatAvg))
+    
+    # Errors
+    MCMC_error <- sd(E0RepeatAvg) / sqrt(length(E0RepeatAvg))
+
+    delta_a_pc <- 0.78
+    delta_beta_pc <- 1.16
+
+    err_a    <- (delta_a_pc / 100) * mean(E0RepeatAvg)
+    err_beta <- (delta_beta_pc / 100) * mean(E0RepeatAvg)
+    
+    # Combine errors using quadrature
+    E0_errors[i] <- sqrt(MCMC_error^2 + err_a^2 + err_beta^2)
   }
 
   names(E0_vals)   <- well_centres_vec
@@ -1587,13 +1658,24 @@ log_ratio_energy <- function(correlator, latticeSpacing, E0, plateau_width = 10)
     
     E1_vals_log[i] <- log_ratio_results$E
     delta_E_vals_log[i] <- log_ratio_results$DeltaE
-    # Estimate error by the standard deviation of ratios in the best plateau 
-    delta_E_err_log[i]  <- sd(log_ratio_results$plateau) / sqrt(length(log_ratio_results$plateau))
 
     names(E1_vals_log)   <- well_centres_vec
     names(delta_E_vals_log) <- well_centres_vec
 
     noiseless_regions[[i]] <- log_ratio_results$plateau_indices
+
+    # Errors
+    # Estimate statistical error by the standard deviation of ratios in the best plateau 
+    MCMC_error  <- sd(log_ratio_results$plateau) / sqrt(length(log_ratio_results$plateau))
+
+    delta_a_pc <- 0.78
+    delta_beta_pc <- 1.16
+
+    err_a    <- (delta_a_pc / 100) * log_ratio_results$DeltaE
+    err_beta <- (delta_beta_pc / 100) * log_ratio_results$DeltaE
+    
+    # Combine errors using quadrature
+    delta_E_err_log[i] <- sqrt(MCMC_error^2 + err_a^2 + err_beta^2)
   }
 }
 
@@ -1636,11 +1718,9 @@ plot_correlator <- function(correlator, noiseless_region, latticeSpacing, wellCe
   p <- ggplot(df, aes(x = time, y = correlator)) +
     geom_line(linewidth = 0.5) + 
     geom_point(size = 1) +
-    labs(x = "Euclidean time t", y = "G(t)", 
-          title = bquote("DWP correlator for " ~ Beta == .(beta) ~ 
-                        ", a =" ~ .(latticeSpacing) ~ 
-                        ", wellCentres =" ~ .(wellCentres))) +
-    theme_minimal(base_size = 14)
+    labs(x = expression("Euclidean time" ~ tau), y = expression("G(" ~ tau ~ ")")) +
+    theme_minimal(base_size = 14) +
+    theme(axis.title = element_text(size = 18), axis.text = element_text(size = 14))
   
   if (!is.null(exponential_fit_results)) {
     df_fit <- data.frame(
@@ -1709,7 +1789,7 @@ delta_E_vals_fit_naive
 delta_E_vals_fit
 
 # Plot any of the correlator fits to check the fit
-wellIndex <- 1
+wellIndex <- 20
 
 plot_correlator(Gx1x1Data[[wellIndex]], noiseless_regions[[wellIndex]], latticeSpacing, well_centres_vec[wellIndex],
   fit_correlator(
@@ -1718,6 +1798,9 @@ plot_correlator(Gx1x1Data[[wellIndex]], noiseless_regions[[wellIndex]], latticeS
       noiseless_regions[[wellIndex]],
       E0_vals[wellIndex],
       DeltaE_guess = Split_diag[wellIndex]))
+
+if (save_png) { ggsave("Figures/DWP_exp_fit_eta_zero_point_five_window_size_twenty.png", width = 16, height = 10, dpi = 1200) }
+
 
 ###~~~~~~~~~~~~~~~~~~~~~~~###
 ### Splitting energy plot ###
@@ -1729,7 +1812,7 @@ df_E0 <- data.frame(
   Energy     = E0_vals,
   Error      = E0_errors,
   Diag       = E0_diag,
-  WKB        = E0_WKB,
+  ABCs        = E0_ABCs,
   State      = "Ground State"
 )
 
@@ -1738,9 +1821,9 @@ df_E0 <- data.frame(
 df_E1 <- data.frame(
   WellCentre = well_centres_vec,
   Energy     = E1_vals_log,  # or E1_vals_fit
-  Error      = delta_E_err_log, # or E1_vals_log
+  Error      = sqrt(E0_errors^2 + delta_E_err_log^2),
   Diag       = E1_diag,
-  WKB        = E1_WKB,
+  ABCs        = E1_ABCs,
   State      = "1st Excited State"
 )
 
@@ -1749,31 +1832,66 @@ plot_df_combined <- rbind(df_E0, df_E1)
 
 ggplot(plot_df_combined, aes(x = WellCentre, y = Energy, color = State, group = State)) +
   # MCMC points and Error Bars
-  geom_errorbar(aes(ymin = Energy - Error, ymax = Energy + Error), width = 0.005) +
-  geom_point(size = 1.8) +
+  geom_errorbar(aes(ymin = Energy - Error, ymax = Energy + Error), width = 0.01) +
+  geom_point(size = 0.5) +
   
   # Diagonalization values as dashed lines
-  geom_line(aes(y = Diag), linetype = "dashed", linewidth = 0.8, alpha = 0.7) +
+  geom_line(aes(y = Diag), linetype = "dashed", linewidth = 0.8, alpha = 0.5) +
   
-  # WKB values
-  geom_line(aes(y = WKB), linewidth = 0.8) +
-
+  # ABCs values
+  geom_line(aes(y = ABCs), linewidth = 0.8) +
   
   labs(
-    title = "Energy Spectrum: Ground and First Excited States",
-    subtitle = bquote("Lattice Spacing a =" ~ .(latticeSpacing) ~ "| Inverse Temperature" ~ beta ~ "=" ~ .(round(latticeSpacing * pathLength)) ~ "| Dashed lines = Diagonalisation"),
+    # title = "Low-Lying Energy Spectrum of the Double Well Potential",
+    # subtitle = bquote("Lattice Spacing a =" ~ .(latticeSpacing) ~ "| Inverse Temperature" ~ 
+    #   beta ~ "=" ~ .(round(latticeSpacing * pathLength)) ~ "| Dashed lines = Diagonalisation | Solid lines = Semi-classical Approximation"),
     x = expression("Well Separation" ~ (eta)),
     y = "Energy (E)",
     color = "Energy Level"
   ) +
-  scale_color_manual(values = c("Ground State" = "#2c3e50", 
-                                "1st Excited State" = "#e74c3c")) +
+  scale_color_manual(values = c("Ground State" = "#2c3e50", "1st Excited State" = "#e74c3c")) +
   theme_minimal(base_size = 14) +
-  theme(legend.position = "bottom")
+  theme(legend.position = "bottom") +
+  theme(axis.title = element_text(size = 18), axis.text = element_text(size = 14))
 
 save_png <- TRUE
 
-if (save_png) { ggsave("Figures/DWP_energy_spectrum.png", width = 10, height = 10, dpi = 1200) }
+if (save_png) { ggsave("Figures/DWP_energy_spectrum.png", width = 15, height = 10, dpi = 1200) }
 
+# Produce instanton figure for the report
+
+# Copy paste the cout string from C++ into this vector
+positions <- c(1.22811, 1.52832, 1.49021, 1.41571, 0.961768, 1.19122, 0.9546, 0.846051, 0.925141, 1.09024, 0.691262, 0.692772, 0.846204, 0.874003, 0.973807, 0.817255, 1.19464, 1.37149, 1.66603, 1.07651, 0.665956, 1.10985, 1.19542, 1.27598, 1.40074, 1.60229, 1.41072, 1.08171, 0.904115, 0.554169, 0.246528, 0.40689, 0.520851, 1.22372, 0.886372, 0.609556, 0.654539, 1.02293, 1.20372, 0.567113, 0.702199, 0.71309, 1.00189, 1.29818, 0.88723, 0.618858, 0.862358, 1.18339, 1.43116, 1.60732, 1.96511, 1.80181, 1.66373, 1.50027, 1.35927, 0.678397, 0.478808, 0.344361, 0.288119, 0.597888, 0.929044, 0.409174, 0.46435, 0.248586, 0.240017, -0.749433, -0.794577, -1.02533, -1.32361, -1.24596, -1.06513, -0.842947, -1.12487, -0.801983, -1.2046, -1.14207, -1.32984, -0.980172, -1.00385, -1.40917, -1.19175, -1.27739, -1.24336, -1.03312, -1.22493, -1.35223, -1.36932, -1.11799, -1.09601, -1.49308, -1.51708, -1.92679, -1.81992, -1.38082, -1.06052, -1.24925, -1.13222, -1.29347, -1.54426, -1.55019, -1.68911, -0.981155, -0.826883, -1.09717, -0.963735, -0.876149, -0.954911, -1.17609, -1.05865, -1.30124, -1.40704, -1.81047, -1.7651, -1.37413, -1.39044, -1.27829, -1.6689, -1.72582, -1.1289, -1.10169, -1.20334, -1.12418, -1.04066, -1.70219, -1.88639, -1.59177, -1.20228, -1.66528, -1.6055, -1.54066, -1.01199, -0.640461, -0.834568, -1.25375, -1.45562, -1.2563, -1.41776, -1.03457, -0.919233, -0.629555, -1.04076, -1.30798, -1.68327, -1.35788, -1.47487, -1.8732, -1.70886, -1.66543, -1.92222, -2.00176, -1.54993, -1.45837, -1.83612, -1.77752, -1.32215, -1.57807, -1.53441, -1.15724, -1.73176, -2.18799, -1.62336, -1.15858, -0.686137, -0.272689, -0.081936, -0.118703, -0.543992, -0.961538, -1.05379, -1.22718, -1.64245, -1.19168, -1.46999, -1.54255, -1.39312, -1.40798, -1.17618, -1.18074, -1.39286, -1.65426, -1.48059, -1.6989, -1.23399, -0.933559, -0.672166, -0.561224, -0.648794, -0.878386, -0.299315, -0.755987, -0.911297, -0.931861, -1.02026, -1.02747, -0.959071, -1.04433, -0.626058, -1.00682, -1.6379, -1.85678, -1.60383, -1.01873, -1.22281, -1.30848, -1.05561, -1.09946, -0.942813, -1.25896, -1.69456, -1.42534, -1.61618, -1.42199, -2.12937, -2.01159, -1.76654, -1.5163, -1.25219, -1.08484, -0.775807, -0.6471, 0.114379, 0.155501, 0.612678, 0.665128, 0.753684, 0.639577, 0.897472, 1.23166, 0.75444, 0.854549, 0.742459, 0.623535, 0.477715, 0.71872, 0.740067, 0.712409, 0.698456, 0.852322, 1.03546, 1.06119, 1.04849, 0.978638, 1.00106, 0.677363, 0.757804, 0.615504, 0.744954, 1.00401, 1.06618, 1.24031, 0.847568, 0.700836, 0.693529, 0.646595, 0.776235, 0.659399, 0.859068, 1.15897, 0.855017, 1.11498, 1.19787, 1.03449, 0.831773, 1.05927, 1.23089, 1.21533, 1.36913, 1.0609, 1.24488, 1.28342, 1.36737, 1.37182, 1.51418, 1.3428, 1.67839, 1.24635, 1.44194, 1.33725, 1.29749, 1.52253, 1.41181, 1.13899, 1.314, 1.12927, 0.933824, 0.91764, 1.07512, 1.36737, 1.5486, 1.69082, 1.71148, 1.79522, 1.80274, 1.09497, 1.11271, 0.999265, 1.10207, 1.28461, 1.60894, 1.54414, 1.53408, 1.29947, 1.23477, 1.26518, 1.11827, 0.987174, 1.17311, 1.05632, 0.983414, 1.34374, 1.47198, 1.37401, 1.18334, 1.20317, 1.42877, 1.32744, 1.91035, 1.55235, 1.24306, 0.858933, 0.780223, 1.26005, 1.44699, 1.38833, 1.15637, 0.555331, 0.62621, 0.792151, 0.415486, 0.629283, 0.60832, 0.902763, 1.08154, 0.801731, 0.943379, 0.604251, 1.13486, 1.499, 1.36408, 1.01323, 0.847277, 0.7362, 0.603459, 0.282474, 0.55566, 0.600056, 0.833864, 0.729355, 0.501263, 1.19513, 1.31973, 1.21708, 0.84025, 0.809774, 0.757681, 0.53272, 0.361001, 0.3696, 0.509699, 1.13068, 0.897967, 0.889386, 0.83681, 0.894613, 1.18873, 1.4772, 1.31111, 1.22256, 1.10214, 1.20643, 1.33148, 1.50443, 1.41686, 1.3373, 1.26079, 1.42095, 1.53399, 1.47653, 1.70872, 1.69623, 1.41855, 1.319, 1.34481, 1.56693, 1.1116, 1.05023, 0.99363, 1.54954, 1.56724, 1.54859, 1.60501, 1.26715, 1.45798, 1.41972, 1.48934, 1.34174, 1.40491, 1.85947, 1.67264, 1.68767, 1.42147, 1.66128, 1.66332, 1.62115, 1.44969, 1.82073, 1.5746, 0.935959, 1.29046, 1.30144, 1.07946, 0.926086, 1.24371, 0.919865, 0.959678, 0.890282, 0.494883, 0.40668, 0.269419, 0.705774, 1.03995, 1.05932, 0.369544, 0.594891, 1.33913, 1.26852, 1.08339, 1.54743, 1.23001, 1.34206, 1.40605, 1.57433, 1.56212, 1.547, 1.28023, 1.13769, 1.12138, 1.18801, 1.0472, 1.11626, 1.06166, 0.716113, 0.319511, 0.909447, 1.09824, 0.93075, 1.1055, 0.891263, 0.701796, 0.733803, 0.717993, 0.334746, 0.263842, 0.32249, 0.17851, 0.939209, 1.4337, 1.18717, 1.54779, 1.5101, 1.7799, 1.50916, 1.515, 1.15126, 1.53757, 1.61094, 1.49478, 1.62423, 1.69878, 1.68963, 1.28337, 1.13292, 1.17142, 1.00552, 0.7865, 1.00752, 1.3144, 1.12108, 1.42405, 1.46268, 1.25337, 1.33368, 1.0103, 0.826797, 0.555796, 0.842378, 0.87257, 1.08469, 0.746488, 1.08138, 1.00486, 1.00237, 1.10258, 0.990965, 1.18924, 0.904281, 0.787234, 0.731169, 1.17486, 1.16662)
+
+a <- 0.075
+path_length <- 500
+tau <- seq(0, (path_length - 1) * a, by = a)
+
+# Define physical parameters from simulation
+wellCentres <- 1.4
+lambda <- 1.0
+omegaDWP <- wellCentres * sqrt(2 * lambda)
+
+# Define as many times as there are instantons
+tau_0 <- 4.9
+tau_1 <- 16.7
+
+# Simply multiply this by further tanh functions with tau_x as new instantons/anti-instantons
+instanton_sol <- wellCentres * tanh(omegaDWP * (tau - tau_0)) * tanh(omegaDWP * (tau - tau_1))
+
+df <- data.frame(
+  tau = tau,
+  positions = positions,
+  instanton = instanton_sol
+)
+
+ggplot(df, aes(x = tau)) +
+  geom_line(aes(y = positions), color = "black", linewidth = 0.5, alpha = 0.7) +
+  geom_line(aes(y = instanton), color = "red", linewidth = 1, linetype = "dashed") +
+  labs(x = expression("Euclidean time" ~ tau), y = "Position x") +
+  theme_minimal(base_size = 14) +
+  theme(axis.title = element_text(size = 18), axis.text = element_text(size = 14), legend.position = "none")
+
+if (save_png) { ggsave("Figures/anti-instanton-instanton.png", width = 15, height = 10, dpi = 1200) }
 
 # nolint end

@@ -43,11 +43,11 @@ int main() {
         else if (choice == "6") { // Run DWP system with multi-threading with varying beta and well separation.
             multThreads = true;
             sixFlag = true;
-            std::vector<double> wellCentresVec =        { 1.000, 1.100, 1.200, 1.300, 1.4000, 1.50000 };
-            std::vector<double> thermalisationVec =     { 10000, 10000, 10000, 10000, 100000, 1000000 };
-            std::vector<double> betaVec =               { 500, 400, 250, 100, 75, 50, 25, 10 };
+            std::vector<double> wellCentresVec =        { 1.0000, 1.1000, 1.2000, 1.3000, 1.4000, 1.50000 };
+            std::vector<double> thermalisationVec =     { 100000, 100000, 100000, 100000, 100000, 1000000 };
+            std::vector<double> betaVec =               { 500, 400, 250, 100, 75, 50, 25 };
             int thermalisationIndex = 0;
-			measures = 1; repeats = 32;
+			measures = 5; repeats = 32;
             for (double betaElement : betaVec) {
                 a = 0.05; epsilon = 0.32;                           // Fix lattice spacing and epsilon.
                 for (double wellCentresElement : wellCentresVec) {
@@ -64,8 +64,8 @@ int main() {
         else if (choice == "7") { // Run DWP system with multi-threading with varying lattice spacing and well separation.
             multThreads = true;
             sevenFlag = true;
-            std::vector<double> wellCentresVec =        { 1.000, 1.100, 1.200, 1.300, 1.4000, 1.50000 };
-            std::vector<double> thermalisationVec =     { 10000, 10000, 10000, 10000, 100000, 1000000 };
+            std::vector<double> wellCentresVec =        { 1.0000, 1.1000, 1.2000, 1.3000, 1.4000, 1.50000 };
+            std::vector<double> thermalisationVec =     { 100000, 100000, 100000, 100000, 100000, 1000000 };
             std::vector<double> latticeSpacingsVec =    { 0.5, 0.40, 0.3, 0.25, 0.20, 0.175, 0.15, 0.125, 0.10, 0.075, 0.05 };
             std::vector<double> esplinonVec =           { 0.7, 0.65, 0.6, 0.57, 0.55, 0.520, 0.50, 0.480, 0.45, 0.400, 0.30 };
             int thermalisationIndex = 0;
@@ -89,20 +89,20 @@ int main() {
         else if (choice == "8") { // Run DWP system with multi-threading with varying well separation.
             multThreads = true;
             eightFlag = true;
-            std::vector<double> wellCentresVec =        {   0.025, 0.050, 0.075, 0.100, 0.125, 0.150, 0.175, 0.200, 0.225, 0.250, 0.275, 0.300, 0.325, 0.350, 0.375, 0.400,  0.425,  0.450,  0.475,  0.500,
-                                                            0.525, 0.550, 0.575, 0.600, 0.625, 0.650, 0.675, 0.700, 0.725, 0.750, 0.775, 0.800, 0.825, 0.850, 0.875, 0.900,  0.925,  0.950,  0.975,  1.000, 
-                                                            1.025, 1.050, 1.075, 1.100, 1.125, 1.150, 1.175, 1.200, 1.225, 1.250, 1.275, 1.300, 1.325, 1.350, 1.375, 1.400,  1.425,  1.450,  1.475,  1.500 };
-            std::vector<double> thermalisationVec =     {   10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000,  10000,  10000,  10000,  10000, 
-                                                            10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000, 10000,  10000,  10000,  10000,  10000, 
-                                                            10000, 10000, 10000, 10000, 10000, 10000, 10000, 25000, 25000, 25000, 50000, 50000, 50000, 50000, 75000, 100000, 250000, 500000, 750000, 1000000 };
+            std::vector<double> wellCentresVec =        {   0.0250, 0.0500, 0.0750, 0.1000, 0.1250, 0.1500, 0.1750, 0.2000, 0.2250, 0.2500, 0.2750, 0.3000, 0.3250, 0.3500, 0.3750, 0.4000, 0.4250, 0.4500, 0.4750, 0.5000,
+                                                            0.5250, 0.5500, 0.5750, 0.6000, 0.6250, 0.6500, 0.6750, 0.7000, 0.7250, 0.7500, 0.7750, 0.8000, 0.8250, 0.8500, 0.8750, 0.9000, 0.9250, 0.9500, 0.9750, 1.0000, 
+                                                            1.0250, 1.0500, 1.0750, 1.1000, 1.1250, 1.1500, 1.1750, 1.2000, 1.2250, 1.2500, 1.2750, 1.3000, 1.3250, 1.3500, 1.3750, 1.4000, 1.4250, 1.4500, 1.4750, 1.5000};
+            std::vector<double> thermalisationVec =     {   100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 
+                                                            100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 
+                                                            100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 100000, 250000, 500000, 750000, 1000000 };
             int thermalisationIndex = 0;
-            measures = 10; repeats = 32;
+            measures = 50; repeats = 32;
             a = 0.075; epsilon = 0.35;                              // Found to give 60% acceptance rate with lattice spacing = 0.075.
             for (double wellCentresElement : wellCentresVec) {
                 thermSweepsDWP = thermalisationVec[thermalisationIndex];
                 decorrSweepsDWP = thermSweepsDWP / 2;
                 wellCentres = wellCentresElement;                   // Update the well centres based on the separation.
-                setParameters(250, 0.075, wellCentres);             // Run for fixed lattice spacing and inverse temperature beta, found to be big enough in analysis.
+                setParameters(250, a, wellCentres);             // Run for fixed lattice spacing and inverse temperature beta, found to be big enough in analysis.
                 std::cout << "\n Running DWP system with well centres = " << wellCentresElement << std::endl;
                 metropolisRepeat("DWP");
                 thermalisationIndex++;
@@ -256,6 +256,11 @@ void metropolisRepeat(std::string system) {
             if (currentSweep == checkPoint) {
                 checkPoint += checkPointInterval;
                 std::cout << "Sweep number: " << currentSweep << std::endl; // This can be commented out, but is useful for telling how many sweeps tunneling takes in the DWP system.
+            }
+            if (createInstantonFigure) {
+                if (currentSweep == 500000) {
+                    for (int i = 0; i < N; i++) { std::cout << data.positions[i] << ", "; }
+                }
             }
         }
     }

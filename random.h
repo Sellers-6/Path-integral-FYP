@@ -7,7 +7,7 @@
 /*********** Random number generation ************/
 /*************************************************/
 
-const int seed = 500;
+const int seed = 7;
 
 typedef std::mt19937 MyRng; // Mersenne twister random number generator, good quality and fast.
 
