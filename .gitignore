@@ -41,6 +41,3 @@ obj/
 *.recipe
 *.FileListAbsolute.txt
 *.applocal.log
-
-# Ignore data files
-*.h5
