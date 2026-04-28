@@ -540,7 +540,7 @@ save_png <- FALSE
   read_h5 <- function(name) as.numeric(unlist(h5read(dataFile, paste0(base, name))))
   
   well_centres_vec <- c(1.0, 1.1, 1.2, 1.3, 1.4, 1.5)
-  betas_vec <- c(500, 400, 250, 100, 75, 50, 25, 10, 5, 1)
+  betas_vec <- c(500, 400, 250, 100, 75, 50, 25, 10, 5)
   latticeSpacing <- 0.05 
   path_lengths <- as.integer(betas_vec / latticeSpacing)
   
@@ -742,11 +742,12 @@ ggplot(plot_df, aes(x = Beta, y = Energy, color = Well_Color)) +
   scale_x_log10(breaks = betas_vec) +
   
   # Labels and theme
-  labs(title = "Ground State Convergence with Decreasing Temperature", x = expression("Inverse Temperature"~Beta), 
+  labs(x = expression("Inverse Temperature"~Beta), 
       y = expression("Ground State Energy " ~ E[0]), color = "Well Centre") +
   theme_minimal(base_size = 14) +
-  theme(axis.title = element_text(size = 18), axis.text = element_text(size = 14))
-
+  theme(axis.title = element_text(size = 18), axis.text = element_text(size = 14), 
+        legend.title = element_text(size = 16), legend.text = element_text(size = 14))
+save_png <- TRUE
 if (save_png) { ggsave("Figures/DWP_E0_vary_beta.png", width = 11, height = 10, dpi = 1200) }
 
 ###~~~~~~~~~~~~~~~~~~~~~~~###
@@ -852,7 +853,7 @@ delta_E_vals_log
 
 ggplot(plot_log_df, aes(x = Beta, y = Splitting, color = Well_Factor)) +
   # MCMC data
-  geom_line(aes(group = Well_Factor), size = 0.8) +
+  geom_line(aes(group = Well_Factor), linewidth = 0.8) +
   geom_point(size = 2.5) +
   geom_errorbar(aes(ymin = Splitting - Splitting_err, ymax = Splitting + Splitting_err), width = 0.01) +
   
@@ -1201,11 +1202,12 @@ ggplot(plot_df, aes(x = 1 / (latticeSpacing^2), y = Energy, color = Well_Color))
   geom_errorbar(aes(ymin = Energy - Error, ymax = Energy + Error), width = 10) +
   
   # Labels and theme
-  labs(title = "Ground State Convergence with Decreasing Lattice Spacing", x = expression("Inverse square lattice spacing" ~ 1 / a^2), 
+  labs(x = expression("Inverse square lattice spacing" ~ 1 / a^2), 
       y = expression("Ground State Energy " ~ E[0]), color = "Well Centre") +
   theme_minimal(base_size = 14) +
-  theme(axis.title = element_text(size = 18), axis.text = element_text(size = 14))
-
+  theme(axis.title = element_text(size = 18), axis.text = element_text(size = 14), 
+        legend.title = element_text(size = 16), legend.text = element_text(size = 14))
+save_png <- TRUE
 if (save_png) { ggsave("Figures/DWP_E0_vary_ls.png", width = 11, height = 10, dpi = 1200) }
 
 ###~~~~~~~~~~~~~~~~~~~~~~~###
@@ -1602,7 +1604,7 @@ plot_correlator(Gx1x1Data[[wellIndex]][[lsIndex]], noiseless_regions[wellIndex, 
     MCMC_error <- sd(E0RepeatAvg) / sqrt(length(E0RepeatAvg))
 
     delta_a_pc <- 0.78
-    delta_beta_pc <- 1.16
+    delta_beta_pc <- 0.20
 
     err_a    <- (delta_a_pc / 100) * mean(E0RepeatAvg)
     err_beta <- (delta_beta_pc / 100) * mean(E0RepeatAvg)

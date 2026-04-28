@@ -45,8 +45,7 @@ int main() {
             sixFlag = true;
             std::vector<double> wellCentresVec =        { 1.0000, 1.1000, 1.2000, 1.3000, 1.4000, 1.50000 };
             std::vector<double> thermalisationVec =     { 100000, 100000, 100000, 100000, 100000, 1000000 };
-            //std::vector<double> betaVec =               { 500, 400, 250, 100, 75, 50, 25, 10, 5, 1 };
-            std::vector<double> betaVec =               { 10, 5, 1 };
+            std::vector<double> betaVec =               { 500, 400, 250, 100, 75, 50, 25, 10, 5, 1 };
             int thermalisationIndex = 0;
 			measures = 50; repeats = 32;
             for (double betaElement : betaVec) {
