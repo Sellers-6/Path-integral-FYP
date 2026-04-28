@@ -45,9 +45,10 @@ int main() {
             sixFlag = true;
             std::vector<double> wellCentresVec =        { 1.0000, 1.1000, 1.2000, 1.3000, 1.4000, 1.50000 };
             std::vector<double> thermalisationVec =     { 100000, 100000, 100000, 100000, 100000, 1000000 };
-            std::vector<double> betaVec =               { 500, 400, 250, 100, 75, 50, 25 };
+            //std::vector<double> betaVec =               { 500, 400, 250, 100, 75, 50, 25, 10, 5, 1 };
+            std::vector<double> betaVec =               { 10, 5, 1 };
             int thermalisationIndex = 0;
-			measures = 5; repeats = 32;
+			measures = 50; repeats = 32;
             for (double betaElement : betaVec) {
                 a = 0.05; epsilon = 0.32;                           // Fix lattice spacing and epsilon.
                 for (double wellCentresElement : wellCentresVec) {
@@ -70,7 +71,7 @@ int main() {
             std::vector<double> esplinonVec =           { 0.7, 0.65, 0.6, 0.57, 0.55, 0.520, 0.50, 0.480, 0.45, 0.400, 0.30 };
             int thermalisationIndex = 0;
             int epsilonIndex = 0;
-            measures = 1; repeats = 32;
+            measures = 50; repeats = 32;
             for (double latticeSpacingsElement : latticeSpacingsVec) {
                 a = latticeSpacingsElement;                         // Update the lattice spacing.
                 epsilon = esplinonVec[epsilonIndex];                // Update epsilon based on the lattice spacing, smaller lattice spacings require smaller epsilon for good acceptance rates.
